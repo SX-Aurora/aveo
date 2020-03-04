@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include <urpc_common.h>
+#include <urpc.h>
 #include <ve_offload.h>
 
 namespace veo {

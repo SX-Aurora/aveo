@@ -1,7 +1,7 @@
 #ifndef VEO_URPC_INCLUDE
 #define VEO_URPC_INCLUDE
 
-#include <urpc_common.h>
+#include <urpc.h>
 
 // reply timeout in us
 #define REPLY_TIMEOUT 20000000

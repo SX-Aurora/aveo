@@ -13,7 +13,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <unordered_map>
-#include <urpc_common.h>
+#include <urpc.h>
 #include "ve_offload.h"
 
 namespace veo {

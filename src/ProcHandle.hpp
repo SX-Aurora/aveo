@@ -10,8 +10,8 @@
 #include <mutex>
 #include <iostream>
 
+#include <urpc.h>
 #include <ve_offload.h>
-#include <urpc_common.h>
 #include "CallArgs.hpp"
 #include "ThreadContext.hpp"
 #include "VEOException.hpp"

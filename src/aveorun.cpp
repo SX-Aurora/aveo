@@ -5,7 +5,7 @@
 #include <string.h>
 #include <csignal>
 
-#include <urpc_common.h>
+#include <urpc.h>
 #include <urpc_debug.h>
 #include <urpc_time.h>
 #include <veo_urpc.hpp>
