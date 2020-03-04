@@ -1,0 +1,99 @@
+#!/bin/bash
+
+#
+# Usage:
+#       
+#
+
+usage() {
+    echo "Usage:"
+    echo
+    echo "$0 <VEORUN_BIN> <lib1.a> [<lib2.a> ...]"
+    echo
+    exit 1
+}
+
+option_end=0
+LIBS=()
+EXTRA_LIBS=()
+VEORUN=''
+default_LDFLAGS="-no-proginf -pthread"
+while [ $# -gt 0 ]; do
+  option="$1"
+  if [ $option_end -eq 0 ]; then
+    case "$option" in
+    '--')
+      option_end=1
+      ;;
+    '-h' | '--help')
+      usage
+      ;;
+    '-o')
+      VEORUN="$2"
+      shift
+      ;;
+    '-fopenmp' | -L* | -l* | -Wl,*)
+      default_LDFLAGS="${default_LDFLAGS} ${option}"
+      ;;
+    '--link-nosym='*)
+      # Bash 4.2 (on RHEL/CentOS7) does not support readarray with -d.
+      _extralibs=()
+      while read -rd,; do _extralibs+=("$REPLY"); done \
+        <<< "${option#--link-nosym=},"
+      EXTRA_LIBS=("${EXTRA_LIBS[@]}" "${_extralibs[@]}")
+      ;;
+    *)
+      LIBS=(${LIBS[@]} "$option")
+      ;;
+    esac
+    shift
+  else
+    LIBS=(${LIBS[@]} "$option")
+  fi
+done
+default_LDFLAGS="${default_LDFLAGS} -ldl"
+
+if [ -z "$VEORUN" ]; then
+  if [ ${#LIBS[@]} -lt 2 ]; then
+    usage
+  fi
+  VEORUN="${LIBS[0]}"
+  unset LIBS[0]
+else
+  if [ ${#LIBS[@]} -lt 1 ]; then
+    usage
+  fi
+fi
+
+CC=${CC:-/opt/nec/ve/bin/ncc}
+CXX=${CXX:-/opt/nec/ve/bin/nc++}
+FC=${FC:-/opt/nec/ve/bin/nfort}
+# find an appropriage linker
+default_CCLD="$CC"
+# try Fortran compiler
+FC=$(which $FC 2>/dev/null)
+if [ $? -eq 0 ]; then
+  default_CCLD="$FC"
+  default_LDFLAGS="-cxxlib ${default_LDFLAGS}"
+else
+  # if Fortran compiler (nfort) is not found, try C++ compiler
+  CXX=$(which $CXX 2>/dev/null)
+  if [ $? -eq 0 ]; then
+    default_CCLD="$CXX"
+  fi
+fi
+
+NM=${NM:-nm}
+CCLD=${CCLD:-${default_CCLD}}
+CFLAGS=${CFLAGS:-}
+LDFLAGS=${LDFLAGS:-${default_LDFLAGS}}
+
+SRC_FILE=$(mktemp /tmp/veorunXXXXXXX.c)
+OBJ_FILE=${SRC_FILE/.c/.o}
+trap "rm -f $SRC_FILE $OBJ_FILE" EXIT
+
+@libexecdir@/gen_aveorun_static_symtable "${LIBS[@]}" > $SRC_FILE
+
+$CC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
+$CCLD $CFLAGS -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
+  @libdir@/libaveoVE.a $LDFLAGS && echo "created specific $VEORUN"
