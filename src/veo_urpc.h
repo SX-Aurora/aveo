@@ -14,26 +14,26 @@
 extern "C" {
 #endif
 
-  extern __thread int __veo_finish;
+extern __thread int __veo_finish;
 
-  void veo_urpc_register_handlers(urpc_peer_t *up);
+void veo_urpc_register_handlers(urpc_peer_t *up);
 
 #ifdef __ve__
 
-  extern pthread_t __handler_loop_pthreads[MAX_VE_CORES];
-  extern int __num_ve_peers;
+extern pthread_t __handler_loop_pthreads[MAX_VE_CORES];
+extern int __num_ve_peers;
   
-  typedef struct {
-    urpc_peer_t *up;
-    int core;
-  } ve_handler_loop_arg_t;
+typedef struct {
+  urpc_peer_t *up;
+  int core;
+} ve_handler_loop_arg_t;
 
-  void veo_urpc_register_ve_handlers(urpc_peer_t *up);
-  void *ve_handler_loop(void *arg);
+void veo_urpc_register_ve_handlers(urpc_peer_t *up);
+void *ve_handler_loop(void *arg);
 
 #else
 
-  void veo_urpc_register_vh_handlers(urpc_peer_t *up);
+void veo_urpc_register_vh_handlers(urpc_peer_t *up);
 
 #endif
 #ifdef __cplusplus

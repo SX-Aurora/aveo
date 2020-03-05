@@ -5,7 +5,7 @@
 #include <dlfcn.h>
 #include <pthread.h>
 
-#include "veo_urpc.hpp"
+#include "veo_urpc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,8 +14,6 @@ extern "C" {
 extern __thread int __veo_finish;
 pthread_t __handler_loop_pthreads[MAX_VE_CORES];
 int __num_ve_peers = 0;
-
-  //using namespace veo;
 
 //
 // VE side main handler loop

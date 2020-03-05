@@ -12,7 +12,7 @@
 #include "ProcHandle.hpp"
 #include "CallArgs.hpp"
 #include "VEOException.hpp"
-#include "log.hpp"
+#include "log.h"
 
 namespace veo {
 namespace api {

@@ -35,20 +35,22 @@ install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN
 	/usr/bin/install $(BB)/aveorun-ftrace $(VEORUN_BIN)-ftrace
 	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
 	/usr/bin/install $(BB)/relink_aveorun $(DEST)/libexec
-	if [ -L $(DEST)/libexec/relink_aveorun ]; then rm -f $(DEST)/libexec/relink_aveorun; fi
+	if [ -L $(DEST)/libexec/mk_veorun_static ]; then \
+		rm -f $(DEST)/libexec/mk_veorun_static; \
+	fi
 	ln -s $(DEST)/libexec/relink_aveorun $(DEST)/libexec/mk_veorun_static
 
 
-%/ProcHandle.o: ProcHandle.cpp ProcHandle.hpp VEOException.hpp veo_urpc.hpp CallArgs.hpp log.hpp
-%/ThreadContext.o: ThreadContext.cpp ThreadContext.hpp VEOException.hpp veo_urpc.hpp CallArgs.hpp \
-                   CommandImpl.hpp log.hpp
-%/AsyncTransfer.o: AsyncTransfer.cpp ThreadContext.hpp VEOException.hpp CommandImpl.hpp log.hpp
+%/ProcHandle.o: ProcHandle.cpp ProcHandle.hpp VEOException.hpp veo_urpc.h CallArgs.hpp log.h
+%/ThreadContext.o: ThreadContext.cpp ThreadContext.hpp VEOException.hpp veo_urpc.h CallArgs.hpp \
+                   CommandImpl.hpp log.h
+%/AsyncTransfer.o: AsyncTransfer.cpp ThreadContext.hpp VEOException.hpp CommandImpl.hpp log.h
 %/CallArgs.o: CallArgs.cpp CallArgs.hpp VEOException.hpp ve_offload.h
-%/veo_urpc.o: veo_urpc.c veo_urpc.hpp
-%/veo_api.o: veo_api.cpp ProcHandle.hpp CallArgs.hpp VEOException.hpp log.hpp
-%/log.o: log.cpp log.hpp
-%/aveorun.o: aveorun.c veo_urpc.hpp
-%/aveorun-ftrace.o: aveorun.c veo_urpc.hpp
+%/veo_urpc.o: veo_urpc.c veo_urpc.h
+%/veo_api.o: veo_api.cpp ProcHandle.hpp CallArgs.hpp VEOException.hpp log.h
+%/log.o: log.cpp log.h
+%/aveorun.o: aveorun.c veo_urpc.h
+%/aveorun-ftrace.o: aveorun.c veo_urpc.h
 
 
 .SECONDEXPANSION:
@@ -82,11 +84,11 @@ $(BB)/relink_aveorun: ../scripts/relink_aveorun.in
 	chmod 755 $@
 
 
-$(BVE)/veo_urpc.o: veo_urpc.cpp
+$(BVE)/veo_urpc.o: veo_urpc.c
 	$(NCC) $(NCCFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<
 
-$(BVH)/veo_urpc.o: veo_urpc.cpp
-	$(GPP) $(GPPFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<
+$(BVH)/veo_urpc.o: veo_urpc.c
+	$(GCC) $(GCCFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<
 
 $(BVH)/%.o: %.c | $$(@D)/
 	$(GCC) $(GCCFLAGS) -fpic -o $@ -c $<
@@ -100,11 +102,11 @@ $(BVH)/%.o: %.cpp | $$(@D)/
 $(BVE)/%.o: %.cpp | $$(@D)/
 	$(NCPP) $(NCPPFLAGS) -fpic -o $@ -c $<
 
-$(BVE)/aveorun.o: aveorun.cpp | $$(@D)/
+$(BVE)/aveorun.o: aveorun.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -fpic -o $@ -c $<
 
 
-$(BVE)/aveorun-ftrace.o: aveorun.cpp | $$(@D)/
+$(BVE)/aveorun-ftrace.o: aveorun.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:

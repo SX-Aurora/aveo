@@ -5,25 +5,18 @@
 #include <string.h>
 #include <signal.h>
 
+#define __USE_GNU
+#include <dlfcn.h>
+
 #include <urpc.h>
 #include <urpc_debug.h>
 #include <urpc_time.h>
-#include <veo_urpc.hpp>
-
-//#define _GNU_SOURCE
-#include <dlfcn.h>
+#include <veo_urpc.h>
 
 urpc_peer_t *main_up;
-//extern urpc_peer_t *main_up;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 /* in dummy.c or the self-compiled generated static symtable */
 void _init_static_symtable(void);
-#ifdef __cplusplus
-}
-#endif
 
 void signalHandler( int signum ) {
   Dl_info di;
@@ -58,7 +51,6 @@ void signalHandler( int signum ) {
     }
   }
   urpc_generic_send(main_up, URPC_CMD_EXCEPTION, (char *)"L", (int64_t)signum);
-  //sleep(20);
   ve_urpc_fini(main_up);
   exit(signum);  
 }

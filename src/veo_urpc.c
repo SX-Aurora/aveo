@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
-#include <CallArgs.hpp>
-#include "veo_urpc.hpp"
+#include "veo_urpc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,11 +16,9 @@ typedef struct {char *n; void *v;} static_sym_t;
 /* in dummy.c or the self-compiled generated static symtable */
 extern static_sym_t *_veo_static_symtable;
   
-using namespace veo;
-
-  //
-  // Handlers
-  //
+//
+// Handlers
+//
   
 static int ping_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                         void *payload, size_t plen)

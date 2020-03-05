@@ -6,9 +6,9 @@
 //#include "ThreadContext.hpp"
 #include "VEOException.hpp"
 #include "CallArgs.hpp"
-#include "log.hpp"
+#include "log.h"
 
-#include "veo_urpc.hpp"
+#include "veo_urpc.h"
 #include "veo_urpc_vh.hpp"
 #include "urpc_time.h"
 

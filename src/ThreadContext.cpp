@@ -9,13 +9,13 @@
 #include <semaphore.h>
 #include <signal.h>
 
-#include "veo_urpc.hpp"
+#include "veo_urpc.h"
 #include "CallArgs.hpp"
 #include "ThreadContext.hpp"
 #include "ProcHandle.hpp"
 #include "CommandImpl.hpp"
 #include "VEOException.hpp"
-#include "log.hpp"
+#include "log.h"
 
 #include "veo_urpc_vh.hpp"
 

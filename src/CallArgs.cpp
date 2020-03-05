@@ -8,7 +8,7 @@
 #include <cstring>
 #include <numeric>
 #include <string>
-#include "log.hpp"
+#include "log.h"
 
 namespace veo{
 namespace internal {

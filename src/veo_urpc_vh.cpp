@@ -4,7 +4,7 @@
 #include <dlfcn.h>
 
 #include <CallArgs.hpp>
-#include "veo_urpc.hpp"
+#include "veo_urpc.h"
 #include "veo_urpc_vh.hpp"
 
 namespace veo {

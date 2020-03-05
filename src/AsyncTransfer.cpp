@@ -5,8 +5,8 @@
 #include "ProcHandle.hpp"
 #include "ThreadContext.hpp"
 #include "CommandImpl.hpp"
-#include "log.hpp"
-#include "veo_urpc.hpp"
+#include "log.h"
+#include "veo_urpc.h"
 #include <sys/types.h>
 #include <unistd.h>
 
