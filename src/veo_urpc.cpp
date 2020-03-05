@@ -13,6 +13,10 @@ extern "C" {
 __thread int __veo_finish;
 const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
+typedef struct {char *n; void *v;} static_sym_t;
+/* in dummy.c or the self-compiled generated static symtable */
+extern static_sym_t *_veo_static_symtable;
+  
 using namespace veo;
 
   //
@@ -98,20 +102,17 @@ static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
     if (!symaddr)
       eprintf("getsym_handler dlerror: %s\n", dlerror());
   }
-#if 0
-  typedef struct {char *n; void *v;} static_sym_t;
-    
+
   if (_veo_static_symtable) {
     static_sym_t *t = _veo_static_symtable;
     while (t->n != NULL) {
-      if (strcmp(t->n, name) == 0) {
+      if (strcmp(t->n, sym) == 0) {
         symaddr = (uint64_t)t->v;
         break;
       }
       t++;
     }
   }
-#endif
 	
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", symaddr);
   // check req IDs. Result expected with exactly same req ID.

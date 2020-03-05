@@ -19,6 +19,7 @@ EXTRA_LIBS=()
 VEORUN=''
 default_LDFLAGS="-no-proginf -pthread -Wl,-rpath,@libdir@ -lveio"
 is_openmp=0
+VERBOSE=
 while [ $# -gt 0 ]; do
   option="$1"
   if [ $option_end -eq 0 ]; then
@@ -33,11 +34,14 @@ while [ $# -gt 0 ]; do
       VEORUN="$2"
       shift
       ;;
+    '-v')
+      VERBOSE=-v
+      ;;
     '-fopenmp')
         default_LDFLAGS="${default_LDFLAGS} ${option} -lurpcVE_omp"
         is_openmp=1
       ;;
-    -L* | -l* | -Wl,*)
+    '-L'*|'-l'*|'-Wl,'*)
       default_LDFLAGS="${default_LDFLAGS} ${option}"
       ;;
     '--link-nosym='*)
@@ -94,7 +98,7 @@ fi
 
 NM=${NM:-nm}
 CCLD=${CCLD:-${default_CCLD}}
-CFLAGS=${CFLAGS:-}
+CFLAGS="${CFLAGS:-} ${VERBOSE}"
 LDFLAGS=${LDFLAGS:-${default_LDFLAGS}}
 
 SRC_FILE=$(mktemp /tmp/veorunXXXXXXX.c)
@@ -104,5 +108,5 @@ trap "rm -f $SRC_FILE $OBJ_FILE" EXIT
 @libexecdir@/gen_aveorun_static_symtable "${LIBS[@]}" > $SRC_FILE
 
 $CC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
-$CCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
+$CCLD $CFLAGS -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
   @libdir@/libaveoVE.a -L@libdir@ $LDFLAGS && echo "created specific $VEORUN"

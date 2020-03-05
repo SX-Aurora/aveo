@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #include <string.h>
-#include <csignal>
+#include <signal.h>
 
 #include <urpc.h>
 #include <urpc_debug.h>
@@ -13,7 +13,17 @@
 //#define _GNU_SOURCE
 #include <dlfcn.h>
 
-extern urpc_peer_t *main_up;
+urpc_peer_t *main_up;
+//extern urpc_peer_t *main_up;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/* in dummy.c or the self-compiled generated static symtable */
+void _init_static_symtable(void);
+#ifdef __cplusplus
+}
+#endif
 
 void signalHandler( int signum ) {
   Dl_info di;
@@ -53,8 +63,6 @@ void signalHandler( int signum ) {
   exit(signum);  
 }
 
-urpc_peer_t *main_up;
-
 
 int main()
 {
@@ -66,6 +74,9 @@ int main()
   signal(SIGILL, signalHandler);
   signal(SIGSEGV, signalHandler);
 
+  // initialize symbol table for statically linked symbols
+
+  _init_static_symtable();
   main_up = ve_urpc_init(0);
   
   char *e;

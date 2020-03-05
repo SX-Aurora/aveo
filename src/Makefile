@@ -11,9 +11,9 @@ GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o ThreadContext.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o)
+ veo_urpc.o veo_urpc_vh.o dummy.o)
 
-VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
+VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o dummy.o)
 
 LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
 PROGS = $(BB)/aveorun $(BB)/aveorun-ftrace $(BB)/relink_aveorun
@@ -35,6 +35,7 @@ install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN
 	/usr/bin/install $(BB)/aveorun-ftrace $(VEORUN_BIN)-ftrace
 	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
 	/usr/bin/install $(BB)/relink_aveorun $(DEST)/libexec
+	if [ -L $(DEST)/libexec/relink_aveorun ]; then rm -f $(DEST)/libexec/relink_aveorun; fi
 	ln -s $(DEST)/libexec/relink_aveorun $(DEST)/libexec/mk_veorun_static
 
 
@@ -68,12 +69,12 @@ $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
 
 
 $(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/
-	$(NFORT) $(NFORTFLAGS) -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
-		-laveoVE -lurpcVE_omp -lveio -lpthread
+	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
+		-L$(BLIB) -laveoVE -lurpcVE_omp -lveio -lpthread
 
 $(BB)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
-	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) \
-		-L. -laveoVE -lurpcVE_omp -lveio -lpthread
+	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
+		-L$(BLIB) -laveoVE -lurpcVE_omp -lveio -lpthread
 
 $(BB)/relink_aveorun: ../scripts/relink_aveorun.in
 	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \

@@ -11,15 +11,16 @@ TESTS = $(addprefix $(BB)/,test_callsync test_callasync test_stackargs test_npro
  test_async_mem test_thread_main_call_race test_2ctx_callasync test_omp \
  libvehello.so libvehello2.so libvestackargs.so libveexcept.so libveasyncmem.so \
  libvetestomp.so )
+SCRIPTS = $(addprefix $(BB)/,scan_bandwidth.sh scan_call_latency.sh)
 
-
-ALL: $(TESTS)
+ALL: $(TESTS) $(SCRIPTS)
 
 
 # install
 
 install: $(TESTS) | $(DEST)/tests/
-	cp -p $(TESTS) $(DEST)/tests
+	/usr/bin/install $(TESTS) $(DEST)/tests
+	/usr/bin/install $(SCRIPTS) $(DEST)/tests
 
 
 .PRECIOUS: $(BUILD)/ $(BUILD)%/ $(DEST)/ $(DEST)%/
@@ -35,6 +36,8 @@ $(BB)/%.so: %.c  | $$(@D)/
 $(BB)/%: %.c  | $$(@D)/
 	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH -lurpcVH
 
+$(BB)/%.sh: %.sh | $$(@D)/
+	cp -p $< $@
 
 clean:
 	rm -f $(TESTS)

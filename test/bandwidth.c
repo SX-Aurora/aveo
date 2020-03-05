@@ -40,8 +40,7 @@ int veo_init()
 
 int veo_finish()
 {
-	int close_status = veo_context_close(ctx);
-	printf("close status = %d\n", close_status);
+	veo_context_close(ctx);
 	veo_proc_destroy(proc);
 	return 0;
 }
