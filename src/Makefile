@@ -18,7 +18,7 @@ LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
 INCLUDES := ve_offload.h
 
 
-ALL: $(LIBS) $(BB)/aveorun
+ALL: $(LIBS) $(BB)/aveorun $(BB)/aveorun-ftrace
 
 .PRECIOUS: $(DEST)/ $(DEST)%/
 
@@ -26,10 +26,14 @@ ALL: $(LIBS) $(BB)/aveorun
 	mkdir -p $@
 
 
-install: $(LIBS) | $(DEST)/lib/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
+install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
 	cp -p $(LIBS) $(DEST)/lib
 	cp -p $(INCLUDES) $(DEST)/include
 	cp -p $(BB)/aveorun $(VEORUN_BIN)
+	cp -p ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
+	sed -e "s,@libexecdir@,$(DEST)/libexec," -e "s,@libdir@,$(DEST)/lib," \
+		< ../scripts/relink_aveorun.in > $(DEST)/libexec/relink_aveorun
+	ln -s $(DEST)/libexec/relink_aveorun $(DEST)/libexec/mk_veorun_static
 
 
 %/ProcHandle.o: ProcHandle.cpp ProcHandle.hpp VEOException.hpp veo_urpc.hpp CallArgs.hpp log.hpp
@@ -40,7 +44,8 @@ install: $(LIBS) | $(DEST)/lib/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
 %/veo_urpc.o: veo_urpc.c veo_urpc.hpp
 %/veo_api.o: veo_api.cpp ProcHandle.hpp CallArgs.hpp VEOException.hpp log.hpp
 %/log.o: log.cpp log.hpp
-%/aveorun.o: aveorun.c veo_urpc.h
+%/aveorun.o: aveorun.c veo_urpc.hpp
+%/aveorun-ftrace.o: aveorun.c veo_urpc.hpp
 
 
 .SECONDEXPANSION:
@@ -61,8 +66,12 @@ $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
 
 
 $(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/
-	$(NFORT) $(NFORTFLAGS) -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. -laveoVE -lurpcVE_omp -lveio -lpthread
-#	$(NCPP) $(NCPPFLAGS) -traceback -o $@ $^ $(LDFLAGS) -L. -laveoVE -L$(BLIB) -lurpcVE -lveio -lpthread -ldl
+	$(NFORT) $(NFORTFLAGS) -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
+		-laveoVE -lurpcVE_omp -lveio -lpthread
+
+$(BB)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
+	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) \
+		-L. -laveoVE -lurpcVE_omp -lveio -lpthread
 
 
 $(BVE)/veo_urpc.o: veo_urpc.cpp
@@ -82,7 +91,10 @@ $(BVE)/%.o: %.cpp | $$(@D)/
 
 $(BVE)/aveorun.o: aveorun.cpp | $$(@D)/
 	$(NCC) $(NCCFLAGS) -fpic -o $@ -c $<
-#	$(NCC) $(NCPPFLAGS) -traceback -fpic -o $@ -c $<
+
+
+$(BVE)/aveorun-ftrace.o: aveorun.cpp | $$(@D)/
+	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:
-	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(BB)/aveorun
+	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(BB)/aveorun $(BB)aveorun-ftrace

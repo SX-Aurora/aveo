@@ -67,6 +67,19 @@ int veo_api_version()
   return VEO_API_VERSION;
 }
 
+#if 0
+// TODO
+/**
+ * @brief VEO version
+ *
+ * @return pointer to VEO version string
+ */
+const char *veo_version_string()
+{
+  return VERSION;
+}
+#endif
+
 /**
  * @brief create a VE process with non-default veorun binary
  *

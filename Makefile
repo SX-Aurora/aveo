@@ -20,7 +20,7 @@ test:
 	make -C test $(MAKEVARS)
 
 
-install:
+install: ALL
 	make -C src install $(MAKEVARS)
 	make -C test install $(MAKEVARS)
 

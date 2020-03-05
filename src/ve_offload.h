@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2018 by NEC Corporation
+/* Copyright (C) 2017-2020 by NEC Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -24,10 +24,10 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 4
+#define VEO_API_VERSION 7
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
-#define VEO_MAX_NUM_ARGS (32)
+#define VEO_MAX_NUM_ARGS (256)
 
 #define VEO_REQUEST_ID_INVALID (~0UL)
 
@@ -40,6 +40,8 @@ extern "C" {
 enum veo_context_state {
   VEO_STATE_UNKNOWN = 0,
   VEO_STATE_RUNNING,
+  VEO_STATE_SYSCALL,	// not possible in AVEO
+  VEO_STATE_BLOCKED,	// not possible in AVEO
   VEO_STATE_EXIT,
 };
 
@@ -114,9 +116,9 @@ uint64_t veo_async_write_mem(struct veo_thr_ctxt *, uint64_t, const void *,
                              size_t);
 
 #if 0
-const char *veo_version_string(void);
-const int veo_api_version(void);
+char *veo_version_string(void);
 #endif
+int veo_api_version(void);
 
 #ifdef __cplusplus
 } // extern "C"
