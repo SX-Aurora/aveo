@@ -115,9 +115,7 @@ uint64_t veo_async_read_mem(struct veo_thr_ctxt *, void *, uint64_t, size_t);
 uint64_t veo_async_write_mem(struct veo_thr_ctxt *, uint64_t, const void *,
                              size_t);
 
-#if 0
-char *veo_version_string(void);
-#endif
+const char *veo_version_string(void);
 int veo_api_version(void);
 
 #ifdef __cplusplus

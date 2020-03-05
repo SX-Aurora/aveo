@@ -43,6 +43,8 @@ template <typename T> int veo_args_set_(veo_args *ca, int argnum, T val)
 } // namespace veo::api
 } // namespace veo
 
+extern "C" { extern const char *VERSION; }
+
 using veo::api::ProcHandleFromC;
 using veo::api::ThreadContextFromC;
 using veo::api::CallArgsFromC;
@@ -67,8 +69,6 @@ int veo_api_version()
   return VEO_API_VERSION;
 }
 
-#if 0
-// TODO
 /**
  * @brief VEO version
  *
@@ -78,7 +78,6 @@ const char *veo_version_string()
 {
   return VERSION;
 }
-#endif
 
 /**
  * @brief create a VE process with non-default veorun binary

@@ -4,6 +4,7 @@ BUILD ?= ../build
 include ../make_aveo.inc
 
 VEORUN_BIN ?= $(abspath $(DEST)/libexec/aveorun)
+VERSION = $(shell cat ../VERSION)
 
 DEFINES := -DVEORUN_BIN=\"$(VEORUN_BIN)\"
 GPPFLAGS := $(GPPFLAGS) $(DEFINES)
@@ -15,10 +16,11 @@ VHLIB_OBJS := $(addprefix $(BVH)/,\
 VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
 
 LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
+PROGS = $(BB)/aveorun $(BB)/aveorun-ftrace $(BB)/relink_aveorun
 INCLUDES := ve_offload.h
 
 
-ALL: $(LIBS) $(BB)/aveorun $(BB)/aveorun-ftrace
+ALL: $(LIBS) $(PROGS)
 
 .PRECIOUS: $(DEST)/ $(DEST)%/
 
@@ -27,12 +29,12 @@ ALL: $(LIBS) $(BB)/aveorun $(BB)/aveorun-ftrace
 
 
 install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
-	cp -p $(LIBS) $(DEST)/lib
-	cp -p $(INCLUDES) $(DEST)/include
-	cp -p $(BB)/aveorun $(VEORUN_BIN)
-	cp -p ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
-	sed -e "s,@libexecdir@,$(DEST)/libexec," -e "s,@libdir@,$(DEST)/lib," \
-		< ../scripts/relink_aveorun.in > $(DEST)/libexec/relink_aveorun
+	/usr/bin/install -t $(DEST)/lib $(LIBS)
+	/usr/bin/install -t $(DEST)/include $(INCLUDES)
+	/usr/bin/install $(BB)/aveorun $(VEORUN_BIN)
+	/usr/bin/install $(BB)/aveorun-ftrace $(VEORUN_BIN)-ftrace
+	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
+	/usr/bin/install $(BB)/relink_aveorun $(DEST)/libexec
 	ln -s $(DEST)/libexec/relink_aveorun $(DEST)/libexec/mk_veorun_static
 
 
@@ -58,7 +60,7 @@ $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -o $@ $^ \
 		$(LDFLAGS) -lurpcVH -llog4c -ldl
 
-$(BLIB)/libaveoVE.a: $(VELIB_OBJS) | $$(@D)/
+$(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
 
 $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
@@ -73,9 +75,17 @@ $(BB)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) \
 		-L. -laveoVE -lurpcVE_omp -lveio -lpthread
 
+$(BB)/relink_aveorun: ../scripts/relink_aveorun.in
+	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \
+		< $< > $@
+	chmod 755 $@
+
 
 $(BVE)/veo_urpc.o: veo_urpc.cpp
-	$(NCC) $(NCCFLAGS) -fpic -o $@ -c $<
+	$(NCC) $(NCCFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<
+
+$(BVH)/veo_urpc.o: veo_urpc.cpp
+	$(GPP) $(GPPFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<
 
 $(BVH)/%.o: %.c | $$(@D)/
 	$(GCC) $(GCCFLAGS) -fpic -o $@ -c $<
@@ -97,4 +107,4 @@ $(BVE)/aveorun-ftrace.o: aveorun.cpp | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:
-	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(BB)/aveorun $(BB)aveorun-ftrace
+	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(PROGS)

@@ -10,7 +10,8 @@
 extern "C" {
 #endif
 
-  __thread int __veo_finish;
+__thread int __veo_finish;
+const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
 using namespace veo;
 

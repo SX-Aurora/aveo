@@ -148,10 +148,3 @@ int veo_call_sync(struct veo_proc_handle *h, uint64_t addr,
 ```
 
 
-### Missing functionality
-
-Currently the VEO API call
-```
-char *veo_version_string();
-```
-is missing from AVEO.
