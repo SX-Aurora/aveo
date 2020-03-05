@@ -19,6 +19,8 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/shm.h>
+#include <sys/types.h>
+#include <wait.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -93,14 +95,10 @@ int ProcHandle::exitProc()
     throw VEOException("exitProc: failed to send EXIT cmd.");
   }
   auto rc = wait_req_ack(this->up, req);
-  if (rc < 0) {
-    // failed the smooth way, now kill the VE process
-    rc = vh_urpc_child_destroy(this->up);
-    if (rc) {
-      // just print message if failed, but continue
-      VEO_ERROR(nullptr, "failed to destroy VE child (rc=%d)", rc);
-    }
-  }
+  // this is not nice, but occasionally the child hangs as <defunct>
+  rc = vh_urpc_child_destroy(this->up);
+  if (rc)
+    VEO_ERROR(nullptr, "failed to destroy VE child (rc=%d)", rc);
   rc = vh_urpc_peer_destroy(this->up);
   this->ve_number = -1;
   return rc;
