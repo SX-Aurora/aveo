@@ -2,6 +2,7 @@
 #define VEO_URPC_INCLUDE
 
 #include <urpc.h>
+#include <urpc_debug.h>
 
 // reply timeout in us
 #define REPLY_TIMEOUT 20000000

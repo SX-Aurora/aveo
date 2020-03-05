@@ -54,7 +54,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
     throw VEOException("ProcHandle: failed to create VE process.");
     eprintf("ProcHandle: failed to create VE process.\n");
   }
-  if (wait_peer_attach(this->up) != 0) {
+  if (urpc_wait_peer_attach(this->up) != 0) {
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
 
@@ -345,7 +345,7 @@ ThreadContext *ProcHandle::openContext()
   auto req = urpc_generic_send(this->up, URPC_CMD_NEWPEER, (char *)"II",
                                new_up->shm_segid, core);
 
-  if (wait_peer_attach(new_up) != 0) {
+  if (urpc_wait_peer_attach(new_up) != 0) {
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
   // wait for peer receiver to set flag to 1
