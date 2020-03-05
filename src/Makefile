@@ -58,7 +58,7 @@ $(BLIB)/libaveoVE.so: $(VELIB_OBJS) | $$(@D)/
 
 $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -o $@ $^ \
-		$(LDFLAGS) -lurpcVH -llog4c -ldl
+		$(LDFLAGS) -lurpcVH -ldl
 
 $(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
