@@ -7,10 +7,6 @@
 
 #include "veo_urpc.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern __thread int __veo_finish;
 pthread_t __handler_loop_pthreads[MAX_VE_CORES];
 int __num_ve_peers = 0;
@@ -252,7 +248,3 @@ static void _veo_urpc_init_register(void)
   dprintf("registering VE URPC handlers\n");
   urpc_set_handler_init_hook(&veo_urpc_register_ve_handlers);
 }
-
-#ifdef __cplusplus
-} //extern "C"
-#endif

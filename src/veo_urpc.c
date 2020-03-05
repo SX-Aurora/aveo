@@ -5,10 +5,6 @@
 
 #include "veo_urpc.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 __thread int __veo_finish;
 const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
@@ -247,7 +243,3 @@ static void _veo_urpc_init_register(void)
   dprintf("registering common URPC handlers\n");
   urpc_set_handler_init_hook(&veo_urpc_register_handlers);
 }
-  
-#ifdef __cplusplus
-} //extern "C"
-#endif
