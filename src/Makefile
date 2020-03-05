@@ -11,7 +11,7 @@ GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o ThreadContext.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o log.o)
+ veo_urpc.o veo_urpc_vh.o)
 
 VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
 

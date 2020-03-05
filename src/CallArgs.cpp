@@ -3,12 +3,12 @@
  * @brief implementation of arguments for VEO function
  */
 
-#include "log.hpp"
 #include "CallArgs.hpp"
 #include <cstdio>
 #include <cstring>
 #include <numeric>
 #include <string>
+#include "log.hpp"
 
 namespace veo{
 namespace internal {
