@@ -64,10 +64,10 @@ $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 		$(LDFLAGS) -lurpcVH -ldl
 
 $(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
-	$(NAR) rv $@ $^
+	$(NAR) rv $@ $^ && $(NAR) dv $@ dummy.o
 
 $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
-	$(AR) rv $@ $^
+	$(AR) rv $@ $^ && $(AR) dv $@ dummy.o
 
 
 $(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/

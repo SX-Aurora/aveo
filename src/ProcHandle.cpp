@@ -95,8 +95,10 @@ int ProcHandle::exitProc()
     throw VEOException("exitProc: failed to send EXIT cmd.");
   }
   auto rc = wait_req_ack(this->up, req);
-  // this is not nice, but occasionally the child hangs as <defunct>
-  rc = vh_urpc_child_destroy(this->up);
+  if (rc < 0) {
+    dprintf("child sent no ACK to EXIT. Killing it.\n");
+    rc = vh_urpc_child_destroy(this->up);
+  }
   if (rc)
     VEO_ERROR(nullptr, "failed to destroy VE child (rc=%d)", rc);
   rc = vh_urpc_peer_destroy(this->up);

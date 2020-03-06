@@ -11,12 +11,12 @@ include make_aveo.inc
 
 MAKEVARS = DEST=$(DEST) BUILD=$(BUILD) URPC_INST_DIR=$(URPC_INST_DIR)
 
-ALL: $(PREPARE) aveo test
+ALL: $(PREPARE) aveo tests
 
 aveo:
 	make -C src $(MAKEVARS)
 
-test:
+tests:
 	make -C test $(MAKEVARS)
 
 
