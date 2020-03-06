@@ -44,7 +44,7 @@ private:
 
 public:
   ProcHandle(int, char *);
-  ~ProcHandle() { if (this->ve_number >= 0) this->exitProc(); }
+  ~ProcHandle() { this->exitProc(); }
 
   uint64_t loadLibrary(const char *);
   uint64_t getSym(const uint64_t, const char *);

@@ -2,16 +2,28 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #include "veo_urpc.h"
 
 __thread int __veo_finish;
 const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
-typedef struct {char *n; void *v;} static_sym_t;
-/* in dummy.c or the self-compiled generated static symtable */
-extern static_sym_t *_veo_static_symtable;
-  
+typedef struct {const char *n; void *v;} static_sym_t;
+/* without generated static symtable, this weak version is used. */
+__attribute__((weak)) static_sym_t _veo_static_symtable[] = {
+        {.n = 0, .v = 0},
+};
+
+long syscall(long n, ...);
+
+static int gettid(void)
+{
+  return syscall(SYS_gettid);
+}
+
+
 //
 // Handlers
 //
@@ -34,7 +46,10 @@ static int exit_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 #else
   vh_urpc_peer_destroy(up);
 #endif
-  pthread_exit(0);
+  if (getpid() != gettid())
+    pthread_exit(0);
+  else
+    _exit(0);
   return 0;
 }
 

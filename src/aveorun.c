@@ -15,9 +15,6 @@
 
 urpc_peer_t *main_up;
 
-/* in dummy.c or the self-compiled generated static symtable */
-void _init_static_symtable(void);
-
 void signalHandler( int signum ) {
   Dl_info di;
   
@@ -66,9 +63,6 @@ int main()
   signal(SIGILL, signalHandler);
   signal(SIGSEGV, signalHandler);
 
-  // initialize symbol table for statically linked symbols
-
-  _init_static_symtable();
   main_up = ve_urpc_init(0);
   
   char *e;

@@ -1,5 +1,5 @@
 //
-// gcc -std=gnu99 -o test_omp test_omp.c -I/opt/nec/ve/veos/include -pthread -L/opt/nec/ve/veos/lib64 -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
+// gcc -std=gnu99 -o test_omp_static test_omp_static.c -I/opt/nec/ve/veos/include -pthread -L/opt/nec/ve/veos/lib64 -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
 //
 
 #include <stdio.h>
@@ -11,14 +11,13 @@
 int main()
 {
 	int ret;
-	struct veo_proc_handle *proc = veo_proc_create(0);
+	struct veo_proc_handle *proc =
+		veo_proc_create_static(-1, "./veorun_testomp");
 	if (proc == NULL) {
 		printf("veo_proc_create() failed!\n");
 		exit(1);
 	}
-	uint64_t handle = veo_load_library(proc, "./libvetestomp.so");
-	printf("handle = %p\n", (void *)handle);
-	uint64_t sym = veo_get_sym(proc, handle, "omp_loop");
+	uint64_t sym = veo_get_sym(proc, 0UL, "omp_loop");
 	printf("symbol address = %p\n", (void *)sym);
 	
 	struct veo_thr_ctxt *ctx = veo_context_open(proc);

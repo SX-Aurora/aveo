@@ -105,8 +105,11 @@ SRC_FILE=$(mktemp /tmp/veorunXXXXXXX.c)
 OBJ_FILE=${SRC_FILE/.c/.o}
 trap "rm -f $SRC_FILE $OBJ_FILE" EXIT
 
-@libexecdir@/gen_aveorun_static_symtable "${LIBS[@]}" > $SRC_FILE
+RELINKVEO_GEN=${RELINKVEO_GEN:-@libexecdir@/gen_aveorun_static_symtable}
+RELINKVEO_LIB=${RELINKVEO_LIB:-@libdir@/libaveoVE.a}
+
+$RELINKVEO_GEN "${LIBS[@]}" > $SRC_FILE
 
 $CC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
-$CCLD $CFLAGS -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
-  @libdir@/libaveoVE.a -L@libdir@ $LDFLAGS && echo "created specific $VEORUN"
+$CCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
+  $RELINKVEO_LIB -L@libdir@ $LDFLAGS && echo "created specific $VEORUN"

@@ -11,9 +11,9 @@ GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o ThreadContext.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o dummy.o)
+ veo_urpc.o veo_urpc_vh.o)
 
-VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o dummy.o)
+VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
 
 LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
 PROGS = $(BB)/aveorun $(BB)/aveorun-ftrace $(BB)/relink_aveorun
@@ -64,10 +64,10 @@ $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 		$(LDFLAGS) -lurpcVH -ldl
 
 $(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
-	$(NAR) rv $@ $^ && $(NAR) dv $@ dummy.o
+	$(NAR) rv $@ $^
 
 $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
-	$(AR) rv $@ $^ && $(AR) dv $@ dummy.o
+	$(AR) rv $@ $^
 
 
 $(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/

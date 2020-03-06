@@ -8,6 +8,8 @@
 #include <cerrno>
 #include <semaphore.h>
 #include <signal.h>
+#include <unistd.h>
+#include <wait.h>
 
 #include "veo_urpc.h"
 #include "CallArgs.hpp"
@@ -53,15 +55,19 @@ int64_t ThreadContext::_closeCommandHandler(uint64_t id)
  */
 int ThreadContext::close()
 {
+  //printf("close() called for ctx=%p\n", this);
   if ( this->state == VEO_STATE_EXIT )
     return 0;
   // not closing a main thread, just ignoring the request
   if (this->isMain())
     return 0;
-
   this->state = VEO_STATE_EXIT;
-  uint64_t req = urpc_generic_send(up, URPC_CMD_EXIT, (char *)"");
-  wait_req_ack(this->up, req);
+  uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
+  auto rc = wait_req_ack(this->up, req);
+  if (rc < 0) {
+    dprintf("child sent no ACK to EXIT. Killing it.\n");
+    rc = vh_urpc_child_destroy(this->up);
+  }
   vh_urpc_peer_destroy(this->up);
   return 0;
 }
