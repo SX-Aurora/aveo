@@ -30,6 +30,10 @@ ALL: $(LIBS) $(PROGS)
 
 install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
 	/usr/bin/install -t $(DEST)/lib $(LIBS)
+	if [ -L $(DEST)/lib/libveo.so ]; then \
+		rm -f $(DEST)/lib/libveo.so; \
+	fi
+	ln -s $(DEST)/lib/libaveoVH.so $(DEST)/lib/libveo.so
 	/usr/bin/install -t $(DEST)/include $(INCLUDES)
 	/usr/bin/install $(BB)/aveorun $(VEORUN_BIN)
 	/usr/bin/install $(BB)/aveorun-ftrace $(VEORUN_BIN)-ftrace
@@ -61,7 +65,7 @@ $(BLIB)/libaveoVE.so: $(VELIB_OBJS) | $$(@D)/
 
 $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -o $@ $^ \
-		$(LDFLAGS) -lurpcVH -ldl
+		$(LDFLAGS) -Wl,--version-script=libaveoVH.map -lurpcVH -ldl
 
 $(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
