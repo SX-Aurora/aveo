@@ -45,7 +45,7 @@ test: ALL
 .SECONDEXPANSION:
 
 $(BB)/%: %.c  | $$(@D)/
-	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH -lurpcVH
+	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace

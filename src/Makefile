@@ -60,12 +60,12 @@ install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN
 .SECONDEXPANSION:
 
 $(BLIB)/libaveoVE.so: $(VELIB_OBJS) | $$(@D)/
-	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fpic -shared -o $@ $^ \
-		$(NLDFLAGS) -lurpcVE_omp -lveio -lveftrace -ldl
+	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared -o $@ $^ \
+		$(BLIB)/liburpcVE_omp.a $(NLDFLAGS) -lveio -lveftrace -ldl
 
 $(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
 	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -o $@ $^ \
-		$(LDFLAGS) -Wl,--version-script=libaveoVH.map -lurpcVH -ldl
+		$(BLIB)/liburpcVH.a $(LDFLAGS) -Wl,--version-script=libaveoVH.map -ldl
 
 $(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
@@ -76,11 +76,11 @@ $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
 
 $(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
-		-L$(BLIB) -laveoVE -lurpcVE_omp -lveio -lpthread
+		-L$(BLIB) -laveoVE -lveio -lpthread
 
 $(BB)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
-		-L$(BLIB) -laveoVE -lurpcVE_omp -lveio -lpthread
+		-L$(BLIB) -laveoVE -lveio -lpthread
 
 $(BB)/relink_aveorun: ../scripts/relink_aveorun.in
 	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \

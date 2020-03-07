@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
       VERBOSE=-v
       ;;
     '-fopenmp')
-        default_LDFLAGS="${default_LDFLAGS} ${option} -lurpcVE_omp"
+        default_LDFLAGS="${default_LDFLAGS} ${option} @libdir@/liburpcVE_omp.a"
         is_openmp=1
       ;;
     '-L'*|'-l'*|'-Wl,'*)
@@ -60,8 +60,8 @@ while [ $# -gt 0 ]; do
     LIBS=(${LIBS[@]} "$option")
   fi
 done
-if [ $is_openmp -gt 0 ]; then
-    default_LDFLAGS="${default_LDFLAGS} -lurpcVE"
+if [ $is_openmp -eq 0 ]; then
+    default_LDFLAGS="${default_LDFLAGS} @libdir@/liburpcVE.a"
 fi
     
 default_LDFLAGS="${default_LDFLAGS} -ldl"
