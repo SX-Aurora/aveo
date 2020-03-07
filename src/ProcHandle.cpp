@@ -11,7 +11,7 @@
 
 #include "veo_urpc.h"
 #include "veo_urpc_vh.hpp"
-#include "urpc_time.h"
+#include "veo_time.h"
 
 #include <string.h>
 #include <unistd.h>

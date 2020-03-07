@@ -1,7 +1,7 @@
 #ifndef _VEO_LOG_HPP_
 #define _VEO_LOG_HPP_
 #include <stdarg.h>
-#include "urpc_debug.h"
+#include "veo_debug.h"
 
 #define VEO_ERROR(ctx, fmt, ...) eprintf("VEO_ERROR " fmt "\n", ## __VA_ARGS__)
 #define VEO_DEBUG(ctx, fmt, ...) dprintf("[VH DEBUG] " fmt "\n", ## __VA_ARGS__)

@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 #include <ve_offload.h>
-#include "urpc_time.h"
+#include "veo_time.h"
 
 struct veo_proc_handle *proc;
 struct veo_thr_ctxt *ctx;
