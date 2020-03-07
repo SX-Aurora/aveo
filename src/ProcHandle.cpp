@@ -2,6 +2,7 @@
  * @file ProcHandle.cpp
  * @brief implementation of ProcHandle
  */
+#include <algorithm>
 #include "ProcHandle.hpp"
 //#include "ThreadContext.hpp"
 #include "VEOException.hpp"
@@ -25,10 +26,11 @@
 #include <omp.h>
 #endif
 
-
 namespace veo {
 
-  bool _init_hooks_registered = false;
+  // remember active procs for the destructor
+   std::vector<ProcHandle *> __procs;
+   std::mutex __procs_mtx;
   
 /**
  * @brief constructor
@@ -77,6 +79,8 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   // first ctx gets core 0 (could be changed later)
   this->mctx->core = vecore;
   this->ve_number = venode;
+  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
+  __procs.push_back(this);
 }
 
 /**
@@ -85,25 +89,27 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
  */
 int ProcHandle::exitProc()
 {
-  // TODO: proper lock
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
+  int rc;
+  std::lock_guard<std::mutex> lock2(veo::__procs_mtx);
   VEO_TRACE(nullptr, "%s()", __func__);
-  // TODO: send exit urpc command
   //
-  auto req = urpc_generic_send(up, URPC_CMD_EXIT, (char *)"");
-  if (req < 0) {
-    throw VEOException("exitProc: failed to send EXIT cmd.");
+  // delete all open contexts
+  //
+  for (auto c = this->ctx.begin(); c != this->ctx.end(); c++) {
+    rc = (*c).get()->close();
+    if (rc) {
+      eprintf("context close failed during proc destroy. Check leftover VE procs!\n");
+      return rc;
+    }
   }
-  auto rc = wait_req_ack(this->up, req);
-  if (rc < 0) {
-    dprintf("child sent no ACK to EXIT. Killing it.\n");
-    rc = vh_urpc_child_destroy(this->up);
-  }
-  if (rc)
-    VEO_ERROR(nullptr, "failed to destroy VE child (rc=%d)", rc);
-  rc = vh_urpc_peer_destroy(this->up);
   this->ve_number = -1;
-  return rc;
+  for (auto p = __procs.begin(); p != __procs.end(); p++) {
+    if (*p == this) {
+      __procs.erase(p);
+      break;
+    }
+  }
+  return 0;
 }
 
 /**
@@ -375,3 +381,17 @@ ThreadContext *ProcHandle::openContext()
 }
 
 } // namespace veo
+
+//
+// Destructor for procs, needed in case people forget to veo_proc_destroy().
+// If not done, a VE process runnning aveorun stays in the system.
+//
+__attribute__((destructor))
+static void _cleanup_procs(void)
+{
+  for (auto it = veo::__procs.begin(); it != veo::__procs.end();) {
+    // we don't increment the iterator because exitProc() is actually
+    // doing the remove.
+    (*it)->exitProc();
+  }
+}

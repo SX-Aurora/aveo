@@ -34,7 +34,7 @@ int main()
 	veo_args_free(arg);
 
 	veo_context_close(ctx);
-	veo_proc_destroy(proc);
+	//veo_proc_destroy(proc);
 	return 0;
 }
 

@@ -27,49 +27,27 @@ namespace veo {
   proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0) {}
 
 /**
- * @brief function to be set to close request (command)
- */
-int64_t ThreadContext::_closeCommandHandler(uint64_t id)
-{
-  VEO_TRACE(this, "%s()", __func__);
-  this->state = VEO_STATE_EXIT;
-  /*
-   * pthread_exit() can invoke destructors for objects on the stack,
-   * which can cause double-free.
-   */
-  auto dummy = [](Command *)->int64_t{return 0;};
-  auto newc = new internal::CommandImpl(id, dummy);
-  /* push the reply here because this function never returns. */
-  newc->setResult(0, 0);
-  this->comq.pushCompletion(std::unique_ptr<Command>(newc));
-  return 0;
-}
-
-/**
  * @brief close this context
  *
  * @return zero upon success; negative upon failure.
  *
  * Close this VEO thread context; terminate the pseudo thread.
- * The current implementation always returns zero.
+ * @return 0 if all went well
  */
 int ThreadContext::close()
 {
   //printf("close() called for ctx=%p\n", this);
   if ( this->state == VEO_STATE_EXIT )
     return 0;
-  // not closing a main thread, just ignoring the request
-  if (this->isMain())
-    return 0;
   this->state = VEO_STATE_EXIT;
   uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
   auto rc = wait_req_ack(this->up, req);
   if (rc < 0) {
     dprintf("child sent no ACK to EXIT. Killing it.\n");
-    rc = vh_urpc_child_destroy(this->up);
+    vh_urpc_child_destroy(this->up);
   }
-  vh_urpc_peer_destroy(this->up);
-  return 0;
+  rc = vh_urpc_peer_destroy(this->up);
+  return rc;
 }
 
 /**
