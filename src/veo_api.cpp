@@ -35,7 +35,7 @@ template <typename T> int veo_args_set_(veo_args *ca, int argnum, T val)
     CallArgsFromC(ca)->set(argnum, val);
     return 0;
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed to set the argument #%d <- %ld: %s",
+    VEO_ERROR("failed to set the argument #%d <- %ld: %s",
               argnum, val, e.what());
     return -1;
   }
@@ -102,7 +102,7 @@ const char *veo_version_string()
 veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
 {
   if (venode < -1) {
-    VEO_ERROR(nullptr, "venode(%d) is an invalid value.", venode);
+    VEO_ERROR("venode(%d) is an invalid value.", venode);
     return NULL;
   }
   try {
@@ -130,7 +130,7 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
             }
           }
           if (found == 0) {
-            VEO_ERROR(nullptr, "VE node #%d is not assigned by the scheduler",
+            VEO_ERROR("VE node #%d is not assigned by the scheduler",
                       venode);
             return NULL;
           }
@@ -139,14 +139,14 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
           if (v.size() > 0) 
             venode = stoi(v[0]);
           else { 
-            VEO_ERROR(nullptr, "_VENODELIST is empty.", NULL);
+            VEO_ERROR("_VENODELIST is empty.", NULL);
             return NULL;
           }
         }
       } else {
 	// translate venode using _VENODELIST
         if ((int)v.size() <= venode) {
-          VEO_ERROR(nullptr, "venode = %d exceeds the size of _VENDOELIST %d", venode, v.size());
+          VEO_ERROR("venode = %d exceeds the size of _VENDOELIST %d", venode, v.size());
           return NULL;
         }
         venode = stoi(v[venode]);
@@ -167,10 +167,10 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
     return rv->toCHandle();
     
   } catch (std::invalid_argument &e) {
-    VEO_ERROR(nullptr, "failed to create proc: %s", e.what());
+    VEO_ERROR("failed to create proc: %s", e.what());
     return 0;
   } catch (std::out_of_range &e) {
-    VEO_ERROR(nullptr, "failed to create proc: %s", e.what());
+    VEO_ERROR("failed to create proc: %s", e.what());
     return 0;
   }
 }
@@ -226,7 +226,7 @@ uint64_t veo_load_library(veo_proc_handle *proc, const char *libname)
   try {
     return ProcHandleFromC(proc)->loadLibrary(libname);
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed to load library: %s", e.what());
+    VEO_ERROR("failed to load library: %s", e.what());
     errno = e.err();
     return 0;
   }
@@ -246,7 +246,7 @@ uint64_t veo_get_sym(veo_proc_handle *proc, uint64_t libhdl,
   try {
     return ProcHandleFromC(proc)->getSym(libhdl, symname);
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed to get symbol: %s", e.what());
+    VEO_ERROR("failed to get symbol: %s", e.what());
     errno = e.err();
     return 0;
   }
@@ -351,7 +351,7 @@ veo_thr_ctxt *veo_get_context(veo_proc_handle *proc, int idx)
     }
     return ctx;
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed to retrieve context %d: %s", idx, e.what());
+    VEO_ERROR("failed to retrieve context %d: %s", idx, e.what());
     errno = e.err();
     return NULL;
   }
@@ -377,7 +377,7 @@ veo_thr_ctxt *veo_context_open(veo_proc_handle *proc)
     }
     return ctx;
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed to open context: %s", e.what());
+    VEO_ERROR("failed to open context: %s", e.what());
     errno = e.err();
     return NULL;
   }
@@ -600,7 +600,7 @@ int veo_args_set_stack(veo_args *ca, enum veo_args_intent inout,
     CallArgsFromC(ca)->setOnStack(inout, argnum, buff, len);
     return 0;
   } catch (VEOException &e) {
-    VEO_ERROR(nullptr, "failed set_on_stack CallArgs(%d): %s",
+    VEO_ERROR("failed set_on_stack CallArgs(%d): %s",
               argnum, e.what());
     return -1;
   }

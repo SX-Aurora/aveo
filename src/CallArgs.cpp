@@ -72,7 +72,7 @@ public:
 
   void setStackImage(uint64_t sp, std::string &stack, int n,
                      bool &in, bool &out) {
-    VEO_TRACE(nullptr, "%s(%#lx, _, %d)", __func__, sp, n);
+    VEO_TRACE("%s(%#lx, _, %d)", __func__, sp, n);
     out = false;
     in = false;
     if (n < NUM_ARGS_ON_REGISTER)
@@ -101,7 +101,7 @@ public:
   }
   void setStackImage(uint64_t sp, std::string &stack, int n,
                      bool &in, bool &out) {
-    VEO_TRACE(nullptr, "%s(%#lx, _, %d)", __func__, sp, n);
+    VEO_TRACE("%s(%#lx, _, %d)", __func__, sp, n);
     out = false;
     in = false;
     if (n < NUM_ARGS_ON_REGISTER)
@@ -127,7 +127,7 @@ public:
   }
   void setStackImage(uint64_t sp, std::string &stack, int n,
                      bool &in, bool &out) {
-    VEO_TRACE(nullptr, "%s(%#lx, _, %d)", __func__, sp, n);
+    VEO_TRACE("%s(%#lx, _, %d)", __func__, sp, n);
     out = false;
     in = false;
     if (n < NUM_ARGS_ON_REGISTER)
@@ -164,7 +164,7 @@ public:
 
   void setStackImage(uint64_t sp, std::string &stack, int n,
                      bool &in, bool &out) {
-    VEO_TRACE(nullptr, "%s(%#lx, _, %d)", __func__, sp, n);
+    VEO_TRACE("%s(%#lx, _, %d)", __func__, sp, n);
     auto oldlen = stack.size();
     this->vemva_ = sp + oldlen;
     in = this->in_;
@@ -193,10 +193,10 @@ public:
     return rv;
   }
   void copyoutFromStackImage(uint64_t sp, const char *img) {
-    VEO_TRACE(nullptr, "%s(%#012lx, ...)", __func__, sp);
+    VEO_TRACE("%s(%#012lx, ...)", __func__, sp);
     if (!this->out_)
       return;
-    VEO_DEBUG(nullptr, "copy out to VH: offset %#lx -> %p, size = %d",
+    VEO_DEBUG("copy out to VH: offset %#lx -> %p, size = %d",
       this->vemva_ - sp, this->buff_, this->len_);
     std::memcpy(this->buff_, img + (this->vemva_ - sp), this->len_);
   }
@@ -278,7 +278,7 @@ std::vector<uint64_t> CallArgs::getRegVal(uint64_t sp) const {
  * @return stack image
  */
 std::string CallArgs::getStackImage(uint64_t &sp) {
-  VEO_TRACE(nullptr, "getStackImage(%#lx)", sp);
+  VEO_TRACE("getStackImage(%#lx)", sp);
   // allocate stack
   size_t stack_size = PARAM_AREA_OFFSET + 8 * this->numArgs()
     + std::accumulate(this->arguments.begin(), this->arguments.end(), 0,
@@ -287,7 +287,7 @@ std::string CallArgs::getStackImage(uint64_t &sp) {
                       });
   // 16 byte align
   stack_size = ((stack_size + 15) / 16) * 16;
-  VEO_TRACE(nullptr, "stack size = %lu", stack_size);
+  VEO_TRACE("stack size = %lu", stack_size);
   this->stack_size = stack_size;
   this->stack_top = sp - stack_size;
   std::string stack(PARAM_AREA_OFFSET + 8 * this->numArgs(), '\0');
@@ -309,7 +309,7 @@ std::string CallArgs::getStackImage(uint64_t &sp) {
 
 void CallArgs::setup(uint64_t &sp)
 {
-  VEO_TRACE(nullptr, "setup CallArgs (sp = %#lx)...", sp);
+  VEO_TRACE("setup CallArgs (sp = %#lx)...", sp);
   auto img = this->getStackImage(sp);
   VEO_ASSERT(this->stack_size == img.size());
   auto buf = new char[this->stack_size];
@@ -320,11 +320,11 @@ void CallArgs::setup(uint64_t &sp)
 void CallArgs::copyin(std::function<int(uint64_t, const void *, size_t)> xfer)
 {
   if (this->copied_in) {
-    VEO_TRACE(nullptr, "transfer stack image (VH %p -> VE %#lx, %d bytes)",
+    VEO_TRACE("transfer stack image (VH %p -> VE %#lx, %d bytes)",
               this->stack_buf.get(), this->stack_top, this->stack_size);
     xfer(this->stack_top, this->stack_buf.get(), this->stack_size);
   } else {
-    VEO_TRACE(nullptr, "the current stack (%#lx) is not copied in.",
+    VEO_TRACE("the current stack (%#lx) is not copied in.",
               this->stack_top);
   }
 }
@@ -332,7 +332,7 @@ void CallArgs::copyin(std::function<int(uint64_t, const void *, size_t)> xfer)
 void CallArgs::copyout()
 {
   if (this->copied_out) {
-    VEO_TRACE(nullptr, "transfer stack image (VE %#lx -> VH %p, %d bytes)",
+    VEO_TRACE("transfer stack image (VE %#lx -> VH %p, %d bytes)",
               this->stack_top, this->stack_buf.get(), this->stack_size);
     // transfer done by veo_urpc
     //xfer(this->stack_buf.get(), this->stack_top, this->stack_size);
@@ -340,7 +340,7 @@ void CallArgs::copyout()
       arg->copyoutFromStackImage(this->stack_top, this->stack_buf.get());
     }
   } else {
-    VEO_TRACE(nullptr, "the current stack (%#lx) is not copied out.",
+    VEO_TRACE("the current stack (%#lx) is not copied out.",
               this->stack_top);
   }
 }

@@ -88,7 +88,7 @@ void ThreadContext::_progress_nolock(int ops)
       if (rv < 0) {
         this->state = VEO_STATE_EXIT;
         this->comq.cancelAll();
-        VEO_ERROR(nullptr, "Internal error on executing a command(%d)", rv);
+        VEO_ERROR("Internal error on executing a command(%d)", rv);
         return;
       }
     }
@@ -179,8 +179,8 @@ int ThreadContext::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
 
   std::lock_guard<std::mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
-  VEO_TRACE(nullptr, "%s(%#lx, ...)", __func__, addr);
-  VEO_DEBUG(nullptr, "VE function = %p", (void *)addr);
+  VEO_TRACE("%s(%#lx, ...)", __func__, addr);
+  VEO_DEBUG("VE function = %p", (void *)addr);
 
   int64_t req = send_call_nolock(this->up, this->ve_sp, addr, arg);
 
@@ -213,9 +213,9 @@ uint64_t ThreadContext::callAsync(uint64_t addr, CallArgs &args)
   //
   auto f = [&args, this, addr, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%d] start...", id);
+             VEO_TRACE("[request #%d] start...", id);
              int req = send_call_nolock(this->up, this->ve_sp, addr, args);
-             VEO_TRACE(this, "[request #%d] VE-URPC req ID = %ld", id, req);
+             VEO_TRACE("[request #%d] VE-URPC req ID = %ld", id, req);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
              } else {
@@ -231,10 +231,10 @@ uint64_t ThreadContext::callAsync(uint64_t addr, CallArgs &args)
   //
   auto u = [&args, this, id] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
            {
-             VEO_TRACE(this, "[request #%d] reply sendbuff received (cmd=%d)...", id, m->c.cmd);
+             VEO_TRACE("[request #%d] reply sendbuff received (cmd=%d)...", id, m->c.cmd);
              uint64_t result;
              int rv = unpack_call_result(m, &args, payload, plen, &result);
-             VEO_TRACE(this, "[request #%d] unpacked", id);
+             VEO_TRACE("[request #%d] unpacked", id);
              if (rv < 0) {
                cmd->setResult(result, VEO_COMMAND_EXCEPTION);
                return rv;
@@ -282,11 +282,11 @@ uint64_t ThreadContext::callVHAsync(uint64_t (*func)(void *), void *arg)
   auto id = this->issueRequestID();
   auto f = [this, func, arg, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%lu] start...", id);
+             VEO_TRACE("[request #%lu] start...", id);
              auto rv = (*func)(arg);
-             VEO_TRACE(this, "[request #%lu] executed. (return %ld)", id, rv);
+             VEO_TRACE("[request #%lu] executed. (return %ld)", id, rv);
              cmd->setResult(rv, VEO_COMMAND_OK);
-             VEO_TRACE(this, "[request #%lu] done", id);
+             VEO_TRACE("[request #%lu] done", id);
              return 0;
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));

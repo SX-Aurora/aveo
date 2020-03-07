@@ -91,7 +91,7 @@ int ProcHandle::exitProc()
 {
   int rc;
   std::lock_guard<std::mutex> lock2(veo::__procs_mtx);
-  VEO_TRACE(nullptr, "%s()", __func__);
+  VEO_TRACE("%s()", __func__);
   //
   // delete all open contexts
   //
@@ -121,7 +121,7 @@ int ProcHandle::exitProc()
 uint64_t ProcHandle::loadLibrary(const char *libname)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
-  VEO_TRACE(nullptr, "%s(%s)", __func__, libname);
+  VEO_TRACE("%s(%s)", __func__, libname);
   size_t len = strlen(libname);
   if (len > VEO_SYMNAME_LEN_MAX) {
     throw VEOException("Library name too long", ENAMETOOLONG);
@@ -139,7 +139,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
 
   // unlock peer (not needed any more)
 
-  VEO_TRACE(nullptr, "handle = %#lx", handle);
+  VEO_TRACE("handle = %#lx", handle);
   return handle;
 }
 
@@ -163,8 +163,8 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   auto itr = sym_name.find(sym_pair);
   if( itr != sym_name.end() ) {
     sym_mtx.unlock();
-    VEO_TRACE(nullptr, "symbol addr = %#lx", itr->second);
-    VEO_TRACE(nullptr, "symbol name = %s", symname);
+    VEO_TRACE("symbol addr = %#lx", itr->second);
+    VEO_TRACE("symbol name = %s", symname);
     return itr->second;
   }
   sym_mtx.unlock();
@@ -179,8 +179,8 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
 
   // unlock peer (not needed any more)
 
-  VEO_TRACE(nullptr, "symbol addr = %#lx", symaddr);
-  VEO_TRACE(nullptr, "symbol name = %s", symname);
+  VEO_TRACE("symbol addr = %#lx", symaddr);
+  VEO_TRACE("symbol name = %s", symname);
   if (symaddr == 0) {
     return symaddr;
   }
@@ -230,7 +230,7 @@ void ProcHandle::freeBuff(const uint64_t buff)
  */
 int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE(nullptr, "readMem(%p, %lx, %ld)", dst, src, size);
+  VEO_TRACE("readMem(%p, %lx, %ld)", dst, src, size);
   auto req = this->mctx->asyncReadMem(dst, src, size);
   if (req == VEO_REQUEST_ID_INVALID) {
     eprintf("readMem failed! Aborting.");
@@ -250,7 +250,7 @@ int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
  */
 int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
 {
-  VEO_TRACE(nullptr, "writeMem(%p, %lx, %ld)", dst, src, size);
+  VEO_TRACE("writeMem(%p, %lx, %ld)", dst, src, size);
   auto req = this->mctx->asyncWriteMem(dst, src, size);
   if (req == VEO_REQUEST_ID_INVALID) {
     eprintf("writeMem failed! Aborting.");
@@ -258,7 +258,7 @@ int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
-  VEO_TRACE(nullptr, "writeMem leave... rv=%d", rv);
+  VEO_TRACE("writeMem leave... rv=%d", rv);
   return rv;
 }
 

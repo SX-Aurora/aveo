@@ -21,7 +21,7 @@ namespace veo {
  */
 uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
 {
-  VEO_TRACE(this, "sendbuffAsync enter...\n");
+  VEO_TRACE("sendbuffAsync enter...\n");
   if (this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
@@ -31,20 +31,20 @@ uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
   //
   auto f = [this, src, dst, size, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%d] start...", id);
-             VEO_TRACE(this, "sendbuff src=%p dst=%p, size=%lu", src, (void *)dst, size);
+             VEO_TRACE("[request #%d] start...", id);
+             VEO_TRACE("sendbuff src=%p dst=%p, size=%lu", src, (void *)dst, size);
              int req = urpc_generic_send(this->up, URPC_CMD_SENDBUFF, (char *)"LP",
                                          dst, src, size);
-             VEO_TRACE(this, "[request #%d] VE-URPC req ID = %ld", id, req);
+             VEO_TRACE("[request #%d] VE-URPC req ID = %ld", id, req);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
              } else {
                // TODO: anything more meaningful into result?
                cmd->setResult(0, VEO_COMMAND_ERROR);
-               VEO_TRACE(this, "[request #%d] error return...", id);
+               VEO_TRACE("[request #%d] error return...", id);
                return -EAGAIN;
              }
-             VEO_TRACE(this, "[request #%d] end...", id);
+             VEO_TRACE("[request #%d] end...", id);
              return 0;
            };
 
@@ -53,9 +53,9 @@ uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
   //
   auto u = [this, id] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
            {
-             VEO_TRACE(this, "[request #%d] reply ACK received (cmd=%d)...", id, m->c.cmd);
+             VEO_TRACE("[request #%d] reply ACK received (cmd=%d)...", id, m->c.cmd);
              cmd->setResult(0, VEO_COMMAND_OK);
-             VEO_TRACE(this, "[request #%d] result end...", id);
+             VEO_TRACE("[request #%d] result end...", id);
              return 0;
            };
 
@@ -63,7 +63,7 @@ uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
   if(this->comq.pushRequest(std::move(cmd)))
     return VEO_REQUEST_ID_INVALID;
   this->progress(3);
-  VEO_TRACE(this, "sendbuffAsync leave...\n");
+  VEO_TRACE("sendbuffAsync leave...\n");
   return id;
 }
 
@@ -77,7 +77,7 @@ uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
  */
 uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE(this, "recvbuffAsync enter...\n");
+  VEO_TRACE("recvbuffAsync enter...\n");
   if (this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
@@ -87,11 +87,11 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
   //
   auto f = [this, src, dst, size, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%d] start...", id);
+             VEO_TRACE("[request #%d] start...", id);
              dprintf("recvbuff src=%p dst=%p, size=%lu\n", (void *)src, dst, size);
              int req = urpc_generic_send(this->up, URPC_CMD_RECVBUFF, (char *)"LLL",
                                          src, (uint64_t)dst, size);
-             VEO_TRACE(this, "[request #%d] VE-URPC req ID = %ld", id, req);
+             VEO_TRACE("[request #%d] VE-URPC req ID = %ld", id, req);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
              } else {
@@ -99,7 +99,7 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
                cmd->setResult(0, VEO_COMMAND_ERROR);
                return -EAGAIN;
              }
-             VEO_TRACE(this, "[request #%d] end...", id);
+             VEO_TRACE("[request #%d] end...", id);
              return 0;
            };
 
@@ -128,7 +128,7 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
              memcpy((void *)dst, buff, buffsz);
 
              cmd->setResult(0, VEO_COMMAND_OK);
-             VEO_TRACE(this, "[request #%d] result end...", id);
+             VEO_TRACE("[request #%d] result end...", id);
              return 0;
            };
 
@@ -136,7 +136,7 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
   if(this->comq.pushRequest(std::move(cmd)))
     return VEO_REQUEST_ID_INVALID;
   this->progress(3);
-  VEO_TRACE(this, "recvbuffAsync leave...\n");
+  VEO_TRACE("recvbuffAsync leave...\n");
   return id;
 }
 
@@ -150,7 +150,7 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
  */
 uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE(this, "asyncReadMem enter...\n");
+  VEO_TRACE("asyncReadMem enter...\n");
   if( this->state == VEO_STATE_EXIT )
     return VEO_REQUEST_ID_INVALID;
 
@@ -170,7 +170,7 @@ uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
   auto id = this->issueRequestID();
   auto f = [this, maxfrag, dst, src, size, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%d] start...", id);
+             VEO_TRACE("[request #%d] start...", id);
              dprintf("asyncReadMem [request #%d] start...\n", id);
              dprintf("asyncReadMem src=%p dst=%p size=%lu\n", src, (void *)dst, size);
              size_t psz;
@@ -198,7 +198,7 @@ uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
                rv += this->callWaitResult(*r, &dummy);
              }
              cmd->setResult(rv, rv == 0 ? VEO_COMMAND_OK : VEO_COMMAND_ERROR);
-             VEO_TRACE(this, "[request #%d] end...", id);
+             VEO_TRACE("[request #%d] end...", id);
              return rv;
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
@@ -208,7 +208,7 @@ uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
       return VEO_REQUEST_ID_INVALID;
   }
   this->progress(3);
-  VEO_TRACE(this, "asyncReadMem leave...\n");
+  VEO_TRACE("asyncReadMem leave...\n");
   return id;
 }
 
@@ -223,7 +223,7 @@ uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
 uint64_t ThreadContext::asyncWriteMem(uint64_t dst, const void *src,
                                       size_t size)
 {
-  VEO_TRACE(this, "asyncWriteMem enter...\n");
+  VEO_TRACE("asyncWriteMem enter...\n");
   if( this->state == VEO_STATE_EXIT )
     return VEO_REQUEST_ID_INVALID;
 
@@ -243,7 +243,7 @@ uint64_t ThreadContext::asyncWriteMem(uint64_t dst, const void *src,
   auto id = this->issueRequestID();
   auto f = [this, maxfrag, dst, src, size, id] (Command *cmd)
            {
-             VEO_TRACE(this, "[request #%d] start...", id);
+             VEO_TRACE("[request #%d] start...", id);
              dprintf("asyncWriteMem [request #%d] start...\n", id);
              dprintf("asyncWriteMem src=%p dst=%p size=%lu\n", src, (void *)dst, size);
              size_t psz;
@@ -281,7 +281,7 @@ uint64_t ThreadContext::asyncWriteMem(uint64_t dst, const void *src,
       return VEO_REQUEST_ID_INVALID;
   }
   this->progress(3);
-  VEO_TRACE(this, "asyncWriteMem leave...\n");
+  VEO_TRACE("asyncWriteMem leave...\n");
   return id;
 }
 } // namespace veo
