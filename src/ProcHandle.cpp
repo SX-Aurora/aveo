@@ -4,7 +4,7 @@
  */
 #include <algorithm>
 #include "ProcHandle.hpp"
-//#include "ThreadContext.hpp"
+//#include "Context.hpp"
 #include "VEOException.hpp"
 #include "CallArgs.hpp"
 #include "log.h"
@@ -62,7 +62,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
 
-  this->mctx = new ThreadContext(this, this->up, true);
+  this->mctx = new Context(this, this->up, true);
   //this->ctx.push_back(this->mctx);
 
   // The sync call returns the stack pointer from inside the VE kernel
@@ -292,7 +292,7 @@ int ProcHandle::numContexts()
  *
  * @return pointer to ctx, raises exception if out of bounds.
  */
-ThreadContext *ProcHandle::getContext(int idx)
+Context *ProcHandle::getContext(int idx)
 {
   return this->ctx.at(idx).get();
 }
@@ -303,7 +303,7 @@ ThreadContext *ProcHandle::getContext(int idx)
  * The context is kept in a smart pointer, therefore it will be deleted implicitly.
  * 
  */
-void ProcHandle::delContext(ThreadContext *ctx)
+void ProcHandle::delContext(Context *ctx)
 {
   for (auto it = this->ctx.begin(); it != this->ctx.end(); it++) {
     if ((*it).get() == ctx) {
@@ -321,13 +321,13 @@ void ProcHandle::delContext(ThreadContext *ctx)
  *
  * The first context returned is the this->mctx!
  */
-ThreadContext *ProcHandle::openContext()
+Context *ProcHandle::openContext()
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
 
   if (this->ctx.empty()) {
-    this->ctx.push_back(std::unique_ptr<ThreadContext>(this->mctx));
+    this->ctx.push_back(std::unique_ptr<Context>(this->mctx));
     return this->mctx;
   }
   
@@ -366,8 +366,8 @@ ThreadContext *ProcHandle::openContext()
     return nullptr;
   }
 
-  auto new_ctx = new ThreadContext(this, new_up, false);
-  this->ctx.push_back(std::unique_ptr<ThreadContext>(new_ctx));
+  auto new_ctx = new Context(this, new_up, false);
+  this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 
   CallArgs args;
   auto rc2 = new_ctx->callSync(0, args, &new_ctx->ve_sp);

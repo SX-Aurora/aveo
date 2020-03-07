@@ -1,6 +1,6 @@
 /**
- * @file ThreadContext.cpp
- * @brief implementation of ThreadContext
+ * @file Context.cpp
+ * @brief implementation of Context
  */
 #include <set>
 
@@ -13,7 +13,7 @@
 
 #include "veo_urpc.h"
 #include "CallArgs.hpp"
-#include "ThreadContext.hpp"
+#include "Context.hpp"
 #include "ProcHandle.hpp"
 #include "CommandImpl.hpp"
 #include "VEOException.hpp"
@@ -23,7 +23,7 @@
 
 namespace veo {
 
-  ThreadContext::ThreadContext(ProcHandle *p, urpc_peer_t *up, bool is_main):
+  Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
   proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0) {}
 
 /**
@@ -34,7 +34,7 @@ namespace veo {
  * Close this VEO thread context; terminate the pseudo thread.
  * @return 0 if all went well
  */
-int ThreadContext::close()
+int Context::close()
 {
   //printf("close() called for ctx=%p\n", this);
   if ( this->state == VEO_STATE_EXIT )
@@ -55,7 +55,7 @@ int ThreadContext::close()
  *
  *
  */
-void ThreadContext::_progress_nolock(int ops)
+void Context::_progress_nolock(int ops)
 {
   urpc_comm_t *uc = &this->up->recv;
   transfer_queue_t *tq = uc->tq;
@@ -133,7 +133,7 @@ void ThreadContext::_progress_nolock(int ops)
  * Push a new command, if any.
  * Repeat.
  */
-void ThreadContext::progress(int ops)
+void Context::progress(int ops)
 {
   std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
   _progress_nolock(ops);
@@ -145,7 +145,7 @@ void ThreadContext::progress(int ops)
  * Block other threads from submitting requests to this context,
  * call progress() until request queue and inflight queues are empty.
  */
-void ThreadContext::synchronize()
+void Context::synchronize()
 {
   std::lock_guard<std::mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
@@ -156,7 +156,7 @@ void ThreadContext::synchronize()
  *
  * This function should only be called with the main_mutex locked!
  */
-void ThreadContext::_synchronize_nolock()
+void Context::_synchronize_nolock()
 {
   while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
     this->progress(0);
@@ -171,7 +171,7 @@ void ThreadContext::_synchronize_nolock()
  * @param result pointer to result
  * @return 0 if all went well.
  */
-int ThreadContext::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
+int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
 {
   urpc_mb_t m;
   void *payload;
@@ -202,7 +202,7 @@ int ThreadContext::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
  * @param args arguments of the function
  * @return request ID
  */
-uint64_t ThreadContext::callAsync(uint64_t addr, CallArgs &args)
+uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
 {
   if ( addr == 0 || this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
@@ -261,7 +261,7 @@ uint64_t ThreadContext::callAsync(uint64_t addr, CallArgs &args)
  * @param args arguments of the function
  * @return request ID
  */
-uint64_t ThreadContext::callAsyncByName(uint64_t libhdl, const char *symname, CallArgs &args)
+uint64_t Context::callAsyncByName(uint64_t libhdl, const char *symname, CallArgs &args)
 {
   uint64_t addr = this->proc->getSym(libhdl, symname);
   return this->callAsync(addr, args);
@@ -274,7 +274,7 @@ uint64_t ThreadContext::callAsyncByName(uint64_t libhdl, const char *symname, Ca
  * @param arg pointer to opaque arguments structure for the function
  * @return request ID
  */
-uint64_t ThreadContext::callVHAsync(uint64_t (*func)(void *), void *arg)
+uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
 {
   if ( func == nullptr || this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
@@ -308,7 +308,7 @@ uint64_t ThreadContext::callVHAsync(uint64_t (*func)(void *), void *arg)
  * @retval VEO_COMMAND_ERROR error occured on handling the command.
  * @retval VEO_COMMAND_UNFINISHED the command is not finished.
  */
-int ThreadContext::callPeekResult(uint64_t reqid, uint64_t *retp)
+int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
   this->progress(3);
   std::lock_guard<std::mutex> lock(this->req_mtx);
@@ -336,7 +336,7 @@ int ThreadContext::callPeekResult(uint64_t reqid, uint64_t *retp)
  * @retval VEO_COMMAND_ERROR error occured on handling the command.
  * @retval VEO_COMMAND_UNFINISHED the command is not finished.
  */
-int ThreadContext::callWaitResult(uint64_t reqid, uint64_t *retp)
+int Context::callWaitResult(uint64_t reqid, uint64_t *retp)
 {
 #if 1
   //

@@ -22,7 +22,7 @@ namespace veo {
  * @brief base class of command handled by pseudo thread
  *
  * a command is to be implemented as a function object inheriting Command
- * (see CommandImpl in ThreadContext.cpp).
+ * (see CommandImpl in Context.cpp).
  */
 class Command {
 private:
@@ -58,7 +58,7 @@ public:
 //}
 
 namespace veo {
-class ThreadContext;
+class Context;
 
 typedef enum veo_command_state CommandStatus;
 typedef enum veo_queue_state QueueStatus;

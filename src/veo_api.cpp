@@ -20,9 +20,9 @@ ProcHandle *ProcHandleFromC(veo_proc_handle *h)
 {
   return reinterpret_cast<ProcHandle *>(h);
 }
-ThreadContext *ThreadContextFromC(veo_thr_ctxt *c)
+Context *ContextFromC(veo_thr_ctxt *c)
 {
-  return reinterpret_cast<ThreadContext *>(c);
+  return reinterpret_cast<Context *>(c);
 }
 CallArgs *CallArgsFromC(veo_args *a)
 {
@@ -46,7 +46,7 @@ template <typename T> int veo_args_set_(veo_args *ca, int argnum, T val)
 extern "C" { extern const char *VERSION; }
 
 using veo::api::ProcHandleFromC;
-using veo::api::ThreadContextFromC;
+using veo::api::ContextFromC;
 using veo::api::CallArgsFromC;
 using veo::api::veo_args_set_;
 using veo::VEOException;
@@ -392,7 +392,7 @@ veo_thr_ctxt *veo_context_open(veo_proc_handle *proc)
  */
 int veo_context_close(veo_thr_ctxt *ctx)
 {
-  auto c = ThreadContextFromC(ctx);
+  auto c = ContextFromC(ctx);
   if (c->isMain()) {
     return 0;
   }
@@ -411,7 +411,7 @@ int veo_context_close(veo_thr_ctxt *ctx)
  */
 void veo_context_sync(veo_thr_ctxt *ctx)
 {
-  auto c = ThreadContextFromC(ctx);
+  auto c = ContextFromC(ctx);
   c->synchronize();
 }
 
@@ -424,7 +424,7 @@ void veo_context_sync(veo_thr_ctxt *ctx)
  */
 int veo_get_context_state(veo_thr_ctxt *ctx)
 {
-  return ThreadContextFromC(ctx)->getState();
+  return ContextFromC(ctx)->getState();
 }
 
 /**
@@ -657,7 +657,7 @@ int veo_call_sync(veo_proc_handle *h, uint64_t addr, veo_args *ca,
 uint64_t veo_call_async(veo_thr_ctxt *ctx, uint64_t addr, veo_args *args)
 {
   try {
-    return ThreadContextFromC(ctx)->callAsync(addr, *CallArgsFromC(args));
+    return ContextFromC(ctx)->callAsync(addr, *CallArgsFromC(args));
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }
@@ -678,7 +678,7 @@ uint64_t veo_call_async(veo_thr_ctxt *ctx, uint64_t addr, veo_args *args)
 int veo_call_peek_result(veo_thr_ctxt *ctx, uint64_t reqid, uint64_t *retp)
 {
   try {
-    return ThreadContextFromC(ctx)->callPeekResult(reqid, retp);
+    return ContextFromC(ctx)->callPeekResult(reqid, retp);
   } catch (VEOException &e) {
     return -1;
   }
@@ -699,7 +699,7 @@ int veo_call_peek_result(veo_thr_ctxt *ctx, uint64_t reqid, uint64_t *retp)
 int veo_call_wait_result(veo_thr_ctxt *ctx, uint64_t reqid, uint64_t *retp)
 {
   try {
-    return ThreadContextFromC(ctx)->callWaitResult(reqid, retp);
+    return ContextFromC(ctx)->callWaitResult(reqid, retp);
   } catch (VEOException &e) {
     return -1;
   }
@@ -719,7 +719,7 @@ uint64_t veo_async_read_mem(veo_thr_ctxt *ctx, void *dst, uint64_t src,
                             size_t size)
 {
   try {
-    return ThreadContextFromC(ctx)->asyncReadMem(dst, src, size);
+    return ContextFromC(ctx)->asyncReadMem(dst, src, size);
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }
@@ -739,7 +739,7 @@ uint64_t veo_async_write_mem(veo_thr_ctxt *ctx, uint64_t dst, const void *src,
                              size_t size)
 {
   try {
-    return ThreadContextFromC(ctx)->asyncWriteMem(dst, src, size);
+    return ContextFromC(ctx)->asyncWriteMem(dst, src, size);
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }
@@ -759,7 +759,7 @@ uint64_t veo_call_async_by_name(veo_thr_ctxt *ctx, uint64_t libhdl,
                         const char *symname, veo_args *args)
 {
   try {
-    return ThreadContextFromC(ctx)->callAsyncByName(libhdl, symname, *CallArgsFromC(args));
+    return ContextFromC(ctx)->callAsyncByName(libhdl, symname, *CallArgsFromC(args));
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }
@@ -777,7 +777,7 @@ uint64_t veo_call_async_by_name(veo_thr_ctxt *ctx, uint64_t libhdl,
 uint64_t veo_call_async_vh(veo_thr_ctxt *ctx, uint64_t (*func)(void *), void *arg)
 {
   try {
-    return ThreadContextFromC(ctx)->callVHAsync(func, arg);
+    return ContextFromC(ctx)->callVHAsync(func, arg);
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }

@@ -1,5 +1,5 @@
 /**
- * @file ThreadContext.hpp
+ * @file Context.hpp
  * @brief VEO thread context
  */
 #ifndef _VEO_THREAD_CONTEXT_HPP_
@@ -22,7 +22,7 @@ class CallArgs;
 /**
  * @brief VEO thread context
  */
-class ThreadContext {
+class Context {
   friend class ProcHandle;// ProcHandle controls the main thread directly.
 private:
   CommQueue comq;
@@ -61,10 +61,10 @@ private:
   void _delFromProc();
 
 public:
-  ThreadContext(ProcHandle *, urpc_peer_t *up, bool is_main);
-  ThreadContext(ProcHandle *);
-  ~ThreadContext() {}
-  ThreadContext(const ThreadContext &) = delete;//non-copyable
+  Context(ProcHandle *, urpc_peer_t *up, bool is_main);
+  Context(ProcHandle *);
+  ~Context() {}
+  Context(const Context &) = delete;//non-copyable
   veo_context_state getState() { return this->state; }
   int callSync(uint64_t addr, CallArgs &arg, uint64_t *result);
   uint64_t callAsync(uint64_t, CallArgs &);

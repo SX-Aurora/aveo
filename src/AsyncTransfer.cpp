@@ -3,7 +3,7 @@
  * @brief implementation of asynchronous memory transfer
  */
 #include "ProcHandle.hpp"
-#include "ThreadContext.hpp"
+#include "Context.hpp"
 #include "CommandImpl.hpp"
 #include "log.h"
 #include "veo_urpc.h"
@@ -19,7 +19,7 @@ namespace veo {
  * @param size size of transfer
  * @return request ID
  */
-uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
+uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
 {
   VEO_TRACE("sendbuffAsync enter...\n");
   if (this->state == VEO_STATE_EXIT)
@@ -75,7 +75,7 @@ uint64_t ThreadContext::sendbuffAsync(uint64_t dst, void *src, size_t size)
  * @param size size of transfer
  * @return request ID
  */
-uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
+uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
 {
   VEO_TRACE("recvbuffAsync enter...\n");
   if (this->state == VEO_STATE_EXIT)
@@ -148,7 +148,7 @@ uint64_t ThreadContext::recvbuffAsync(void *dst, uint64_t src, size_t size)
  * @param size size to transfer in byte
  * @return request ID
  */
-uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
+uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
 {
   VEO_TRACE("asyncReadMem enter...\n");
   if( this->state == VEO_STATE_EXIT )
@@ -220,7 +220,7 @@ uint64_t ThreadContext::asyncReadMem(void *dst, uint64_t src, size_t size)
  * @param size size to transfer in byte
  * @return request ID
  */
-uint64_t ThreadContext::asyncWriteMem(uint64_t dst, const void *src,
+uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
                                       size_t size)
 {
   VEO_TRACE("asyncWriteMem enter...\n");
