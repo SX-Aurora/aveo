@@ -1,4 +1,11 @@
+---
+layout: post
+published-on: 9 March 2020
+title: AVEO - Another/Alternative/Awesome VE Offloading
+author: Erich Focht
+---
 # AVEO
+
 
 This is a re-implementation of the VEO API that uses a completely
 different communication method between vector host (VH) and vector
@@ -10,14 +17,15 @@ This project aims at tackling and solving some of the issues of the original VEO
 * Memory transfer bandwidth is much increased and benefits for small transfers also of the latency improvement.
 * The VH and VE processes are now decoupled, VEOS-wise the VE side is a separate process. This solves following long-standing issues:
   * Debugging of VE and VH side is now possible at the same time. Just attach a gdb to each side, set breakpoints and have fun.
-  * In AVEO using multiple VEs from one process is no problem. Thus creating multiple procs is possible.
+  * In AVEO using multiple VEs from one process is no problem. Thus creating multiple procs is possible. The limitations imposed by VEOS do not apply to AVEO since VE processes are simply that: normal VE processes.
   * Performance analysis of the VE side with **ftrace** is working and straight forward.
   * There are no additional worker threads competing for resources on the VE, therefore OpenMP scheduling on VE is simple and less conflict-prone.
+  * In principle AVEO VE kernels can even be connected with each other through NEC VE-MPI. An API for simplifying this is being worked on. 
 
 There is a drawback for the reduced latency: it is obtained by polling
 in tight loops, therefore the VE core running the `aveorun` tool will
 be continuously spinning. Also the VH cores actively waiting for the
-request to finish (by `veo_call_wait_result()` will be spinning and
+request to finish (by `veo_call_wait_result()`) will be spinning and
 using power.
 
 **NOTE:** This code is being actively developed, so is rough around the edges. Take it as a working beta. Please report issues in github!
