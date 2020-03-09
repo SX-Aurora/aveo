@@ -32,14 +32,12 @@ git clone https://github.com/SX-Aurora/aveo.git
 
 cd aveo
 
-make
-
 make install
 ```
 
 The installation goes into the `install/` subdirectory. If you decide
 for another installation path, specify it with the `DEST`
-variable. This needs to be done for the **make** and **make install
+variable. This needs to be done for the **make** and **make install**
 step!:
 ```
 make DEST=<install_path>
@@ -70,19 +68,30 @@ therefore point your compiler to the place where it is located by adding the opt
 -I<install_path>/include
 ```
 
-Instead of linking with `-lveo` you now need to link your program with
+You can link with `-lveo` as before, with VEO, or use the new library name **libaveoVH.so**:
 ```
+-L<install_path>/lib -lveo
+# or
 -L<install_path>/lib -laveoVH
 ```
+A self-linked **veorun** from original VEO can not be used with AVEO!
 
-The VE helper tool is renamed from `veorun` to `aveorun` but pointing
-to it when it lives in a non-standard location still works by setting
-the same environment variable:
+The VE helper tool default name has been changed from `veorun` to `aveorun`
+but pointing to it when it lives in a non-standard location still works by
+setting the same environment variable:
 ```
 export VEORUN_BIN=<path_to_aveorun>
 ```
+This helper is compiled with OpenMP support, therefore if you have sequential code make sure to use
+```
+export VE_OMP_NUM_THREADS=1
+```
 
-
+For performance profiling of the VE kernel code please point the environment variable **VEORUN_BIN** to the appropriate **aveorun-ftrace**:
+```
+export VEORUN_BIN=<install_path>/libexec/aveorun-ftrace
+```
+and make sure sure that the kernel is compiled with `-ftrace`. This works only for *ncc*, *nc++* and *nfort* compiled codes.
 
 ## API extensions
 
