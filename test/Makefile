@@ -20,19 +20,23 @@ SCRIPTS = $(addprefix $(BB)/,scan_bandwidth.sh scan_call_latency.sh)
 
 ALL: $(TESTS) $(VELIBS) $(STATICS) $(SCRIPTS)
 
+.PHONY: install tests clean
 
+#
 # install
-
+#
 install: $(TESTS) $(VELIBS) $(STATICS) | $(DEST)/tests/
 	/usr/bin/install $(TESTS) $(VELIBS) $(STATICS) $(DEST)/tests
 	/usr/bin/install $(SCRIPTS) $(DEST)/tests
 
-# do the tests
-
+#
+# run the tests from the build directory
+#
 test: ALL
 	cd $(BB); \
-	for t in test_*; do
-		./$t || exit 1 \
+	for t in test_*; do \
+		echo "## running $$t ##"; \
+		env VEORUN_BIN=$(BB)/aveorun ./$$t || exit 1; \
 	done
 
 #

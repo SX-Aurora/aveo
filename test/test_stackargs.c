@@ -1,7 +1,3 @@
-//
-// gcc -std=gnu99 -o test_stackargs test_stackargs.c -I/opt/nec/ve/veos/include -pthread -L/opt/nec/ve/veos/lib64 -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,7 +52,7 @@ int main()
   veo_args_free(arg);
 
   printf("-----\n");
-  sleep(2);
+  sleep(1);
 
   arg = veo_args_alloc();
   veo_args_set_i32(arg, 0, -2);
@@ -69,7 +65,7 @@ int main()
   veo_args_free(arg);
   
   printf("-----\n");
-  sleep(2);
+  sleep(1);
 
   uint64_t sym_many_io = veo_get_sym(proc, handle, "test_many_inout");
   printf("symbol address (test_many_inout) = %p\n", (void *)sym_many_io);
@@ -101,7 +97,7 @@ int main()
   printf("VH: out8 = %s\n", out8);
 
   printf("-----\n");
-  sleep(2);
+  sleep(1);
 
   arg = veo_args_alloc();
   veo_args_set_i16(arg, 0, -2);
@@ -112,7 +108,7 @@ int main()
   veo_args_free(arg);
   
   printf("-----\n");
-  sleep(2);
+  sleep(1);
 
   arg = veo_args_alloc();
   veo_args_set_i8(arg, 0, -2);

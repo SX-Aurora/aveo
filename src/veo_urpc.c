@@ -6,6 +6,7 @@
 #include <sys/syscall.h>
 
 #include "veo_urpc.h"
+#include "log.h"
 
 __thread int __veo_finish;
 const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
@@ -13,9 +14,8 @@ const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 typedef struct {const char *n; void *v;} static_sym_t;
 /* without generated static symtable, this weak version is used. */
 __attribute__((weak)) static_sym_t _veo_static_symtable[] = {
-        {.n = 0, .v = 0},
+  {.n = 0, .v = 0},
 };
-
 long syscall(long n, ...);
 
 static int gettid(void)
@@ -39,7 +39,7 @@ static int exit_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                         void *payload, size_t plen)
 {
   __veo_finish = 1;
-  dprintf("up=%p has received the EXIT command\n", (void *)up);
+  VEO_DEBUG("up=%p has received the EXIT command", (void *)up);
   urpc_generic_send(up, URPC_CMD_ACK, (char *)"");
 #ifdef __ve__
   ve_urpc_fini(up);
@@ -62,19 +62,14 @@ static int loadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   urpc_unpack_payload(payload, plen, (char *)"P", &libname, &psz);
 
   uint64_t handle = (uint64_t)dlopen(libname, RTLD_NOW);
-  dprintf("loadlib_handler libname=%s handle=%p\n", libname, handle);
+  VEO_DEBUG("libname=%s handle=%p", libname, handle);
   if (!handle) {
     char *e = dlerror();
-    eprintf("loadlib_handler dlerror: %s\n", e);
+    VEO_ERROR("dlerror: %s", e);
   }
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", handle);
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    eprintf("loadlib_handler: send result req ID mismatch: %ld instead of %ld\n",
-            new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -89,10 +84,7 @@ static int unloadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   int rc = dlclose((void *)libhndl);
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", (int64_t)rc);
-  if (new_req != req || new_req < 0) {
-    eprintf("unloadlib_handler: send result failed\n");
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -108,7 +100,7 @@ static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   if (libhndl) {
     symaddr = (uint64_t)dlsym((void *)libhndl, sym);
     if (!symaddr)
-      eprintf("getsym_handler dlerror: %s\n", dlerror());
+      VEO_ERROR("dlerror: %s", dlerror());
   }
 
   if (_veo_static_symtable) {
@@ -123,12 +115,7 @@ static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   }
 	
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", symaddr);
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    printf("getsym_handler: send result req ID mismatch: %ld instead of %ld\n",
-           new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -141,15 +128,10 @@ static int alloc_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   urpc_unpack_payload(payload, plen, (char *)"L", &allocsz);
     
   void *addr = malloc(allocsz);
-  dprintf("alloc_handler addr=%p size=%lu\n", addr, allocsz);
+  VEO_DEBUG("addr=%p size=%lu", addr, allocsz);
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", (uint64_t)addr);
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    eprintf("alloc_handler: send result req ID mismatch: %ld instead of %ld\n",
-            new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -162,15 +144,10 @@ static int free_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   urpc_unpack_payload(payload, plen, (char *)"L", &addr);
   
   free((void *)addr);
-  dprintf("free_handler addr=%p\n", (void *)addr);
+  VEO_DEBUG("addr=%p", (void *)addr);
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_ACK, (char *)"");
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    eprintf("free_handler: send result req ID mismatch: %ld instead of %ld\n",
-            new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -188,18 +165,12 @@ static int sendbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   size_t buffsz;
 
   urpc_unpack_payload(payload, plen, (char *)"LP", &dst, &buff, &buffsz);
-  dprintf("sendbuff_handler dst=%p size=%lu\n", (void *)dst, buffsz);
+  VEO_DEBUG("dst=%p size=%lu", (void *)dst, buffsz);
 
   memcpy((void *)dst, buff, buffsz);
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_ACK, (char *)"");
-      
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    eprintf("sendbuff_handler: send result req ID mismatch:"
-            " %ld instead of %ld\n", new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -216,15 +187,11 @@ static int recvbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   size_t size;
 
   urpc_unpack_payload(payload, plen, (char *)"LLL", &src, &dst, &size);
-  dprintf("recvbuff_handler src=%p dst=%p size=%lu\n", (void *)src, (void *)dst, size);
+  VEO_DEBUG("src=%p dst=%p size=%lu", (void *)src, (void *)dst, size);
 
   int64_t new_req = urpc_generic_send(up, URPC_CMD_SENDBUFF, (char *)"LP",
                                       dst, (void *)src, size);
-  if (new_req != req) {
-    eprintf("recvbuff_handler: send result req ID mismatch:"
-            " %ld instead of %ld\n", new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return 0;
 }
 
@@ -233,28 +200,28 @@ void veo_urpc_register_handlers(urpc_peer_t *up)
   int err;
 
   if ((err = urpc_register_handler(up, URPC_CMD_PING, &ping_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_EXIT, &exit_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_LOADLIB, &loadlib_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_UNLOADLIB, &unloadlib_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_GETSYM, &getsym_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_ALLOC, &alloc_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_FREE, &free_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_RECVBUFF, &recvbuff_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_SENDBUFF, &sendbuff_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
 }
 
 __attribute__((constructor))
 static void _veo_urpc_init_register(void)
 {
-  dprintf("registering common URPC handlers\n");
+  VEO_TRACE("registering common URPC handlers");
   urpc_set_handler_init_hook(&veo_urpc_register_handlers);
 }

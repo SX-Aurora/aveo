@@ -56,7 +56,8 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   auto rv = vh_urpc_child_create(this->up, binname, venode, vecore);
   if (rv != 0) {
     throw VEOException("ProcHandle: failed to create VE process.");
-    eprintf("ProcHandle: failed to create VE process.\n");
+    VEO_ERROR("failed to create VE process, binname=%s venode=%d core=%d",
+              binname, venode, vecore);
   }
   if (urpc_wait_peer_attach(this->up) != 0) {
     throw VEOException("ProcHandle: timeout while waiting for VE.");
@@ -72,7 +73,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   if (rc < 0) {
     throw VEOException("ProcHandle: failed to get the VE SP.");
   }
-  dprintf("proc stack pointer: %p\n", (void *)this->ve_sp);
+  VEO_DEBUG("proc stack pointer: %p", (void *)this->ve_sp);
 
   this->mctx->state = VEO_STATE_RUNNING;
   this->mctx->ve_sp = this->ve_sp;
@@ -91,20 +92,27 @@ int ProcHandle::exitProc()
 {
   int rc;
   std::lock_guard<std::mutex> lock2(veo::__procs_mtx);
-  VEO_TRACE("%s()", __func__);
+  VEO_TRACE("proc %p", (void *)this);
   //
-  // delete all open contexts
+  // delete all open contexts except the main one
   //
-  for (auto c = this->ctx.begin(); c != this->ctx.end(); c++) {
-    rc = (*c).get()->close();
-    if (rc) {
-      eprintf("context close failed during proc destroy. Check leftover VE procs!\n");
-      return rc;
-    }
+  for (auto c = this->ctx.begin(); c != this->ctx.end();) {
+    auto ctx = (*c).get();
+    if (ctx != this->mctx)
+      this->delContext(ctx);
+    else
+      c++;
+  }
+  // delete the main context
+  rc = this->mctx->close();
+  if (rc) {
+    VEO_ERROR("main context close failed (rc=%d)\n"
+              "Please check for leftover VE procs.", rc);
   }
   this->ve_number = -1;
   for (auto p = __procs.begin(); p != __procs.end(); p++) {
     if (*p == this) {
+      VEO_DEBUG("erasing proc %lx", this);
       __procs.erase(p);
       break;
     }
@@ -121,7 +129,7 @@ int ProcHandle::exitProc()
 uint64_t ProcHandle::loadLibrary(const char *libname)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
-  VEO_TRACE("%s(%s)", __func__, libname);
+  VEO_TRACE("libname %s", libname);
   size_t len = strlen(libname);
   if (len > VEO_SYMNAME_LEN_MAX) {
     throw VEOException("Library name too long", ENAMETOOLONG);
@@ -163,8 +171,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   auto itr = sym_name.find(sym_pair);
   if( itr != sym_name.end() ) {
     sym_mtx.unlock();
-    VEO_TRACE("symbol addr = %#lx", itr->second);
-    VEO_TRACE("symbol name = %s", symname);
+    VEO_TRACE("symbol name = %s, addr = %#lx", symname, itr->second);
     return itr->second;
   }
   sym_mtx.unlock();
@@ -177,10 +184,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   uint64_t symaddr = 0;
   wait_req_result(this->up, req, (int64_t *)&symaddr);
 
-  // unlock peer (not needed any more)
-
-  VEO_TRACE("symbol addr = %#lx", symaddr);
-  VEO_TRACE("symbol name = %s", symname);
+  VEO_TRACE("symbol name = %s, addr = %#lx", symname, symaddr);
   if (symaddr == 0) {
     return symaddr;
   }
@@ -230,10 +234,10 @@ void ProcHandle::freeBuff(const uint64_t buff)
  */
 int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE("readMem(%p, %lx, %ld)", dst, src, size);
+  VEO_TRACE("(%p, %lx, %ld)", dst, src, size);
   auto req = this->mctx->asyncReadMem(dst, src, size);
   if (req == VEO_REQUEST_ID_INVALID) {
-    eprintf("readMem failed! Aborting.");
+    VEO_ERROR("failed! Aborting.");
     return -1;
   }
   uint64_t dummy;
@@ -250,15 +254,15 @@ int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
  */
 int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
 {
-  VEO_TRACE("writeMem(%p, %lx, %ld)", dst, src, size);
+  VEO_TRACE("(%p, %lx, %ld)", dst, src, size);
   auto req = this->mctx->asyncWriteMem(dst, src, size);
   if (req == VEO_REQUEST_ID_INVALID) {
-    eprintf("writeMem failed! Aborting.");
+    VEO_ERROR("failed! Aborting.");
     return -1;
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
-  VEO_TRACE("writeMem leave... rv=%d", rv);
+  VEO_TRACE("done. rv=%d", rv);
   return rv;
 }
 
@@ -337,7 +341,7 @@ Context *ProcHandle::openContext()
   core += omp_get_num_threads() - 1;
 #endif
   if (core >= MAX_VE_CORES) {
-    eprintf("No more contexts allowed. You should have at  most one per VE core!\n");
+    VEO_ERROR("No more contexts allowed. You should have at most one per VE core!");
     return nullptr;
   }
   

@@ -3,6 +3,7 @@
 
 #include <urpc.h>
 #include <urpc_debug.h>
+#include "log.h"
 
 // reply timeout in us
 #define REPLY_TIMEOUT 20000000

@@ -10,7 +10,7 @@
 struct veo_proc_handle *proc;
 struct veo_thr_ctxt *ctx;
 uint64_t sym;
-int nloop = 10;
+int nloop = 1000;
 
 void *child(void *arg)
 {
@@ -45,9 +45,9 @@ int main(int argc, char *argv[])
 
   if (argc == 1) {
     printf("Usage:\n\t%s <nloop>\n", argv[0]);
-    exit(1);
-  }
-  nloop = atoi(argv[1]);
+    printf("Running for nloop=%d calls.\n", nloop);
+  } else
+    nloop = atoi(argv[1]);
 
   proc = veo_proc_create(-1);
   printf("proc = %p\n", (void *)proc);

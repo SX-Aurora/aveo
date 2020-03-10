@@ -1,11 +1,11 @@
-#ifndef _VEO_LOG_HPP_
-#define _VEO_LOG_HPP_
+#ifndef _VEO_LOG_H_
+#define _VEO_LOG_H_
 #include <stdarg.h>
 #include "veo_debug.h"
 
-#define VEO_ERROR(fmt, ...) eprintf("VEO_ERROR " fmt "\n", ## __VA_ARGS__)
-#define VEO_DEBUG(fmt, ...) dprintf("[VH DEBUG] " fmt "\n", ## __VA_ARGS__)
-#define VEO_TRACE(fmt, ...) dprintf("[VH TRACE] " fmt "\n", ## __VA_ARGS__)
+#define VEO_ERROR(fmt, ...) eprintf("%s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
+#define VEO_DEBUG(fmt, ...) dprintf("[DEBUG] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
+#define VEO_TRACE(fmt, ...) dprintf("[TRACE] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
 
 #define VEO_ASSERT(_cond) do { \
   if (!(_cond)) { \
@@ -17,4 +17,12 @@
   } \
 } while (0)
 
-#endif
+// check req IDs. Result expected with exactly same req ID.
+#define CHECK_REQ(nreq, req) do { \
+  if (nreq != req) { \
+    VEO_ERROR("send result req ID mismatch: %ld instead of %ld", nreq, req); \
+    return -1; \
+  } \
+} while (0)
+
+#endif // VEO_LOG_H

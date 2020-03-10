@@ -36,14 +36,14 @@ namespace veo {
  */
 int Context::close()
 {
-  //printf("close() called for ctx=%p\n", this);
+  VEO_TRACE("ctx=%p", this);
   if ( this->state == VEO_STATE_EXIT )
     return 0;
   this->state = VEO_STATE_EXIT;
   uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
   auto rc = wait_req_ack(this->up, req);
   if (rc < 0) {
-    dprintf("child sent no ACK to EXIT. Killing it.\n");
+    VEO_ERROR("child sent no ACK to EXIT. Killing it.");
     vh_urpc_child_destroy(this->up);
   }
   rc = vh_urpc_peer_destroy(this->up);
@@ -179,15 +179,14 @@ int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
 
   std::lock_guard<std::mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
-  VEO_TRACE("%s(%#lx, ...)", __func__, addr);
-  VEO_DEBUG("VE function = %p", (void *)addr);
+  VEO_TRACE("VE function %#lx", addr);
 
   int64_t req = send_call_nolock(this->up, this->ve_sp, addr, arg);
 
   // TODO: make sync call timeout configurable
   if (!urpc_recv_req_timeout(this->up, &m, req, (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
     // timeout! complain.
-    eprintf("callSync timeout waiting for RESULT req=%ld\n", req);
+    VEO_ERROR("callSync timeout waiting for RESULT req=%ld", req);
     return -1;
   }
   int rc = unpack_call_result(&m, &arg, payload, plen, result);
@@ -204,6 +203,7 @@ int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
  */
 uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
 {
+  VEO_TRACE("VE function %lx", addr);
   if ( addr == 0 || this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
   
@@ -276,6 +276,7 @@ uint64_t Context::callAsyncByName(uint64_t libhdl, const char *symname, CallArgs
  */
 uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
 {
+  VEO_TRACE("VH function %lx", addr);
   if ( func == nullptr || this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
@@ -310,6 +311,7 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
  */
 int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
+  VEO_TRACE("req %lu", reqid);
   this->progress(3);
   std::lock_guard<std::mutex> lock(this->req_mtx);
   auto itr = rem_reqid.find(reqid);
@@ -338,6 +340,7 @@ int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
  */
 int Context::callWaitResult(uint64_t reqid, uint64_t *retp)
 {
+  VEO_TRACE("req %lu", reqid);
 #if 1
   //
   // polling here because we need to call the progress function!

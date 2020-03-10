@@ -116,13 +116,13 @@ uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
              urpc_unpack_payload(payload, plen, (char *)"LP", &sent_dst, &buff, &buffsz);
              dprintf("received sendbuff dst=%p size=%lu\n", (void *)sent_dst, buffsz);
              if ((uint64_t)dst != sent_dst) {
-               eprintf("recvbuffAsync mismatch: dst=%lx sent_dst=%lx\n", (uint64_t)dst, sent_dst);
+               VEO_ERROR("mismatch: dst=%lx sent_dst=%lx", (uint64_t)dst, sent_dst);
                printf("debug with : gdb -p %d\n", getpid());
                sleep(60);
                return -1;
              }
              if (size != buffsz) {
-               eprintf("recvbuffAsync mismatch: size=%lu sent_size=%lu\n", size, buffsz);
+               VEO_ERROR("mismatch: size=%lu sent_size=%lu", size, buffsz);
                return -1;
              }
              memcpy((void *)dst, buff, buffsz);
@@ -183,7 +183,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
                psz = rsize <= maxfrag ? rsize : maxfrag;
                auto req = this->recvbuffAsync((void *)d, (uint64_t)s, psz);
                if (req == VEO_REQUEST_ID_INVALID) {
-                 eprintf("recvbuffAsync failed! Aborting.");
+                 VEO_ERROR("failed! Aborting.");
                  return -1;
                }
                reqs.push_back(req);
@@ -256,7 +256,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
                psz = rsize <= maxfrag ? rsize : maxfrag;
                auto req = this->sendbuffAsync(d, s, psz);
                if (req == VEO_REQUEST_ID_INVALID) {
-                 eprintf("sendbuffAsync failed! Aborting.");
+                 VEO_ERROR("failed! Aborting.");
                  return -1;
                }
                reqs.push_back(req);

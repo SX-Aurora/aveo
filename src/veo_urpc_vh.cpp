@@ -47,8 +47,8 @@ namespace veo {
                               arg.stack_top, ve_sp,
                               stack_buf, arg.stack_size);
 
-      dprintf("callSync: stack IN, nregs=%d, stack_top=%p, sp=%p, stack_size=%d\n",
-              regs_sz/8, (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
+      VEO_DEBUG("stack IN, nregs=%d stack_top=%p sp=%p stack_size=%d", regs_sz/8,
+                (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
     } else if (arg.copied_in && arg.copied_out) {
       // stack transfered into VE and back,
       // transfered data: addr, regs array, stack_top, stack_pointer, stack_image
@@ -57,8 +57,8 @@ namespace veo {
                               addr, (void *)regs.data(), regs_sz,
                               arg.stack_top, ve_sp,
                               stack_buf, arg.stack_size);
-      dprintf("callSync: stack INOUT, nregs=%d, stack_top=%p, sp=%p, stack_size=%d\n",
-              regs_sz/8, (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
+      VEO_DEBUG("stack INOUT, nregs=%d stack_top=%p sp=%p stack_size=%d",
+                regs_sz/8, (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
     } else if (!arg.copied_in && arg.copied_out) {
       // stack transfered only back, from VE to VH
       // transfered data: addr, regs array, stack_top, stack_pointer, stack_image
@@ -67,8 +67,8 @@ namespace veo {
                               addr, (void *)regs.data(), regs_sz,
                               arg.stack_top, ve_sp,
                               stack_buf, arg.stack_size);
-      dprintf("callSync: stack OUT, nregs=%d, stack_top=%p, sp=%p, stack_size=%d\n",
-              regs_sz/8, (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
+      VEO_DEBUG("stack OUT, nregs=%d stack_top=%p sp=%p stack_size=%d",
+                regs_sz/8, (void *)arg.stack_top, (void *)ve_sp, arg.stack_size);
     }
     return req;
   }
@@ -82,7 +82,7 @@ namespace veo {
       if (plen) {
         rc =urpc_unpack_payload(payload, plen, (char *)"L", (int64_t *)result);
       } else {
-        eprintf("call result message had no payload!?");
+        VEO_ERROR("message had no payload!?");
       }
     } else if (m->c.cmd == URPC_CMD_RES_STK) {
       void *stack_buf;
@@ -97,11 +97,11 @@ namespace veo {
       char *msg;
       size_t msglen;
       rc =urpc_unpack_payload(payload, plen, (char *)"LP", &exc, (void *)&msg, &msglen);
-      eprintf("VE exception %d\n%s\n", exc, msg);
+      VEO_ERROR("VE exception %d\n%s", exc, msg);
       *result = exc;
       rc = -4;
     } else {
-      eprintf("callSync: expected RESULT or RES_STK, got cmd=%d\n", m->c.cmd);
+      VEO_ERROR("expected RESULT or RES_STK, got cmd=%d", m->c.cmd);
       rc = -3;
     }
   return rc;
@@ -115,7 +115,7 @@ namespace veo {
     size_t plen;
     if (!urpc_recv_req_timeout(up, &m, req, REPLY_TIMEOUT, &payload, &plen)) {
       // timeout! complain.
-      eprintf("timeout waiting for RESULT req=%ld\n", req);
+      VEO_ERROR("timeout waiting for RESULT req=%ld", req);
       return -1;
     }
     if (m.c.cmd == URPC_CMD_RESULT) {
@@ -123,10 +123,10 @@ namespace veo {
         urpc_unpack_payload(payload, plen, (char *)"L", result);
         urpc_slot_done(up->recv.tq, REQ2SLOT(req), &m);
       } else {
-        dprintf("result message for req=%ld had no payload!?", req);
+        VEO_DEBUG("result message for req=%ld had no payload!?", req);
       }
     } else {
-      eprintf("unexpected RESULT message type: %d\n", m.c.cmd);
+      VEO_ERROR("unexpected RESULT message type: %d", m.c.cmd);
       return -1;
     }
     return 0;
@@ -140,11 +140,11 @@ namespace veo {
     size_t plen;
     if (!urpc_recv_req_timeout(up, &m, req, REPLY_TIMEOUT, &payload, &plen)) {
       // timeout! complain.
-      eprintf("timeout waiting for ACK req=%ld\n", req);
+      VEO_ERROR("timeout waiting for ACK req=%ld", req);
       return -1;
     }
     if (m.c.cmd != URPC_CMD_ACK) {
-      eprintf("unexpected ACK message type: %d\n", m.c.cmd);
+      VEO_ERROR("unexpected ACK message type: %d", m.c.cmd);
       return -2;
     }
     urpc_slot_done(up->recv.tq, REQ2SLOT(req), &m);
@@ -169,13 +169,13 @@ void veo_urpc_register_vh_handlers(urpc_peer_t *up)
   int err;
 
   //if ((err = urpc_register_handler(up, URPC_CMD_PING, &ping_handler)) < 0)
-  //  eprintf("register_handler failed for cmd %d\n", 1);
+  //  VEO_ERROR("register_handler failed for cmd %d\n", 1);
 }
 
 __attribute__((constructor))
 static void _veo_urpc_init_register(void)
 {
-  dprintf("registering VH URPC handlers\n");
+  VEO_TRACE("registering VH URPC handlers");
   urpc_set_handler_init_hook(&veo_urpc_register_vh_handlers);
 }
 

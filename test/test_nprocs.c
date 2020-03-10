@@ -48,9 +48,6 @@ int main(int argc, char *argv[])
   }
   veo_args_free(argp);
 
-  printf("sleeping 30s\n");
-  sleep(30);
-
  done:
   for (int i = 0; i < nprocs; i++) {
     if (proc[i] != NULL) {

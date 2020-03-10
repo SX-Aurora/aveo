@@ -18,8 +18,8 @@ urpc_peer_t *main_up;
 void signalHandler( int signum ) {
   Dl_info di;
   
-  //eprintf("Interrupt signal %s received\n", strsignal(signum));
-  eprintf("Interrupt signal %d received\n", signum);
+  //VEO_ERROR("Interrupt signal %s received", strsignal(signum));
+  VEO_ERROR("Interrupt signal %d received", signum);
 
   // try to print info about stack trace
   __builtin_traceback((unsigned long *)__builtin_frame_address(0));

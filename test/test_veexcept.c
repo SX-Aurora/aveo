@@ -42,14 +42,13 @@ int main(int argc, char *argv[])
   printf("call 'hello' on proc returned %ld, rc=%d\n", result, rc);
   veo_args_free(argp);
 
-  printf("sleeping 20s\n");
-  sleep(20);
-
  done:
   if (proc != NULL) {
     err = veo_proc_destroy(proc);
     printf("veo_proc_destroy(proc) returned %d\n", err);
   }
-  return rc;
+  if (rc < 0)
+    return 0;
+  return -1;
 }
 

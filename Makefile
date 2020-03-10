@@ -19,6 +19,9 @@ aveo:
 tests:
 	make -C test $(MAKEVARS)
 
+test:
+	make -C test test $(MAKEVARS)
+
 
 install: ALL
 	make -C src install $(MAKEVARS)
@@ -43,4 +46,4 @@ realclean: clean
 	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs
 
-.PHONY: aveo test install clean aveo ve-urpc
+.PHONY: aveo tests test install ve-urpc clean realclean 

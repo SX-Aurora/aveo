@@ -19,7 +19,7 @@ void *ve_handler_loop(void *arg)
   ve_handler_loop_arg_t *a = (ve_handler_loop_arg_t *)arg;
 
   urpc_peer_t *up = a->up;
-  dprintf("ve_handler loop pid=%d core=%d\n", getpid(), a->core);
+  VEO_DEBUG("pid=%d core=%d", getpid(), a->core);
   int rc = ve_urpc_init_dma(up, a->core);
 
   urpc_set_receiver_flags(&up->recv, 1);
@@ -55,7 +55,7 @@ static int newpeer_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   // start new pthread
   int rc = pthread_create(&__handler_loop_pthreads[__num_ve_peers], NULL, ve_handler_loop, (void *)&arg);
   if (rc) {
-    eprintf("NEWPEER handler failed with rc=%d\n", rc);
+    VEO_ERROR("pthread_create failed with rc=%d", rc);
     return -1;
   }
   __num_ve_peers++;
@@ -64,12 +64,7 @@ static int newpeer_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   ve_urpc_init_dma(up, up->core);
   
   int new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", (int64_t)rc);
-  // check req IDs. Result expected with exactly same req ID.
-  if (new_req != req) {
-    eprintf("newpeer_handler: send result req ID mismatch: %ld instead of %ld\n",
-            new_req, req);
-    return -1;
-  }
+  CHECK_REQ(new_req, req);
   return rc;
 }
 
@@ -87,12 +82,12 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 
   asm volatile ("or %0, 0, %sp": "=r"(curr_sp));
 
-  dprintf("call_handler cmd=%d\n", m->c.cmd);
+  VEO_DEBUG("cmd=%d", m->c.cmd);
   
   if (cmd == URPC_CMD_CALL) {
     urpc_unpack_payload(payload, plen, (char *)"LP", &addr, (void **)&regs, &nregs);
     nregs = nregs / 8;
-    dprintf("call_handler CALL nregs=%d\n", nregs);
+    VEO_DEBUG("CALL nregs=%d", nregs);
 
     //
     // if addr == 0: send current stack pointer
@@ -100,14 +95,10 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
     if (addr == 0) {
       dprintf("call_handler sending stack pointer value sp=%lx\n", curr_sp);
       int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", curr_sp);
-      if (new_req != req || new_req < 0) {
-        eprintf("call_handler sp send failed, req mismatch. Expected %ld got %ld\n",
-                req, new_req);
-        return -1;
-      }
+      CHECK_REQ(new_req, req);
       return 0;
     }
-    dprintf("call_handler: no stack, nregs=%d\n", nregs);
+    VEO_DEBUG("no stack, nregs=%d", nregs);
 
   } else if (cmd == URPC_CMD_CALL_STKIN ||
              cmd == URPC_CMD_CALL_STKINOUT) {
@@ -117,16 +108,16 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                         &stack_top, &recv_sp,
                         &stack, &stack_size);
     nregs = nregs / 8;
-    dprintf("call_handler: stack IN or INOUT, nregs=%d, stack_top=%p\n",
-            nregs, (void *)stack_top);
+    VEO_DEBUG("stack IN or INOUT, nregs=%d, stack_top=%p",
+              nregs, (void *)stack_top);
   } else if (cmd == URPC_CMD_CALL_STKOUT) {
     urpc_unpack_payload(payload, plen, (char *)"LPLLQ",
                         &addr, (void **)&regs, &nregs,
                         &stack_top, &recv_sp,
                         &stack, &stack_size);
     nregs = nregs / 8;
-    dprintf("call_handler: stack OUT, nregs=%d, stack_top=%p, stack_size=%lu\n",
-            nregs, (void *)stack_top, stack_size);
+    VEO_DEBUG("stack OUT, nregs=%d, stack_top=%p, stack_size=%lu",
+              nregs, (void *)stack_top, stack_size);
   }
   //
   // check if sent stack pointer is the same as the current one
@@ -134,8 +125,7 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   asm volatile ("or %0, 0, %sp": "=r"(curr_sp));
 
   if (recv_sp && recv_sp != curr_sp) {
-    eprintf("call_handler stack pointer mismatch! "
-            "curr=%p expected=%p\n", curr_sp, recv_sp);
+    VEO_ERROR("stack pointer mismatch! curr=%p expected=%p\n", curr_sp, recv_sp);
     return -1;
   }
   //
@@ -204,24 +194,14 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
     for (int i = 0; i < stack_size / 8; i++) {
       ((uint64_t *)stack)[i] = ((uint64_t *)stack_top)[i];
     }
-    dprintf("call_handler sending RES_STK\n");
+    VEO_DEBUG("sending RES_STK");
     int64_t new_req = urpc_generic_send(up, URPC_CMD_RES_STK, (char *)"LP",
                                         result, stack, stack_size);
-    if (new_req != req || new_req < 0) {
-      eprintf("call_handler send RES_STK failed, req mismatch. Expected %ld got %ld\n",
-              req, new_req);
-      //print_dhq_state(up);
-      return -1;
-    }
+    CHECK_REQ(new_req, req);
   } else {
-    dprintf("call_handler sending RESULT\n");
+    VEO_DEBUG("sending RESULT");
     int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", result);
-    if (new_req != req || new_req < 0) {
-      eprintf("call_handler: send RESULT failed. Expected %ld got %ld\n",
-              req, new_req);
-      //print_dhq_state(up);
-      return -1;
-    }
+    CHECK_REQ(new_req, req);
   }
   return 0;
 }
@@ -231,20 +211,20 @@ void veo_urpc_register_ve_handlers(urpc_peer_t *up)
   int err;
 
   if ((err = urpc_register_handler(up, URPC_CMD_NEWPEER, &newpeer_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("failed cmd %d", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_CALL, &call_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("failed cmd %d", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_CALL_STKIN, &call_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("failed cmd %d", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_CALL_STKOUT, &call_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("failed cmd %d", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_CALL_STKINOUT, &call_handler)) < 0)
-    eprintf("register_handler failed for cmd %d\n", 1);
+    VEO_ERROR("failed cmd %d", 1);
 }
 
 __attribute__((constructor))
 static void _veo_urpc_init_register(void)
 {
-  dprintf("registering VE URPC handlers\n");
+  VEO_TRACE("registering VE URPC handlers");
   urpc_set_handler_init_hook(&veo_urpc_register_ve_handlers);
 }
