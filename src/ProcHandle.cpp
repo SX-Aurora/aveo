@@ -4,7 +4,7 @@
  */
 #include <algorithm>
 #include "ProcHandle.hpp"
-//#include "Context.hpp"
+#include "Context.hpp"
 #include "VEOException.hpp"
 #include "CallArgs.hpp"
 #include "log.h"
@@ -85,8 +85,11 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
 }
 
 /**
- * @brief Exit veorun on VE side
+ * @brief Exit a proc
  *
+ * This function first closes all but the main context, then closes
+ * the main context of a proc handle. Finally it removes the proc
+ * pointer from the vector keeping track of procs for the final cleanup.
  */
 int ProcHandle::exitProc()
 {
@@ -135,8 +138,6 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
     throw VEOException("Library name too long", ENAMETOOLONG);
   }
 
-  // lock peer (not needed any more because using proc mutex)
-
   // send loadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
                                    libname, (size_t)strlen(libname));
@@ -144,8 +145,6 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   // wait for result
   uint64_t handle = 0;
   wait_req_result(this->up, req, (int64_t *)&handle);
-
-  // unlock peer (not needed any more)
 
   VEO_TRACE("handle = %#lx", handle);
   return handle;
