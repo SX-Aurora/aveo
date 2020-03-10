@@ -18,8 +18,8 @@ This project aims at tackling and solving some of the issues of the original VEO
 * The VH and VE processes are now decoupled, VEOS-wise the VE side is a separate process. This solves following long-standing issues:
   * Debugging of VE and VH side is now possible at the same time. Just attach a gdb to each side, set breakpoints and have fun.
   * In AVEO using multiple VEs from one process is no problem. Thus creating multiple procs is possible. The limitations imposed by VEOS do not apply to AVEO since VE processes are simply that: normal VE processes.
-  * Performance analysis of the VE side with **ftrace** is working and straight forward.
   * There are no additional worker threads competing for resources on the VE, therefore OpenMP scheduling on VE is simple and less conflict-prone.
+  * Performance analysis of the VE side with **ftrace** should be working soon.
   * In principle AVEO VE kernels can even be connected with each other through NEC VE-MPI. An API for simplifying this is being worked on. 
 
 There is a drawback for the reduced latency: it is obtained by polling
