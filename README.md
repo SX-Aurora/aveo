@@ -19,7 +19,7 @@ This project aims at tackling and solving some of the issues of the original VEO
   * Debugging of VE and VH side is now possible at the same time. Just attach a gdb to each side, set breakpoints and have fun.
   * In AVEO using multiple VEs from one process is no problem. Thus creating multiple procs is possible. The limitations imposed by VEOS do not apply to AVEO since VE processes are simply that: normal VE processes.
   * There are no additional worker threads competing for resources on the VE, therefore OpenMP scheduling on VE is simple and less conflict-prone.
-  * Performance analysis of the VE side with **ftrace** should be working soon.
+  * Performance analysis of the VE side with **ftrace** works and is simple to use.
   * In principle AVEO VE kernels can even be connected with each other through NEC VE-MPI. An API for simplifying this is being worked on. 
 
 There is a drawback for the reduced latency: it is obtained by polling
@@ -95,13 +95,15 @@ This helper is compiled with OpenMP support, therefore if you have sequential co
 export VE_OMP_NUM_THREADS=1
 ```
 
+### VE Performance Profiling with FTRACE
+
 For performance profiling of the VE kernel code please point the environment variable **VEORUN_BIN** to the appropriate **aveorun-ftrace**:
 ```
 export VEORUN_BIN=<install_path>/libexec/aveorun-ftrace
 ```
 and make sure sure that the kernel is compiled with `-ftrace`. This works only for *ncc*, *nc++* and *nfort* compiled codes.
 
-## API extensions
+## API Extensions
 
 AVEO aims at implementing fully the [VEO
 API](https://veos-sxarr-nec.github.io/veoffload/index.html). Use that
