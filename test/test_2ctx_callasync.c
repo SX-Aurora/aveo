@@ -11,39 +11,39 @@ int nloop = 10000;
 int main(int argc, char *argv[])
 {
 	int err = 0;
-        struct veo_proc_handle *proc;
+  struct veo_proc_handle *proc;
 
 	if (argc > 1) {
 		nloop = atoi(argv[1]);
 	}
 
-        proc = veo_proc_create(-1);
-        printf("proc = %p\n", (void *)proc);
-        if (proc == NULL)
+  proc = veo_proc_create(-1);
+  printf("proc = %p\n", (void *)proc);
+  if (proc == NULL)
 		return -1;
-        uint64_t libh = veo_load_library(proc, "./libvehello.so");
-        printf("libh = %p\n", (void *)libh);
-        if (libh == 0)
+  uint64_t libh = veo_load_library(proc, "./libvehello.so");
+  printf("libh = %p\n", (void *)libh);
+  if (libh == 0)
 		return -1;
-        struct veo_thr_ctxt *ctx = veo_context_open(proc);
-        printf("ctx = %p\n", (void *)ctx);
+  struct veo_thr_ctxt *ctx = veo_context_open(proc);
+  printf("ctx = %p\n", (void *)ctx);
 
-        struct veo_thr_ctxt *ctx2 = veo_context_open(proc);
-        printf("ctx2 = %p\n", (void *)ctx2);
+  struct veo_thr_ctxt *ctx2 = veo_context_open(proc);
+  printf("ctx2 = %p\n", (void *)ctx2);
 
-        struct veo_args *argp = veo_args_alloc();
-        veo_args_clear(argp);
-        long ts, te;
-        int64_t res[nloop], res2[nloop];
-        uint64_t reqs[nloop], reqs2[nloop];
+  struct veo_args *argp = veo_args_alloc();
+  veo_args_clear(argp);
+  long ts, te;
+  int64_t res[nloop], res2[nloop];
+  uint64_t reqs[nloop], reqs2[nloop];
 
-        ts = get_time_us();
-        for (int i=0; i<nloop; i++) {
-          reqs[i] = veo_call_async_by_name(ctx, libh, "empty", argp);
-        }
-        for (int i=0; i<nloop; i++) {
-          reqs2[i] = veo_call_async_by_name(ctx2, libh, "empty2", argp);
-        }
+  ts = get_time_us();
+  for (int i=0; i<nloop; i++) {
+    reqs[i] = veo_call_async_by_name(ctx, libh, "empty", argp);
+  }
+  for (int i=0; i<nloop; i++) {
+    reqs2[i] = veo_call_async_by_name(ctx2, libh, "empty2", argp);
+  }
         err = 0;
         int64_t sum = 0;
         

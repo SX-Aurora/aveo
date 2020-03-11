@@ -47,6 +47,7 @@ public:
   ~ProcHandle() { this->exitProc(); }
 
   uint64_t loadLibrary(const char *);
+  int unloadLibrary(const uint64_t libhdl);
   uint64_t getSym(const uint64_t, const char *);
 
   uint64_t allocBuff(const size_t);

@@ -31,6 +31,45 @@ using power.
 **NOTE:** This code is being actively developed, so is rough around the edges. Take it as a working beta. Please report issues in github!
 
 
+## Performance
+
+Besides the added features the main benefit of using AVEO is the reduced call latency. The table below shows the achieved results on a VE10B.
+
+```
+Test 1: submit N calls, then wait for N results
+Test 2: submit one call and wait for its result, N times
+Test 3: submit N calls and wait only for last result
+Test 4: submit N synchronous calls
+
+|          |------ veoffload 2.3.0 --------|----------    AVEO 0.9.6    -------------|
+|----------|-------------------------------|-----------------------------------------|
+|  #calls  |  Test 1    Test 2    Test 3   |   Test 1    Test 2    Test 3    Test 4  |
+|       1  |  108.00    104.00    104.00   |    23.00     10.00     10.00      7.00  |
+|       5  |   97.00    102.80     95.80   |     9.00      9.80      6.60      6.60  |
+|      10  |   96.70    102.20     95.00   |     7.50     10.10      6.10      6.70  |
+|      50  |   95.62    103.76     96.78   |     5.98      9.88      5.64      6.68  |
+|     100  |   96.66    104.57     96.27   |     5.78     10.19      5.62      6.71  |
+|     500  |   96.63    102.97     92.96   |     5.60      9.88      5.57      6.66  |
+|    1000  |   96.86    101.53     88.50   |     5.61     10.15      5.60      6.72  |
+|    5000  |   93.47     94.56     87.56   |     5.63      9.96      5.63      6.72  |
+|   10000  |   91.03     94.27     87.37   |     5.63     10.04      5.65      6.73  |
+|   50000  |   88.69     95.95    109.34   |     5.62     10.00      5.64      6.72  |
+|  100000  |   87.48     94.94    218.85   |     5.69     10.14      5.68      6.75  |
+|  200000  |   88.27     94.82    333.62   |     5.70     10.11      5.70      6.71  |
+|  300000  |   87.07     94.36    661.19   |     5.77     10.20      5.74      6.74  |
+|----------|-------------------------------|-----------------------------------------|
+```
+
+The memory transfer latency, measured by transfering 1 byte 30000 times, is similar:
+
+|               |   VEO  |  AVEO  |
+| ------------- | ------ | ------ |
+| veo_write_mem | 97.3us | 11.9us |
+| veo_read_mem  | 56.1us | 12.9us |
+
+
+
+
 ## Installation
 
 Make sure you can connect to github.com. Then
@@ -142,6 +181,15 @@ with `idx` taking values between 0 and the result of
 the *ProcHandle*. It will not be destroyed when closed, instead it is
 destroyed when the *proc* is killed by `veo_proc_destroy()`, or when
 the program ends.
+
+
+### Unloading a library
+
+The call
+```
+int veo_unload_library(struct veo_proc_handle *proc, const uint64_t libhandle);
+```
+unloads a VE library and removes its cached resolved symbols.
 
 
 ### Context synchronization

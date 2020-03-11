@@ -72,6 +72,7 @@ struct veo_proc_handle *veo_proc_create(int);
 struct veo_proc_handle *veo_proc_create_static(int, char *);
 int veo_proc_destroy(struct veo_proc_handle *);
 uint64_t veo_load_library(struct veo_proc_handle *, const char *);
+int veo_unload_library(struct veo_proc_handle *, const uint64_t);
 uint64_t veo_get_sym(struct veo_proc_handle *, uint64_t, const char *);
 int veo_alloc_mem(struct veo_proc_handle *, uint64_t *, const size_t);
 int veo_free_mem(struct veo_proc_handle *, uint64_t);

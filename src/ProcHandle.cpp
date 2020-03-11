@@ -151,6 +151,39 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
 }
 
 /**
+ * @brief Unload a VE library from VE process space
+ *
+ * @param handle the library handle
+ * @return zero upon success, nonzero if operation failed.
+ */
+int ProcHandle::unloadLibrary(const uint64_t handle)
+{
+  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
+  VEO_TRACE("lib handle %lx", handle);
+
+  // remove all symbol names belonging to this library
+  sym_mtx.lock();
+  std::vector<decltype(sym_name)::key_type> vec;
+  for (auto&& i : sym_name)
+    if (i.first.first == handle)
+        vec.emplace_back(i.first);
+  for (auto&& key : vec)
+    sym_name.erase(key);
+  sym_mtx.unlock();
+
+  // send unloadlib cmd
+  uint64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
+                                   handle);
+
+  // wait for result
+  int64_t result = 0;
+  wait_req_result(this->up, req, (int64_t *)&result);
+
+  VEO_TRACE("result = %ld", result);
+  return (int)result;
+}
+
+/**
  * @brief Find a symbol in VE program
  *
  * @param libhdl handle of library

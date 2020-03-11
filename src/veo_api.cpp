@@ -233,6 +233,23 @@ uint64_t veo_load_library(veo_proc_handle *proc, const char *libname)
 }
 
 /**
+ * @brief unload a VE library
+ * @param proc VEO process handle
+ * @param libhandle a library handle
+ * @retval 0 if request succeeded
+ */
+int veo_unload_library(veo_proc_handle *proc, const uint64_t libhandle)
+{
+  try {
+    return ProcHandleFromC(proc)->unloadLibrary(libhandle);
+  } catch (VEOException &e) {
+    VEO_ERROR("failed to unload library: %s", e.what());
+    errno = e.err();
+    return -1;
+  }
+}
+
+/**
  * @brief find a symbol in VE program
  * @param proc VEO process handle
  * @param libhdl a library handle

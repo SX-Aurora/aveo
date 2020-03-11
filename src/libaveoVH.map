@@ -8,6 +8,7 @@ VERSION_1 {
     veo_context_close;
     veo_get_context_state;
     veo_load_library;
+    veo_unload_library;
     veo_get_sym;
     veo_api_version;
     veo_args_alloc;
