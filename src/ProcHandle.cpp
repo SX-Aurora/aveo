@@ -140,7 +140,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
 
   // send loadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
-                                   libname, (size_t)strlen(libname));
+                                   libname, (size_t)strlen(libname) + 1);
 
   // wait for result
   uint64_t handle = 0;
