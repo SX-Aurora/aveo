@@ -51,6 +51,9 @@ while [ $# -gt 0 ]; do
         <<< "${option#--link-nosym=},"
       EXTRA_LIBS=("${EXTRA_LIBS[@]}" "${_extralibs[@]}")
       ;;
+    '-*')
+      EXTRA_LIBS=("${EXTRA_LIBS[@]}" "$option")
+      ;;
     *)
       LIBS=(${LIBS[@]} "$option")
       ;;
