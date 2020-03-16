@@ -211,7 +211,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   // lock peer (not needed any more because using proc mutex)
 
   uint64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
-                                   libhdl, symname, (size_t)strlen(symname));
+                                   libhdl, symname, (size_t)strlen(symname) + 1);
 
   uint64_t symaddr = 0;
   wait_req_result(this->up, req, (int64_t *)&symaddr);
