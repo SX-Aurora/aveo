@@ -276,7 +276,7 @@ uint64_t Context::callAsyncByName(uint64_t libhdl, const char *symname, CallArgs
  */
 uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
 {
-  VEO_TRACE("VH function %lx", addr);
+  VEO_TRACE("VH function %lx", func);
   if ( func == nullptr || this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
