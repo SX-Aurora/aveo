@@ -17,9 +17,9 @@ GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o Context.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o)
+ veo_urpc.o veo_urpc_vh.o log.o)
 
-VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
+VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o log.o)
 
 LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
 PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun gen_aveorun_static_symtable)

@@ -1,28 +1,25 @@
 #ifndef VEO_DEBUG_INCLUDE
 #define VEO_DEBUG_INCLUDE
 
-//#define DEBUG 1
 //#define DEBUGMEM
 //#define SYNCDMA
 
-#ifdef DEBUG
+extern int veo_debug;
 
 #ifdef __ve__
 #define dprintf(fmt, ...) do {                \
-    fprintf(stdout, "[VE] " fmt, ## __VA_ARGS__);    \
-    fflush(stdout);                              \
+    if (veo_debug == 1) { \
+        fprintf(stdout, "[VE] " fmt, ## __VA_ARGS__);    \
+        fflush(stdout); \
+    }                              \
   } while(0)
 #else
 #define dprintf(fmt, ...) do {                                       \
-    fprintf(stdout, "[VH] " fmt, ## __VA_ARGS__);         \
-    fflush(stdout);                             \
+    if (veo_debug == 1) { \
+        fprintf(stdout, "[VH] " fmt, ## __VA_ARGS__);         \
+        fflush(stdout);                             \
+    } \
   } while(0)
-#endif
-
-#else
-
-#define dprintf(args...)
-
 #endif
 
 #ifdef __ve__
