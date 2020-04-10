@@ -3,7 +3,7 @@
 
 int veo_debug;
 
-__attribute__((constructor))
+__attribute__((constructor(10000)))
 static void veo_log_init(void)
 {
 	const char* env_p = std::getenv("VEO_LOG_DEBUG");

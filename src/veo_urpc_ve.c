@@ -222,7 +222,7 @@ void veo_urpc_register_ve_handlers(urpc_peer_t *up)
     VEO_ERROR("failed cmd %d", 1);
 }
 
-__attribute__((constructor))
+__attribute__((constructor(10001)))
 static void _veo_urpc_init_register(void)
 {
   VEO_TRACE("registering VE URPC handlers");
