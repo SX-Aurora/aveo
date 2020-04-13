@@ -28,9 +28,9 @@
 
 namespace veo {
 
-  // remember active procs for the destructor
-   std::vector<ProcHandle *> __procs;
-   std::mutex __procs_mtx;
+// remember active procs for the destructor
+std::vector<ProcHandle *> __procs;
+std::mutex __procs_mtx;
   
 /**
  * @brief constructor
@@ -96,6 +96,7 @@ int ProcHandle::exitProc()
   int rc;
   std::lock_guard<std::mutex> lock2(veo::__procs_mtx);
   VEO_TRACE("proc %p", (void *)this);
+  this->mctx->_synchronize_nolock();
   //
   // delete all open contexts except the main one
   //
@@ -133,6 +134,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   VEO_TRACE("libname %s", libname);
+  this->mctx->_synchronize_nolock();
   size_t len = strlen(libname);
   if (len > VEO_SYMNAME_LEN_MAX) {
     throw VEOException("Library name too long", ENAMETOOLONG);
@@ -160,6 +162,7 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   VEO_TRACE("lib handle %lx", handle);
+  this->mctx->_synchronize_nolock();
 
   // remove all symbol names belonging to this library
   sym_mtx.lock();
