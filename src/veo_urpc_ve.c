@@ -190,10 +190,7 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
       cmd == URPC_CMD_CALL_STKINOUT) {
     // copying back from stack must happen in the same function,
     // otherwise we overwrite it! So we simply use a loop.
-#pragma _NEC ivdep
-    for (int i = 0; i < stack_size / 8; i++) {
-      ((uint64_t *)stack)[i] = ((uint64_t *)stack_top)[i];
-    }
+    memcpy(stack, (void *)stack_top, stack_size);
     VEO_DEBUG("sending RES_STK");
     int64_t new_req = urpc_generic_send(up, URPC_CMD_RES_STK, (char *)"LP",
                                         result, stack, stack_size);
