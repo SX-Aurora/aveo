@@ -123,7 +123,7 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
           // If VE_NODE_NUMBER is set, check is's value is in _VENODELIST
           venode = stoi(std::string(venodenum));
           int found = 0;
-          for (unsigned int i; i < v.size(); i++) {
+          for (unsigned int i=0; i < v.size(); i++) {
             if (stoi(v[i]) == venode) {
               found = 1;
               break;
