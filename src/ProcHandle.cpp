@@ -431,6 +431,9 @@ static void _cleanup_procs(void)
   for (auto it = veo::__procs.begin(); it != veo::__procs.end();) {
     // we don't increment the iterator because exitProc() is actually
     // doing the remove.
-    (*it)->exitProc();
+    if (*it)
+      (*it)->exitProc();
+    else
+      it++;
   }
 }
