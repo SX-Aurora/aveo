@@ -29,9 +29,11 @@
 namespace veo {
 
 // remember active procs for the destructor
-std::vector<ProcHandle *> __procs;
+//   This needs to be a pointer with memory allocated later, otherwise
+//   py-veo (cython?) erases the content and we have leftover VE processes
+std::vector<ProcHandle *> *__procs;
 std::mutex __procs_mtx;
-  
+
 /**
  * @brief constructor
  *
@@ -81,7 +83,9 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   this->mctx->core = vecore;
   this->ve_number = venode;
   std::lock_guard<std::mutex> lock(veo::__procs_mtx);
-  __procs.push_back(this);
+  if (veo::__procs == nullptr)
+    veo::__procs = new std::vector<ProcHandle *>();
+  veo::__procs->push_back(this);
 }
 
 /**
@@ -94,7 +98,8 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
 int ProcHandle::exitProc()
 {
   int rc;
-  std::lock_guard<std::mutex> lock2(veo::__procs_mtx);
+  //std::lock_guard<std::mutex> lock2(ProcHandle::__procs_mtx);
+  std::lock_guard<std::mutex> lock2(this->mctx->submit_mtx);
   VEO_TRACE("proc %p", (void *)this);
   this->mctx->_synchronize_nolock();
   //
@@ -114,10 +119,10 @@ int ProcHandle::exitProc()
               "Please check for leftover VE procs.", rc);
   }
   this->ve_number = -1;
-  for (auto p = __procs.begin(); p != __procs.end(); p++) {
+  for (auto p = veo::__procs->begin(); p != veo::__procs->end(); p++) {
     if (*p == this) {
       VEO_DEBUG("erasing proc %lx", this);
-      __procs.erase(p);
+      veo::__procs->erase(p);
       break;
     }
   }
@@ -428,12 +433,15 @@ Context *ProcHandle::openContext()
 __attribute__((destructor))
 static void _cleanup_procs(void)
 {
-  for (auto it = veo::__procs.begin(); it != veo::__procs.end();) {
+  for (auto it = veo::__procs->begin(); it != veo::__procs->end();) {
     // we don't increment the iterator because exitProc() is actually
     // doing the remove.
-    if (*it)
+    if (*it) {
       (*it)->exitProc();
-    else
+    } else {
+      VEO_DEBUG("proc destructor: proc pointer is NULL!\n");
       it++;
+    }
   }
+  delete veo::__procs;
 }

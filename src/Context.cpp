@@ -108,6 +108,8 @@ void Context::_progress_nolock(int ops)
           auto rv = (*cmd)();
           this->comq.pushCompletion(std::move(cmd));
           ++sent;
+        } else {
+          this->comq.pushRequestFront(std::move(cmd));
         }
       } else {
         //

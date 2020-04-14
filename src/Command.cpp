@@ -25,7 +25,7 @@ void BlockingQueue::push(CmdPtr cmd) {
  */
 void BlockingQueue::push_front(CmdPtr cmd) {
   std::lock_guard<std::mutex> lock(this->mtx);
-  this->queue.push_back(std::move(cmd));
+  this->queue.push_front(std::move(cmd));
   this->cond.notify_all();
 }
 
