@@ -173,7 +173,7 @@ void Context::_synchronize_nolock()
  * @param result pointer to result
  * @return 0 if all went well.
  */
-int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
+int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
 {
   urpc_mb_t m;
   void *payload;
@@ -183,7 +183,7 @@ int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
   this->_synchronize_nolock();
   VEO_TRACE("VE function %#lx", addr);
 
-  int64_t req = send_call_nolock(this->up, this->ve_sp, addr, arg);
+  int64_t req = send_call_nolock(this->up, this->ve_sp, addr, args);
 
   // TODO: make sync call timeout configurable
   if (!urpc_recv_req_timeout(this->up, &m, req, (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
@@ -191,7 +191,7 @@ int Context::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
     VEO_ERROR("callSync timeout waiting for RESULT req=%ld", req);
     return -1;
   }
-  int rc = unpack_call_result(&m, &arg, payload, plen, result);
+  int rc = unpack_call_result(&m, &args, payload, plen, result);
   urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
   return rc;
 }

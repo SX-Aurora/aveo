@@ -314,9 +314,9 @@ int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
  * @param result pointer to result
  * @return 0 if all went well.
  */
-int ProcHandle::callSync(uint64_t addr, CallArgs &arg, uint64_t *result)
+int ProcHandle::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
 {
-  return this->mctx->callSync(addr, arg, result);
+  return this->mctx->callSync(addr, args, result);
 }
 
 /**

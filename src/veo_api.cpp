@@ -437,7 +437,7 @@ void veo_context_sync(veo_thr_ctxt *ctx)
  *
  * @return the state of the VEO context state.
  * @retval VEO_STATE_RUNNING VEO context is running.
- * @retvav VEO_STATE_EXIT VEO context  exited.
+ * @retval VEO_STATE_EXIT VEO context  exited.
  */
 int veo_get_context_state(veo_thr_ctxt *ctx)
 {
