@@ -15,7 +15,7 @@ $(error "URPC_INST_DIR is undefined! Please point it to the place where veo-urpc
 endif
 endif
 
-INCL = -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
+INCL = -I$(BUILD)/include -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
 GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL)
 GCCFLAGS = -std=c11 -pthread  $(OPT) $(DEBUG) $(INCL)
 NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(INCL) -finline -finline-functions
@@ -29,11 +29,13 @@ NLDFLAGS = -Wl,-rpath,/opt/nec/ve/lib -L/opt/nec/ve/lib $(LDFLAGS)
 
 
 # build directory substructure
-BVE = $(BUILD)/ve
+BVE     = $(BUILD)/ve
 BVE_OMP = $(BUILD)/ve_omp
-BVH = $(BUILD)/vh
-BB  = $(BUILD)/bin
-BLIB = $(BUILD)/lib
+BVH     = $(BUILD)/vh
+BB      = $(BUILD)/bin
+BLIB    = $(BUILD)/lib
+BLIBEX  = $(BUILD)/libexec
+BINC    = $(BUILD)/include
 
 # rule for creating directories
 %/:

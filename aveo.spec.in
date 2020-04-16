@@ -1,0 +1,51 @@
+# don't build debuginfo package, this breaks due to mixed architectures
+%define debug_package %{nil}
+# avoid stripping the binaries
+%global __strip /bin/true
+
+Summary: VE Offloading Framework based on VE-UDMA RPC
+Name: @PACKAGE@
+Version: @VERSION@
+Release: 1
+Vendor: NEC HPC Europe
+Group: System Environment/Libraries
+License: LGPL
+BuildRoot: %{_tmppath}/%{name}-buildroot-%{version}-%{release}
+Source0: @PACKAGE@-@VERSION@.tar.gz
+Requires: veos
+BuildRequires: vedebuginfo
+Requires: glibc-ve
+BuildRequires: glibc-ve-devel
+%description
+The Alternative VE Offloading framework (AVEO) is a faster and much
+lower latency replacement to VEO which brings multi-VE support,
+simultaneous debugging of VE and VH side, API extensions. It allows
+heterogeneous programming of SX-Aurora TSUBASA vector engines with
+an accelerator-alike heterogeneous programming model like OpenMP and
+OpenACC.
+
+%define _prefix @PREFIX@
+%define _docdir %{_prefix}/doc
+%define _testsdir %{_prefix}/tests
+%define _libdir %{_prefix}/lib
+%define _libexecdir %{_prefix}/libexec
+%define _includedir %{_prefix}/include
+
+%prep
+%setup -q -n @PACKAGE@-@VERSION@
+
+%build
+make DEST=%{_prefix} PREF=%{buildroot}
+
+%install
+make install DEST=%{_prefix} PREF=%{buildroot}
+install -d %{buildroot}%{_prefix}/doc/examples
+install README.md COPYING %{buildroot}%{_prefix}/doc
+cp -pr test/* %{buildroot}%{_prefix}/doc/examples
+
+%files
+%{_libexecdir}/*
+%{_libdir}/*
+%{_includedir}/*
+%{_docdir}/*
+%{_testsdir}/*

@@ -4,12 +4,17 @@ BUILD ?= $(CWD)/build
 
 ifeq ($(URPC_INST_DIR),)
 PREPARE := ve-urpc
+PREPAREINSTALL := ve-urpc-install
 URPC_INST_DIR := $(DEST)
 endif
 
+PACKAGE := aveo
+VERSION := $(shell cat VERSION)
+TARBALL := $(PACKAGE)-$(VERSION).tar.gz
+
 include make_aveo.inc
 
-MAKEVARS = DEST=$(DEST) BUILD=$(BUILD) URPC_INST_DIR=$(URPC_INST_DIR)
+MAKEVARS = DEST=$(DEST) BUILD=$(BUILD) URPC_INST_DIR=$(URPC_INST_DIR) PREF=$(PREF)
 
 ALL: $(PREPARE) aveo tests
 
@@ -23,9 +28,29 @@ test:
 	make -C test test $(MAKEVARS)
 
 
-install: ALL
+install: ALL $(PREPAREINSTALL)
+	make -C prereqs/ve-urpc install BUILD=$(BUILD) DEST=$(URPC_INST_DIR) PREF=$(PREF)
 	make -C src install $(MAKEVARS)
 	make -C test install $(MAKEVARS)
+
+# -- rules for RPM build
+
+aveo.spec: aveo.spec.in
+	sed -e "s,@PACKAGE@,$(PACKAGE)," -e "s,@VERSION@,$(VERSION)," \
+		-e "s,@PREFIX@,/usr/local/ve/$(PACKAGE)-$(VERSION)," < $< > $@
+
+$(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
+	if [ -d $(PACKAGE)-$(VERSION) ]; then rm -rf $(PACKAGE)-$(VERSION); fi
+	mkdir -p $(PACKAGE)-$(VERSION)
+	cp -p aveo.spec $(PACKAGE)-$(VERSION)
+	cp -rl Makefile make_aveo.inc prereqs README.md scripts src test VERSION COPYING $(PACKAGE)-$(VERSION)
+	tar czvf $(TARBALL) $(PACKAGE)-$(VERSION)
+	rm -rf $(PACKAGE)-$(VERSION)
+
+rpm: $(TARBALL)
+	rpmbuild -tb $<
+
+# --------------------------
 
 # -- rules for prerequisites
 
@@ -34,7 +59,9 @@ $(CWD)/prereqs/ve-urpc/.git:
 
 ve-urpc: $(CWD)/prereqs/ $(CWD)/prereqs/ve-urpc/.git
 	make -C prereqs/ve-urpc BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
-	make -C prereqs/ve-urpc install BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
+
+ve-urpc-install: ve-urpc
+	make -C prereqs/ve-urpc install BUILD=$(BUILD) DEST=$(URPC_INST_DIR) PREF=$(PREF)
 
 # --------------------------
 

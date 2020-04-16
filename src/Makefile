@@ -1,4 +1,10 @@
+# destination path for install
 DEST ?= ../install
+
+# install prefix (when building an RPM)
+PREF ?=
+
+# build path
 BUILD ?= ../build
 
 include ../make_aveo.inc
@@ -16,33 +22,34 @@ VHLIB_OBJS := $(addprefix $(BVH)/,\
 VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o)
 
 LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
-PROGS = $(BB)/aveorun $(BB)/aveorun-ftrace $(BB)/relink_aveorun
-INCLUDES := ve_offload.h
+PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun gen_aveorun_static_symtable)
+INCLUDES := $(addprefix $(BINC)/,ve_offload.h)
 
 
-ALL: $(LIBS) $(PROGS)
+ALL: $(LIBS) $(INCLUDES) $(PROGS)
 
 .PRECIOUS: $(DEST)/ $(DEST)%/
 
 %/:
 	mkdir -p $@
 
-
-install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN))/
-	/usr/bin/install -t $(DEST)/lib $(LIBS)
-	if [ -L $(DEST)/lib/libveo.so ]; then \
-		rm -f $(DEST)/lib/libveo.so; \
+install: ALL
+	mkdir -p $(PREF)$(DEST)/lib/ $(PREF)$(DEST)/libexec/ $(PREF)$(DEST)/include/ $(PREF)$(dir $(VEORUN_BIN))/
+	/usr/bin/install -t $(PREF)$(DEST)/lib $(LIBS)
+	if [ -L $(PREF)$(DEST)/lib/libveo.so ]; then \
+		rm -f $(PREF)$(DEST)/lib/libveo.so; \
 	fi
-	ln -s $(DEST)/lib/libaveoVH.so $(DEST)/lib/libveo.so
-	/usr/bin/install -t $(DEST)/include $(INCLUDES)
-	/usr/bin/install $(BB)/aveorun $(VEORUN_BIN)
-	/usr/bin/install $(BB)/aveorun-ftrace $(VEORUN_BIN)-ftrace
-	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(DEST)/libexec
-	/usr/bin/install $(BB)/relink_aveorun $(DEST)/libexec
-	if [ -L $(DEST)/libexec/mk_veorun_static ]; then \
-		rm -f $(DEST)/libexec/mk_veorun_static; \
+	( cd $(PREF)$(DEST)/lib; ln -s libaveoVH.so libveo.so; )
+	/usr/bin/install -t $(PREF)$(DEST)/include $(INCLUDES)
+	/usr/bin/install $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
+	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(PREF)$(DEST)/libexec
+	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \
+		< ../scripts/relink_aveorun.in > $(PREF)$(DEST)/libexec/relink_aveorun
+	chmod 755 $(PREF)$(DEST)/libexec/relink_aveorun
+	if [ -L $(PREF)$(DEST)/libexec/mk_veorun_static ]; then \
+		rm -f $(PREF)$(DEST)/libexec/mk_veorun_static; \
 	fi
-	ln -s $(DEST)/libexec/relink_aveorun $(DEST)/libexec/mk_veorun_static
+	( cd $(PREF)$(DEST)/libexec; ln -s relink_aveorun mk_veorun_static; )
 
 
 %/ProcHandle.o: ProcHandle.cpp ProcHandle.hpp VEOException.hpp veo_urpc.h CallArgs.hpp log.h
@@ -59,6 +66,10 @@ install: ALL | $(DEST)/lib/ $(DEST)/libexec/ $(DEST)/include/ $(dir $(VEORUN_BIN
 
 .SECONDEXPANSION:
 
+
+$(BINC)/%.h: %.h | $$(@D)/
+	/usr/bin/install -t $(BINC) $<
+
 $(BLIB)/libaveoVE.so: $(VELIB_OBJS) | $$(@D)/
 	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared -o $@ $^ \
 		$(BLIB)/liburpcVE_omp.a $(NLDFLAGS) -lveio -lveftrace -ldl
@@ -74,19 +85,22 @@ $(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
 	$(AR) rv $@ $^
 
 
-$(BB)/aveorun: $(BVE)/aveorun.o | $$(@D)/
+$(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
 		-L$(BLIB) -laveoVE -lveio -lpthread
 
-$(BB)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
+$(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
 		-L$(BLIB) -laveoVE -lveio -lpthread
 
-$(BB)/relink_aveorun: ../scripts/relink_aveorun.in
-	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \
+$(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
+	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(BUILD)/lib,g" \
 		< $< > $@
 	chmod 755 $@
 
+$(BLIBEX)/gen_aveorun_static_symtable: ../scripts/gen_aveorun_static_symtable
+	cp -p $< $@
+	chmod 755 $@
 
 $(BVE)/veo_urpc.o: veo_urpc.c
 	$(NCC) $(NCCFLAGS) -fpic -DAVEO_VERSION_STRING=\"$(VERSION)\" -o $@ -c $<

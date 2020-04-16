@@ -3,6 +3,8 @@
 # Super simple run loop for running the tests for AVEO.
 # Can be improved a lot...
 #
+SCRIPTPATH=$(dirname $(realpath ${BASH_SOURCE[0]}))
+LIBEXECDIR=$(realpath $SCRIPTPATH/../libexec)
 good=0
 bad=0
 
@@ -30,7 +32,7 @@ for t in test_*; do
     #
     if [ "${t%_ftrace}" != "$t" ]; then
 	[ -f ftrace.out ] && rm -f ftrace.out
-	env VEORUN_BIN=./aveorun-ftrace ./$t
+	env VEORUN_BIN=$LIBEXECDIR/aveorun-ftrace ./$t
         if [ $? -ne 0 ]; then
             bad=$((bad+1))
             failed[$t]=1
@@ -54,7 +56,7 @@ for t in test_*; do
     #
     # run normal dynamic test
     #
-    env VEORUN_BIN=./aveorun ./$t
+    env VEORUN_BIN=$LIBEXECDIR/aveorun ./$t
     if [ $? -ne 0 ]; then
         bad=$((bad+1))
         failed[$t]=1
@@ -72,7 +74,7 @@ echo "$bad tests failed"
 if [ $bad -gt 0 ]; then
     echo
     echo "The failed tests were:"
-    echo ${failed[*]}
+    echo ${!failed[*]}
 fi
 
 echo "============================================================"

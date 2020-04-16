@@ -28,9 +28,9 @@ ALL: $(TESTS) $(VELIBS) $(STATICS) $(SCRIPTS)
 #
 # install
 #
-install: $(TESTS) $(VELIBS) $(STATICS) | $(DEST)/tests/
-	/usr/bin/install $(TESTS) $(VELIBS) $(STATICS) $(DEST)/tests
-	/usr/bin/install $(SCRIPTS) $(DEST)/tests
+install: $(TESTS) $(VELIBS) $(STATICS) | $(PREF)$(DEST)/tests/
+	/usr/bin/install $(TESTS) $(VELIBS) $(STATICS) $(PREF)$(DEST)/tests
+	/usr/bin/install $(SCRIPTS) $(PREF)$(DEST)/tests
 
 #
 # run the tests from the build directory
@@ -58,7 +58,7 @@ $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
 	env RELINKVEO_GEN=../scripts/gen_aveorun_static_symtable \
 	    RELINKVEO_LIB=$(BLIB)/libaveoVE.a \
-	    $(BB)/relink_aveorun $@ -fopenmp $<
+	    $(BLIBEX)/relink_aveorun $@ -fopenmp $<
 
 $(BVE)/%.o: %.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -fopenmp -fpic -o $@ -c $<
