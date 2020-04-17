@@ -81,26 +81,26 @@ else
   fi
 fi
 
-CC=${CC:-/opt/nec/ve/bin/ncc}
-CXX=${CXX:-/opt/nec/ve/bin/nc++}
-FC=${FC:-/opt/nec/ve/bin/nfort}
+VECC=${VECC:-/opt/nec/ve/bin/ncc}
+VECXX=${VECXX:-/opt/nec/ve/bin/nc++}
+VEFC=${VEFC:-/opt/nec/ve/bin/nfort}
 # find an appropriage linker
-default_CCLD="$CC"
+default_CCLD="$VECC"
 # try Fortran compiler
-FC=$(which $FC 2>/dev/null)
+VEFC=$(which $VEFC 2>/dev/null)
 if [ $? -eq 0 ]; then
-  default_CCLD="$FC"
+  default_CCLD="$VEFC"
   default_LDFLAGS="-cxxlib ${default_LDFLAGS}"
 else
   # if Fortran compiler (nfort) is not found, try C++ compiler
-  CXX=$(which $CXX 2>/dev/null)
+  VECXX=$(which $VECXX 2>/dev/null)
   if [ $? -eq 0 ]; then
-    default_CCLD="$CXX"
+    default_CCLD="$VECXX"
   fi
 fi
 
 NM=${NM:-nm}
-CCLD=${CCLD:-${default_CCLD}}
+VECCLD=${VECCLD:-${default_CCLD}}
 CFLAGS="${CFLAGS:-} ${VERBOSE}"
 LDFLAGS=${LDFLAGS:-${default_LDFLAGS}}
 
@@ -113,6 +113,6 @@ RELINKVEO_LIB=${RELINKVEO_LIB:-@libdir@/libaveoVE.a}
 
 $RELINKVEO_GEN "${LIBS[@]}" > $SRC_FILE
 
-$CC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
-$CCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
+$VECC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
+$VECCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
   $RELINKVEO_LIB -L@libdir@ $LDFLAGS && echo "created specific $VEORUN"
