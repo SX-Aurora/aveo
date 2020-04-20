@@ -28,7 +28,7 @@ IF(WITH_DOWNLOAD_DEPENDENCIES)
 	INCLUDE(ExternalProject)
 	ExternalProject_Add(ve-urpc
 		BINARY_DIR			${EXT_VEURPC_DIR}/build
-		GIT_REPOSITORY		https://github.com/mergian/ve-urpc
+		GIT_REPOSITORY		https://github.com/sx-aurora/ve-urpc
 		GIT_SHALLOW			TRUE
 		BUILD_COMMAND		make -j
 		CONFIGURE_COMMAND	${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${VEURPC_DIR} ${EXT_VEURPC_DIR}/src
