@@ -22,6 +22,7 @@ ADD_DEFINITIONS(-DAVEO_VERSION_STRING="${AVEO_VERSION}")
 
 # Device -----------------------------------------------------------------------
 ADD_SUBDIRECTORY(ve)
+ADD_SUBDIRECTORY(veo)
 
 # Host -------------------------------------------------------------------------
 SET(VEORUN_BIN ${CMAKE_INSTALL_PREFIX}/libexec/aveorun)
