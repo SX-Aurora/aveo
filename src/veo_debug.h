@@ -7,14 +7,14 @@
 extern int veo_debug;
 
 #ifdef __ve__
-#define dprintf(fmt, ...) do {                \
+#define veo_dprintf(fmt, ...) do {                \
     if (veo_debug == 1) { \
         fprintf(stdout, "[VE] " fmt, ## __VA_ARGS__);    \
         fflush(stdout); \
     }                              \
   } while(0)
 #else
-#define dprintf(fmt, ...) do {                                       \
+#define veo_dprintf(fmt, ...) do {                                       \
     if (veo_debug == 1) { \
         fprintf(stdout, "[VH] " fmt, ## __VA_ARGS__);         \
         fflush(stdout);                             \
@@ -23,12 +23,12 @@ extern int veo_debug;
 #endif
 
 #ifdef __ve__
-#define eprintf(fmt, ...) do {               \
+#define veo_eprintf(fmt, ...) do {               \
     fprintf(stdout, "[VE] ERROR: " fmt, ## __VA_ARGS__);        \
     fflush(stdout);                             \
   } while(0)
 #else
-#define eprintf(fmt, ...) do {                                        \
+#define veo_eprintf(fmt, ...) do {                                        \
     fprintf(stdout, "[VH] ERROR: " fmt, ## __VA_ARGS__);              \
     fflush(stdout);                             \
   } while(0)

@@ -3,9 +3,9 @@
 #include <stdarg.h>
 #include "veo_debug.h"
 
-#define VEO_ERROR(fmt, ...) eprintf("%s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
-#define VEO_DEBUG(fmt, ...) dprintf("[DEBUG] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
-#define VEO_TRACE(fmt, ...) dprintf("[TRACE] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
+#define VEO_ERROR(fmt, ...) veo_eprintf("%s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
+#define VEO_DEBUG(fmt, ...) veo_dprintf("[DEBUG] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
+#define VEO_TRACE(fmt, ...) veo_dprintf("[TRACE] %s() " fmt "\n", __FUNCTION__, ## __VA_ARGS__)
 
 #define VEO_ASSERT(_cond) do { \
   if (!(_cond)) { \
