@@ -113,7 +113,7 @@ static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
       t++;
     }
   }
-	
+
   int64_t new_req = urpc_generic_send(up, URPC_CMD_RESULT, (char *)"L", symaddr);
   CHECK_REQ(new_req, req);
   return 0;
@@ -124,9 +124,9 @@ static int alloc_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 {
   size_t psz;
   size_t allocsz;
-    
+
   urpc_unpack_payload(payload, plen, (char *)"L", &allocsz);
-    
+
   void *addr = malloc(allocsz);
   VEO_DEBUG("addr=%p size=%lu", addr, allocsz);
 
@@ -142,7 +142,7 @@ static int free_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   uint64_t addr;
 
   urpc_unpack_payload(payload, plen, (char *)"L", &addr);
-  
+
   free((void *)addr);
   VEO_DEBUG("addr=%p", (void *)addr);
 

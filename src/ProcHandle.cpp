@@ -365,7 +365,7 @@ void ProcHandle::delContext(Context *ctx)
  *
  * The first context returned is the this->mctx!
  */
-Context *ProcHandle::openContext()
+Context *ProcHandle::openContext(size_t stack_sz)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
@@ -384,6 +384,7 @@ Context *ProcHandle::openContext()
     VEO_ERROR("No more contexts allowed. You should have at most one per VE core!");
     return nullptr;
   }
+  VEO_DEBUG("core = %d", core);
   
   // create vh side peer
   auto new_up = vh_urpc_peer_create();
@@ -392,8 +393,8 @@ Context *ProcHandle::openContext()
   }
 
   // start another thread inside peer proc that attaches to the new up
-  auto req = urpc_generic_send(this->up, URPC_CMD_NEWPEER, (char *)"II",
-                               new_up->shm_segid, core);
+  auto req = urpc_generic_send(this->up, URPC_CMD_NEWPEER, (char *)"IIL",
+                               new_up->shm_segid, core, stack_sz);
 
   if (urpc_wait_peer_attach(new_up) != 0) {
     throw VEOException("ProcHandle: timeout while waiting for VE.");

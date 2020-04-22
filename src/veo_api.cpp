@@ -28,6 +28,10 @@ CallArgs *CallArgsFromC(veo_args *a)
 {
   return reinterpret_cast<CallArgs *>(a);
 }
+ThreadContextAttr *ThreadContextAttrFromC(veo_thr_ctxt_attr *ta)
+{
+  return reinterpret_cast<ThreadContextAttr *>(ta);
+}
 
 template <typename T> int veo_args_set_(veo_args *ca, int argnum, T val)
 {
@@ -48,6 +52,7 @@ extern "C" { extern const char *VERSION; }
 using veo::api::ProcHandleFromC;
 using veo::api::ContextFromC;
 using veo::api::CallArgsFromC;
+using veo::api::ThreadContextAttrFromC;
 using veo::api::veo_args_set_;
 using veo::VEOException;
 
@@ -165,7 +170,7 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
 
     auto rv = new veo::ProcHandle(venode, veobin);
     return rv->toCHandle();
-    
+
   } catch (std::invalid_argument &e) {
     VEO_ERROR("failed to create proc: %s", e.what());
     return 0;
@@ -378,6 +383,7 @@ veo_thr_ctxt *veo_get_context(veo_proc_handle *proc, int idx)
  * @brief open a VEO context
  *
  * Create a new VEO context, a pseudo thread and VE thread for the context.
+ * All attributes which veo_context_open_with_attr() can specify have default value.
  *
  * @param proc VEO process handle
  * @return a pointer to VEO thread context upon success.
@@ -400,6 +406,39 @@ veo_thr_ctxt *veo_context_open(veo_proc_handle *proc)
   }
 }
 
+/**
+ * @brief open a VEO context with attributes.
+ *
+ * Create a new VEO context, a pseudo thread and VE thread for the context.
+ *
+ * @param proc VEO process handle
+ * @param tca veo_thr_ctxt_attr object
+ * @return a pointer to VEO thread context upon success.
+ * @retval NULL failed to create a VEO context.
+ */
+veo_thr_ctxt *veo_context_open_with_attr(
+				veo_proc_handle *proc, veo_thr_ctxt_attr *tca)
+{
+  if ((tca == nullptr) || (proc == nullptr)) {
+    errno = EINVAL;
+    return NULL;
+  }
+  auto attr = ThreadContextAttrFromC(tca);
+  try {
+    size_t stack_sz = attr->getStacksize();
+    veo_thr_ctxt *ctx = ProcHandleFromC(proc)->openContext(stack_sz)->toCHandle();
+    auto rv = reinterpret_cast<intptr_t>(ctx);
+    if ( rv < 0 ) {
+      errno = -rv;
+      return NULL;
+    }
+    return ctx;
+  } catch (VEOException &e) {
+    VEO_ERROR("failed to open context: %s", e.what());
+    errno = e.err();
+    return NULL;
+  }
+}
 /**
  * @brief close a VEO context
  *
@@ -798,6 +837,85 @@ uint64_t veo_call_async_vh(veo_thr_ctxt *ctx, uint64_t (*func)(void *), void *ar
   } catch (VEOException &e) {
     return VEO_REQUEST_ID_INVALID;
   }
+}
+
+/**
+ * @brief allocate and initialize VEO thread context attributes object
+ *        (veo_thr_ctxt_attr).
+ *
+ * @return pointer to veo_thr_ctxt_attr
+ * @retval NULL the allocation of veo_thr_ctxt_attr failed.
+ */
+veo_thr_ctxt_attr *veo_alloc_thr_ctxt_attr(void)
+{
+  try {
+    auto rv = new veo::ThreadContextAttr();
+    return rv->toCHandle();
+  } catch (VEOException &e) {
+    errno = e.err();
+    return NULL;
+  }
+}
+
+/**
+ * @brief free VEO thread context attributes object.
+ *        freeing a VEO thread context attributes object has no effect on VEO
+ *        thread contexts that were created using that object.
+ *
+ * @param tca veo_thr_ctxt_attr object
+ * @retval 0 VEO thread context attributes are successfully freed.
+ * @retval -1 VEO thread context attributes de-allocation failed.
+ */
+int veo_free_thr_ctxt_attr(veo_thr_ctxt_attr *tca)
+{
+  if (tca == nullptr) {
+    errno = EINVAL;
+    return -1;
+  }
+  delete ThreadContextAttrFromC(tca);
+  return 0;
+}
+
+/**
+ * @brief set stack size of VE thread which executes a VE function.
+ *
+ * @param tca veo_thr_ctxt_attr object
+ * @param stack_sz stack size of VE thread
+ *
+ * @return 0 upon success; -1 upon failure.
+ */
+int veo_set_thr_ctxt_stacksize(veo_thr_ctxt_attr *tca, size_t stack_sz)
+{
+  if (tca == nullptr) {
+    errno = EINVAL;
+    return -1;
+  }
+  try {
+    ThreadContextAttrFromC(tca)->setStacksize(stack_sz);
+  } catch (VEOException &e) {
+    VEO_ERROR("failed veo_set_thr_ctxt_stacksize (%p)", tca);
+    errno = e.err();
+    return -1;
+  }
+  return 0;
+}
+
+/**
+ * @brief get stack size of VE thread which executes a VE function.
+ *
+ * @param tca veo_thr_ctxt_attr object
+ * @param stack_sz pointer to store stack size of VE thread.
+ *
+ * @return 0 upon success; -1 upon failure.
+ */
+int veo_get_thr_ctxt_stacksize(veo_thr_ctxt_attr *tca, size_t *stack_sz)
+{
+  if (tca == nullptr || stack_sz == nullptr) {
+    errno = EINVAL;
+    return -1;
+  }
+  *stack_sz = ThreadContextAttrFromC(tca)->getStacksize();
+  return 0;
 }
 
 //@}

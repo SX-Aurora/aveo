@@ -43,21 +43,30 @@ static int newpeer_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                            void *payload, size_t plen)
 {
   int segid, core;
+  uint64_t stack_sz;
+  pthread_attr_t _a;
   urpc_peer_t *new_up;
 
-  urpc_unpack_payload(payload, plen, (char *)"II", &segid, &core);
+  urpc_unpack_payload(payload, plen, (char *)"IIL", &segid, &core, &stack_sz);
   new_up = ve_urpc_init(segid);
 
   ve_handler_loop_arg_t arg = { .up = new_up, .core = core };
 
   ve_urpc_unpin();
-  
+
+  VEO_DEBUG("Received stacksize of VEO context thread : 0x%lx", stack_sz);
+  pthread_attr_init(&_a);
+  pthread_attr_setstacksize(&_a, stack_sz);
+
   // start new pthread
-  int rc = pthread_create(&__handler_loop_pthreads[__num_ve_peers], NULL, ve_handler_loop, (void *)&arg);
+  int rc = pthread_create(&__handler_loop_pthreads[__num_ve_peers], &_a, ve_handler_loop, (void *)&arg);
   if (rc) {
     VEO_ERROR("pthread_create failed with rc=%d", rc);
     return -1;
   }
+
+  pthread_attr_destroy(&_a);
+
   __num_ve_peers++;
   while (new_up->core != core);
 

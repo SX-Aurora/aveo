@@ -370,4 +370,22 @@ int Context::callWaitResult(uint64_t reqid, uint64_t *retp)
 #endif
 }
 
+/**
+ * @brief constructor
+ */
+
+ThreadContextAttr::ThreadContextAttr()
+{
+  this->stacksize = VEO_DEFAULT_STACKSIZE;
+}
+
+void ThreadContextAttr::setStacksize(size_t stack_sz)
+{
+  if (stack_sz < VEO_STACK_MIN) {
+    VEO_ERROR("stack size of VEO context must be more equal to 0x%lx", VEO_STACK_MIN);
+   throw VEOException("invalid stack size of VEO context", EINVAL);
+  }
+ this->stacksize = stack_sz;
+}
+
 } // namespace veo

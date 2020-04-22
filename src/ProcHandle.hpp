@@ -63,7 +63,7 @@ public:
   int callSync(uint64_t, CallArgs &, uint64_t *);
 
   Context *mainContext() { return this->mctx; };
-  Context *openContext();
+  Context *openContext(size_t stack_sz = VEO_DEFAULT_STACKSIZE);
   void delContext(Context *);
 
   veo_proc_handle *toCHandle() {

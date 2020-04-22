@@ -37,6 +37,11 @@ VERSION_1 {
     veo_write_mem;
     veo_async_read_mem;
     veo_async_write_mem;
+    veo_context_open_with_attr;
+    veo_alloc_thr_ctxt_attr;
+    veo_free_thr_ctxt_attr;
+    veo_set_thr_ctxt_stacksize;
+    veo_get_thr_ctxt_stacksize;
     /* AVEO API extensions */
     veo_call_sync;
     veo_num_contexts;

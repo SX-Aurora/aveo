@@ -18,6 +18,7 @@ namespace veo {
 
 class ProcHandle;
 class CallArgs;
+class ThreadContextAttr;
 
 /**
  * @brief VEO thread context
@@ -88,6 +89,27 @@ public:
 
   ProcHandle *proc;
 
+};
+
+/* 128MB, default stacksize of VE thread */
+#define VEO_DEFAULT_STACKSIZE 0x8000000
+/* PTHREAD_STACK_MIN in VE-glibc */
+#define VEO_STACK_MIN (4 * 1024 * 1024)
+
+class ThreadContextAttr {
+private:
+  size_t stacksize;
+
+public:
+  ThreadContextAttr();
+  ~ThreadContextAttr() {};
+
+  void setStacksize(size_t);
+  size_t getStacksize() { return this->stacksize;}
+
+  veo_thr_ctxt_attr *toCHandle() {
+    return reinterpret_cast<veo_thr_ctxt_attr *>(this);
+  }
 };
 
 } // namespace veo
