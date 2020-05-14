@@ -434,6 +434,8 @@ Context *ProcHandle::openContext(size_t stack_sz)
 __attribute__((destructor))
 static void _cleanup_procs(void)
 {
+  if (!veo::__procs)
+    return;
   for (auto it = veo::__procs->begin(); it != veo::__procs->end();) {
     // we don't increment the iterator because exitProc() is actually
     // doing the remove.
