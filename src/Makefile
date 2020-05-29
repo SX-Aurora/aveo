@@ -21,12 +21,13 @@ VHLIB_OBJS := $(addprefix $(BVH)/,\
 
 VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o log.o)
 
-LIBS = $(addprefix $(BLIB)/,libaveoVE.so libaveoVH.so libaveoVE.a libaveoVH.a)
-PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun gen_aveorun_static_symtable)
-INCLUDES := $(addprefix $(BINC)/,ve_offload.h)
+LIBS = $(addprefix $(BLIB)/,libveo.so libveo.a libveo.so.1 libveo.so.1.0.0)
+VELIBS = $(addprefix $(BVELIB)/,libaveoVE.so.1.0.0 libaveoVE.so libaveoVE.so.1 libaveoVE.a)
+PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun gen_veorun_static_symtable)
+INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h)
 
 
-ALL: $(LIBS) $(INCLUDES) $(PROGS)
+ALL: $(LIBS) $(VELIBS) $(INCLUDES) $(PROGS)
 
 .PRECIOUS: $(DEST)/ $(DEST)%/
 
@@ -34,23 +35,28 @@ ALL: $(LIBS) $(INCLUDES) $(PROGS)
 	mkdir -p $@
 
 install: ALL
-	mkdir -p $(PREF)$(DEST)/lib/ $(PREF)$(DEST)/libexec/ $(PREF)$(DEST)/include/ $(PREF)$(dir $(VEORUN_BIN))/
-	/usr/bin/install -t $(PREF)$(DEST)/lib $(LIBS)
-	if [ -L $(PREF)$(DEST)/lib/libveo.so ]; then \
-		rm -f $(PREF)$(DEST)/lib/libveo.so; \
+	mkdir -p $(PREF)$(DEST)/lib64/ $(PREF)$(DEST)/lib/ $(PREF)$(DEST)/libexec/ $(PREF)$(DEST)/include/ $(PREF)$(dir $(VEORUN_BIN))/
+	/usr/bin/install -t $(PREF)$(DEST)/lib64 $(LIBS)
+	if [ -L $(PREF)$(DEST)/lib64/libveo.so ]; then \
+		rm -f $(PREF)$(DEST)/lib64/libveo.so; \
 	fi
-	( cd $(PREF)$(DEST)/lib; ln -s libaveoVH.so libveo.so; )
+	( cd $(PREF)$(DEST)/lib64; ln -sf libveo.so.1.0.0 libveo.so; ln -sf libveo.so.1.0.0 libveo.so.1)
+	/usr/bin/install -t $(PREF)$(DEST)/lib $(VELIBS)
+	if [ -L $(PREF)$(DEST)/lib/libaveoVE.so ]; then \
+		rm -f $(PREF)$(DEST)/lib/libaveoVE.so; \
+	fi
+	( cd $(PREF)$(DEST)/lib; ln -sf libaveoVE.so.1.0.0 libaveoVE.so; ln -sf libaveoVE.so.1.0.0 libaveoVE.so.1)
 	/usr/bin/install -t $(PREF)$(DEST)/include $(INCLUDES)
 	/usr/bin/install $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
-	/usr/bin/install ../scripts/gen_aveorun_static_symtable $(PREF)$(DEST)/libexec
-	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(DEST)/lib,g" \
-		< ../scripts/relink_aveorun.in > $(PREF)$(DEST)/libexec/relink_aveorun
-	chmod 755 $(PREF)$(DEST)/libexec/relink_aveorun
-	if [ -L $(PREF)$(DEST)/libexec/mk_veorun_static ]; then \
-		rm -f $(PREF)$(DEST)/libexec/mk_veorun_static; \
+	/usr/bin/install ../scripts/gen_veorun_static_symtable $(PREF)$(DEST)/libexec
+	if [ -z $(PREF) ]; then \
+		sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(DEST)/lib,g" \
+		< ../scripts/relink_aveorun.in > $(PREF)$(DEST)/libexec/mk_veorun_static; \
+	else \
+		sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,/opt/nec/ve/lib,g" \
+		< ../scripts/relink_aveorun.in > $(PREF)$(DEST)/libexec/mk_veorun_static; \
 	fi
-	( cd $(PREF)$(DEST)/libexec; ln -s relink_aveorun mk_veorun_static; )
-
+	chmod 755 $(PREF)$(DEST)/libexec/mk_veorun_static
 
 %/ProcHandle.o: ProcHandle.cpp ProcHandle.hpp VEOException.hpp veo_urpc.h CallArgs.hpp log.h
 %/Context.o: Context.cpp Context.hpp VEOException.hpp veo_urpc.h CallArgs.hpp \
@@ -70,35 +76,57 @@ install: ALL
 $(BINC)/%.h: %.h | $$(@D)/
 	/usr/bin/install -t $(BINC) $<
 
-$(BLIB)/libaveoVE.so: $(VELIB_OBJS) | $$(@D)/
-	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared -o $@ $^ \
-		$(BLIB)/liburpcVE_omp.a $(NLDFLAGS) -lveio -lveftrace -ldl
+$(BVELIB)/libaveoVE.so.1.0.0: $(VELIB_OBJS) | $$(@D)/
+	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared \
+	-Wl,-soname=libaveoVE.so.1 -o $@ $^ $(BVELIB)/liburpcVE_omp.a \
+	-L/opt/nec/ve/lib64 -lveio -lveftrace -ldl
+#	$(NLDFLAGS) -lveio -lveftrace -ldl
 
-$(BLIB)/libaveoVH.so: $(VHLIB_OBJS) | $$(@D)/
-	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -o $@ $^ \
-		$(BLIB)/liburpcVH.a $(LDFLAGS) -Wl,--version-script=libaveoVH.map -ldl
+$(BVELIB)/libaveoVE.so.1: $(BVELIB)/libaveoVE.so.1.0.0
+	ln -sf $< $@
 
-$(BLIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
+$(BVELIB)/libaveoVE.so: $(BVELIB)/libaveoVE.so.1
+	ln -sf $< $@
+
+$(BLIB)/libveo.so.1.0.0: $(VHLIB_OBJS) | $$(@D)/
+	$(GPP) -Wl,-zdefs $(GPPFLAGS) -fpic -shared -Wl,-soname=libveo.so.1 -o $@ $^ \
+		$(BLIB)/liburpcVH.a -Wl,-rpath,/opt/nec/ve/veos/lib64 \
+		-Wl,--version-script=libaveoVH.map -ldl
+#		$(BLIB)/liburpcVH.a $(LDFLAGS) -Wl,--version-script=libaveoVH.map -ldl
+
+$(BLIB)/libveo.so.1: $(BLIB)/libveo.so.1.0.0
+	ln -sf $< $@
+
+$(BLIB)/libveo.so: $(BLIB)/libveo.so.1.0.0
+	ln -sf $< $@
+
+$(BVELIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
 
-$(BLIB)/libaveoVH.a: $(VHLIB_OBJS) | $$(@D)/
+$(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
 	$(AR) rv $@ $^
 
-
 $(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
-	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
-		-L$(BLIB) -laveoVE -lveio -lpthread
+	if [ -z $(PREF) ]; then \
+		$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ -L. \
+			-L$(BLIB) -L$(BVELIB) -Wl,-rpath,/opt/nec/ve/lib \
+			$(NLDFLAGS) -laveoVE -lveio -lpthread;\
+	else \
+		$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ -L. \
+			-L$(BLIB) -L$(BVELIB) -Wl,-rpath,/opt/nec/ve/lib \
+			-laveoVE -lveio -lpthread;\
+	fi
 
 $(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
 		-L$(BLIB) -laveoVE -lveio -lpthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
-	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@libdir@,$(BUILD)/lib,g" \
+	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(BUILD)/lib,g" \
 		< $< > $@
 	chmod 755 $@
 
-$(BLIBEX)/gen_aveorun_static_symtable: ../scripts/gen_aveorun_static_symtable
+$(BLIBEX)/gen_veorun_static_symtable: ../scripts/gen_veorun_static_symtable
 	cp -p $< $@
 	chmod 755 $@
 
@@ -128,4 +156,4 @@ $(BVE)/aveorun-ftrace.o: aveorun.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:
-	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(PROGS)
+	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(VELIBS) $(PROGS)

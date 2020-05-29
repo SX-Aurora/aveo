@@ -22,10 +22,11 @@ NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(INCL) -finline -f
 NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(INCL) -finline -finline-functions
 NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(INCL)
 LDFLAGS = \
-  -Wl,-rpath,$(abspath $(DEST)/lib) -L$(DEST)/lib \
+  -Wl,-rpath,$(abspath $(DEST)/lib64) -L$(DEST)/lib64 \
   -Wl,-rpath,$(abspath $(BLIB)) -L$(BLIB) \
-  -Wl,-rpath,$(abspath $(URPC_INST_DIR)/lib) -L$(URPC_INST_DIR)/lib 
-NLDFLAGS = -Wl,-rpath,/opt/nec/ve/lib -L/opt/nec/ve/lib $(LDFLAGS)
+  -Wl,-rpath,$(abspath $(BVELIB)) -L$(BVELIB) \
+  -Wl,-rpath,$(abspath $(URPC_INST_DIR)/lib64) -L$(URPC_INST_DIR)/lib64 
+NLDFLAGS = -Wl,-rpath,/opt/nec/ve/lib64 -L/opt/nec/ve/lib64 $(LDFLAGS)
 
 
 # build directory substructure
@@ -33,7 +34,8 @@ BVE     = $(BUILD)/ve
 BVE_OMP = $(BUILD)/ve_omp
 BVH     = $(BUILD)/vh
 BB      = $(BUILD)/bin
-BLIB    = $(BUILD)/lib
+BLIB    = $(BUILD)/lib64
+BVELIB	= $(BUILD)/lib
 BLIBEX  = $(BUILD)/libexec
 BINC    = $(BUILD)/include
 
