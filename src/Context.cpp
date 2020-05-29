@@ -46,6 +46,13 @@ int Context::close()
     VEO_ERROR("child sent no ACK to EXIT. Killing it.");
     vh_urpc_child_destroy(this->up);
   }
+  if (this->up->child_pid > 0) {
+    int status;
+    VEO_TRACE("entering waitpid(%d)", this->up->child_pid);
+    waitpid(this->up->child_pid, &status, 0);
+    VEO_DEBUG("waitpid(%d) returned status=%d\n", this->up->child_pid, status);
+    this->up->child_pid = -1;
+  }
   rc = vh_urpc_peer_destroy(this->up);
   return rc;
 }
