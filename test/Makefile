@@ -49,9 +49,8 @@ test: ALL
 
 $(BB)/%: %.c  | $$(@D)/
 	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
-
 $(BB)/%: %.cpp  | $$(@D)/
-	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH
+	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
