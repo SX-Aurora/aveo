@@ -160,12 +160,12 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
   if (env_p)
     maxfrag = atoi(env_p);
   if (size < PART_SENDFRAG * 4)
-    if (size > 120 * 1024)
-      maxfrag = ALIGN8B(size / 2);
+    if (size > 512 * 1024)
+      maxfrag = ALIGN8B(size / 4);
     else if (size > 240 * 1024)
       maxfrag = ALIGN8B(size / 3);
-    else if (size > 512 * 1024)
-      maxfrag = ALIGN8B(size / 4);
+    else if (size > 120 * 1024)
+      maxfrag = ALIGN8B(size / 2);
 
   auto id = this->issueRequestID();
   auto f = [this, maxfrag, dst, src, size, id] (Command *cmd)
@@ -233,12 +233,12 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
   if (env_p)
     maxfrag = atoi(env_p);
   if (size < PART_SENDFRAG * 4)
-    if (size > 120 * 1024)
-      maxfrag = ALIGN8B(size / 2);
+    if (size > 512 * 1024)
+      maxfrag = ALIGN8B(size / 4);
     else if (size > 240 * 1024)
       maxfrag = ALIGN8B(size / 3);
-    else if (size > 512 * 1024)
-      maxfrag = ALIGN8B(size / 4);
+    else if (size > 120 * 1024)
+      maxfrag = ALIGN8B(size / 2);
 
   auto id = this->issueRequestID();
   auto f = [this, maxfrag, dst, src, size, id] (Command *cmd)
