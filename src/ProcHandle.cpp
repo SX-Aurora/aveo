@@ -193,7 +193,7 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
   }
 
   // wait for result
-  int64_t result = 0;
+  int64_t result = -1;
   wait_req_result(this->up, req, (int64_t *)&result);
 
   VEO_TRACE("result = %ld", result);
@@ -302,6 +302,10 @@ int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done, rv=%d", rv);
+    rv = -1;
+  }
   return rv;
 }
 
@@ -322,7 +326,10 @@ int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
-  VEO_TRACE("done. rv=%d", rv);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done. rv=%d", rv);
+    rv = -1;
+  }
   return rv;
 }
 
@@ -467,6 +474,7 @@ Context *ProcHandle::openContext(size_t stack_sz)
   CallArgs args;
   auto rc2 = new_ctx->callSync(0, args, &new_ctx->ve_sp);
   if (rc2 < 0) {
+    vh_urpc_peer_destroy(new_up);
     throw VEOException("ProcHandle: failed to get the new VE SP.");
   }
   dprintf("proc stack pointer: %p\n", (void *)new_ctx->ve_sp);
