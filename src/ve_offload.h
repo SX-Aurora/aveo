@@ -108,7 +108,7 @@ int veo_call_sync(struct veo_proc_handle *h, uint64_t addr,
 
 uint64_t veo_call_async(struct veo_thr_ctxt *, uint64_t, struct veo_args *);
 uint64_t veo_call_async_by_name(struct veo_thr_ctxt *, uint64_t, const char *, struct veo_args *);
-uint64_t veo_call_async_vh(struct veo_thr_ctxt *, int64_t (*)(void *, size_t), void *);
+uint64_t veo_call_async_vh(struct veo_thr_ctxt *, uint64_t (*)(void *), void *);
 
 int veo_call_peek_result(struct veo_thr_ctxt *, uint64_t, uint64_t *);
 int veo_call_wait_result(struct veo_thr_ctxt *, uint64_t, uint64_t *);
