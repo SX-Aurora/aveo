@@ -41,6 +41,9 @@ int Context::close()
     return 0;
   this->state = VEO_STATE_EXIT;
   uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_EXIT);
+  }
   auto rc = wait_req_ack(this->up, req);
   if (rc < 0) {
     VEO_ERROR("child sent no ACK to EXIT. Killing it.");

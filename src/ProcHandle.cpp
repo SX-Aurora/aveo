@@ -149,6 +149,10 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   // send loadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
                                    libname, (size_t)strlen(libname) + 1);
+  if (req < 0) {   
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_LOADLIB);
+    return NULL;
+  }
 
   // wait for result
   uint64_t handle = 0;
@@ -183,6 +187,10 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
   // send unloadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
                                    handle);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_UNLOADLIB);
+    return -1;
+  }
 
   // wait for result
   int64_t result = 0;
@@ -221,6 +229,10 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
 
   uint64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
                                    libhdl, symname, (size_t)strlen(symname) + 1);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_GETSYM);
+    return NULL;
+  }
 
   uint64_t symaddr = 0;
   wait_req_result(this->up, req, (int64_t *)&symaddr);
@@ -246,7 +258,10 @@ uint64_t ProcHandle::allocBuff(const size_t size)
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
   uint64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
-
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_ALLOC);
+    return NULL;
+  }
   uint64_t addr = 0;
   wait_req_result(this->up, req, (int64_t *)&addr);
   return addr;
@@ -263,6 +278,10 @@ void ProcHandle::freeBuff(const uint64_t buff)
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
   uint64_t req = urpc_generic_send(up, URPC_CMD_FREE, (char *)"L", buff);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_FREE);
+    return;
+  }
   wait_req_ack(this->up, req);
 }
 
@@ -420,8 +439,13 @@ Context *ProcHandle::openContext(size_t stack_sz)
   // start another thread inside peer proc that attaches to the new up
   auto req = urpc_generic_send(this->up, URPC_CMD_NEWPEER, (char *)"IIL",
                                new_up->shm_segid, core, stack_sz);
-
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_NEWPEER);
+    vh_urpc_peer_destroy(new_up);
+    return nullptr;
+  }
   if (urpc_wait_peer_attach(new_up) != 0) {
+    vh_urpc_peer_destroy(new_up);
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
   int64_t rc;
