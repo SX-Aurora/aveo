@@ -424,16 +424,16 @@ Context *ProcHandle::openContext(size_t stack_sz)
   if (urpc_wait_peer_attach(new_up) != 0) {
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
-  // wait for peer receiver to set flag to 1
-  while(! (urpc_get_receiver_flags(&new_up->send) & 0x1) ) {
-    busy_sleep_us(1000);
-  }
-
   int64_t rc;
   wait_req_result(this->up, req, &rc);
   if (rc) {
     vh_urpc_peer_destroy(new_up);
     return nullptr;
+  }
+
+  // wait for peer receiver to set flag to 1
+  while(! (urpc_get_receiver_flags(&new_up->send) & 0x1) ) {
+    busy_sleep_us(1000);
   }
 
   auto new_ctx = new Context(this, new_up, false);
