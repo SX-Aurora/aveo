@@ -374,13 +374,37 @@ Context *ProcHandle::openContext(size_t stack_sz)
     this->ctx.push_back(std::unique_ptr<Context>(this->mctx));
     return this->mctx;
   }
-  
   // compute core
-  int core = this->ctx.back()->core + 1;
+  /*
+   * If the environment variable VE_CORE_NUMBER is not set,
+   * first ctx is created on core (0).
+   * In this case, this->mctx->core is -1 and the next ctx
+   * will need to be created on core (1).
+   * If VE_CORE_NUMBER is set, first ctx is created on core 
+   * (VE_CORE_NUMBER) and this->mctx->core is VE_CORE_NUMBER.
+   * The next ctx will need to be created on core 
+   * (VE_CORE_NUMBER + 1).
+   * The ctx from the third must be created on core of ((the 
+   * previous ctx) + 1).
+   */
+  int core = -1;
+  if (this->ctx.size() < 2) {
+    // first ctx
+    if (this->mctx->core == -1) {
+      // VE_CORE_NUMBER is not set
+      core = 1;
+    } else { 
+      // VE_CORE_NUMBER is set
+      core = (this->mctx->core + 1)%MAX_VE_CORES;
+    }
+  } else {
+    // ctx from the third
+    core = (this->ctx.back()->core + 1)%MAX_VE_CORES;
+  }
 #ifdef _OPENMP
   core += omp_get_num_threads() - 1;
 #endif
-  if (core >= MAX_VE_CORES) {
+  if (this->ctx.size() >= MAX_VE_CORES) {
     VEO_ERROR("No more contexts allowed. You should have at most one per VE core!");
     return nullptr;
   }
@@ -412,6 +436,7 @@ Context *ProcHandle::openContext(size_t stack_sz)
   }
 
   auto new_ctx = new Context(this, new_up, false);
+  new_ctx->core = core;
   this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 
   CallArgs args;
