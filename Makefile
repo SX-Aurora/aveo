@@ -16,7 +16,7 @@ include make_aveo.inc
 
 MAKEVARS = DEST=$(DEST) BUILD=$(BUILD) URPC_INST_DIR=$(URPC_INST_DIR) PREF=$(PREF)
 
-ALL: $(PREPARE) aveo tests
+ALL: $(PREPARE) aveo tests doc
 
 aveo:
 	make -C src $(MAKEVARS)
@@ -27,6 +27,8 @@ tests:
 test:
 	make -C test test $(MAKEVARS)
 
+doc:
+	make -C doc 
 
 install: ALL $(PREPAREINSTALL)
 	make -C prereqs/ve-urpc install BUILD=$(BUILD) DEST=$(URPC_INST_DIR) PREF=$(PREF)
@@ -68,9 +70,9 @@ ve-urpc-install: ve-urpc
 clean:
 	make -C src clean $(MAKEVARS)
 	make -C test clean $(MAKEVARS)
-
+	make -C doc clean 
 realclean: clean
 	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs
 
-.PHONY: aveo tests test install ve-urpc clean realclean 
+.PHONY: aveo tests test install ve-urpc clean realclean doc

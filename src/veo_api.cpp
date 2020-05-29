@@ -1,3 +1,19 @@
+/**
+ * @mainpage Introduction
+ *
+ * VE offloading is a framework to provide accelerator-style programming
+ * on Vector Engine (VE).
+ * Using VEO, a programmer can execute code on VE and can control the
+ * execution from VH main program.
+ *
+ * This document describes public APIs for VEO.
+ * The page "Modules" shows a list of VEO API functions.
+ *
+ * @author Erich Focht
+ *
+ * @author NEC Corporation
+ * @copyright 2017-2020. Licensed under the terms of LGPL v2.1.
+ */
 #include "ve_offload.h"
 
 #include <cstdio>
@@ -366,6 +382,13 @@ int veo_num_contexts(veo_proc_handle *h)
   return ProcHandleFromC(h)->numContexts();
 }
 
+/**
+ * @brief Return a pointer of VEO thread context in a proc
+ *
+ * @param proc VEO process handle
+ * @param idx index / position inside the ctx vector
+ * @return a pointer to VEO thread context upon success.
+ */
 veo_thr_ctxt *veo_get_context(veo_proc_handle *proc, int idx)
 {
   try {
@@ -443,6 +466,7 @@ veo_thr_ctxt *veo_context_open_with_attr(
     return NULL;
   }
 }
+
 /**
  * @brief close a VEO context
  *
@@ -478,6 +502,7 @@ void veo_context_sync(veo_thr_ctxt *ctx)
 /**
  * @brief get VEO context state
  *
+ * @param ctx VEO context
  * @return the state of the VEO context state.
  * @retval VEO_STATE_RUNNING VEO context is running.
  * @retval VEO_STATE_EXIT VEO context  exited.
