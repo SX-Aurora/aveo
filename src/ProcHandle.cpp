@@ -57,6 +57,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   // create VE process connected to this peer
   auto rv = vh_urpc_child_create(this->up, binname, venode, vecore);
   if (rv != 0) {
+    vh_urpc_peer_destroy(this->up);
     throw VEOException("ProcHandle: failed to create VE process.");
     VEO_ERROR("failed to create VE process, binname=%s venode=%d core=%d",
               binname, venode, vecore);
@@ -460,7 +461,7 @@ __attribute__((destructor))
 static void _cleanup_procs(void)
 {
   if (veo::__procs == nullptr) {
-    VEO_TRACE("nothing to do\n");
+    VEO_TRACE("Nothing to do");
     return;
   }
 
