@@ -355,10 +355,14 @@ int veo_write_mem(veo_proc_handle *h, uint64_t dst, const void *src,
  * @brief Return number of open contexts in a proc
  *
  * @param h VEO process handle
- * @return number of open contexts.
+ * @return number of open contexts: negative upon failure.
  */
 int veo_num_contexts(veo_proc_handle *h)
 {
+  if (h == nullptr) {
+    errno = EINVAL;
+    return -1;
+  }
   return ProcHandleFromC(h)->numContexts();
 }
 
