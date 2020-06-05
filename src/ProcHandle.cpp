@@ -57,6 +57,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   // create VE process connected to this peer
   auto rv = vh_urpc_child_create(this->up, binname, venode, vecore);
   if (rv != 0) {
+    vh_urpc_peer_destroy(this->up);
     throw VEOException("ProcHandle: failed to create VE process.");
     VEO_ERROR("failed to create VE process, binname=%s venode=%d core=%d",
               binname, venode, vecore);
@@ -148,6 +149,10 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   // send loadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
                                    libname, (size_t)strlen(libname) + 1);
+  if (req < 0) {   
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_LOADLIB);
+    return NULL;
+  }
 
   // wait for result
   uint64_t handle = 0;
@@ -182,9 +187,13 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
   // send unloadlib cmd
   uint64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
                                    handle);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_UNLOADLIB);
+    return -1;
+  }
 
   // wait for result
-  int64_t result = 0;
+  int64_t result = -1;
   wait_req_result(this->up, req, (int64_t *)&result);
 
   VEO_TRACE("result = %ld", result);
@@ -220,6 +229,10 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
 
   uint64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
                                    libhdl, symname, (size_t)strlen(symname) + 1);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_GETSYM);
+    return NULL;
+  }
 
   uint64_t symaddr = 0;
   wait_req_result(this->up, req, (int64_t *)&symaddr);
@@ -245,7 +258,10 @@ uint64_t ProcHandle::allocBuff(const size_t size)
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
   uint64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
-
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_ALLOC);
+    return NULL;
+  }
   uint64_t addr = 0;
   wait_req_result(this->up, req, (int64_t *)&addr);
   return addr;
@@ -262,6 +278,10 @@ void ProcHandle::freeBuff(const uint64_t buff)
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
   uint64_t req = urpc_generic_send(up, URPC_CMD_FREE, (char *)"L", buff);
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_FREE);
+    return;
+  }
   wait_req_ack(this->up, req);
 }
 
@@ -282,6 +302,10 @@ int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done, rv=%d", rv);
+    rv = -1;
+  }
   return rv;
 }
 
@@ -302,7 +326,10 @@ int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
   }
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
-  VEO_TRACE("done. rv=%d", rv);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done. rv=%d", rv);
+    rv = -1;
+  }
   return rv;
 }
 
@@ -374,13 +401,37 @@ Context *ProcHandle::openContext(size_t stack_sz)
     this->ctx.push_back(std::unique_ptr<Context>(this->mctx));
     return this->mctx;
   }
-  
   // compute core
-  int core = this->ctx.back()->core + 1;
+  /*
+   * If the environment variable VE_CORE_NUMBER is not set,
+   * first ctx is created on core (0).
+   * In this case, this->mctx->core is -1 and the next ctx
+   * will need to be created on core (1).
+   * If VE_CORE_NUMBER is set, first ctx is created on core 
+   * (VE_CORE_NUMBER) and this->mctx->core is VE_CORE_NUMBER.
+   * The next ctx will need to be created on core 
+   * (VE_CORE_NUMBER + 1).
+   * The ctx from the third must be created on core of ((the 
+   * previous ctx) + 1).
+   */
+  int core = -1;
+  if (this->ctx.size() < 2) {
+    // first ctx
+    if (this->mctx->core == -1) {
+      // VE_CORE_NUMBER is not set
+      core = 1;
+    } else { 
+      // VE_CORE_NUMBER is set
+      core = (this->mctx->core + 1)%MAX_VE_CORES;
+    }
+  } else {
+    // ctx from the third
+    core = (this->ctx.back()->core + 1)%MAX_VE_CORES;
+  }
 #ifdef _OPENMP
   core += omp_get_num_threads() - 1;
 #endif
-  if (core >= MAX_VE_CORES) {
+  if (this->ctx.size() >= MAX_VE_CORES) {
     VEO_ERROR("No more contexts allowed. You should have at most one per VE core!");
     return nullptr;
   }
@@ -395,15 +446,15 @@ Context *ProcHandle::openContext(size_t stack_sz)
   // start another thread inside peer proc that attaches to the new up
   auto req = urpc_generic_send(this->up, URPC_CMD_NEWPEER, (char *)"IIL",
                                new_up->shm_segid, core, stack_sz);
-
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_NEWPEER);
+    vh_urpc_peer_destroy(new_up);
+    return nullptr;
+  }
   if (urpc_wait_peer_attach(new_up) != 0) {
+    vh_urpc_peer_destroy(new_up);
     throw VEOException("ProcHandle: timeout while waiting for VE.");
   }
-  // wait for peer receiver to set flag to 1
-  while(! (urpc_get_receiver_flags(&new_up->send) & 0x1) ) {
-    busy_sleep_us(1000);
-  }
-
   int64_t rc;
   wait_req_result(this->up, req, &rc);
   if (rc) {
@@ -411,12 +462,19 @@ Context *ProcHandle::openContext(size_t stack_sz)
     return nullptr;
   }
 
+  // wait for peer receiver to set flag to 1
+  while(! (urpc_get_receiver_flags(&new_up->send) & 0x1) ) {
+    busy_sleep_us(1000);
+  }
+
   auto new_ctx = new Context(this, new_up, false);
+  new_ctx->core = core;
   this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 
   CallArgs args;
   auto rc2 = new_ctx->callSync(0, args, &new_ctx->ve_sp);
   if (rc2 < 0) {
+    vh_urpc_peer_destroy(new_up);
     throw VEOException("ProcHandle: failed to get the new VE SP.");
   }
   dprintf("proc stack pointer: %p\n", (void *)new_ctx->ve_sp);

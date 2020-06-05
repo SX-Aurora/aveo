@@ -78,6 +78,17 @@ void *child(void *arg)
   }
   printf("0x%lx: %d, %lu\n", id, ret, retval);
   veo_args_free(argp);
+  int err = 0;
+  err = veo_context_close(ctx);
+  if (err != 0) {
+    printf("veo_context_close() failed!\n");
+    exit(1);
+  }
+  err = veo_proc_destroy(proc);
+  if (err != 0) {
+    printf("veo_proc_destroy() failed!\n");
+    exit(1);
+  }
 }
 
 int 

@@ -48,10 +48,9 @@ test: ALL
 .SECONDEXPANSION:
 
 $(BB)/%: %.c  | $$(@D)/
-	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH
-
+	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
 $(BB)/%: %.cpp  | $$(@D)/
-	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -laveoVH
+	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
@@ -60,8 +59,8 @@ $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
 
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
-	env RELINKVEO_GEN=../scripts/gen_aveorun_static_symtable \
-	    RELINKVEO_LIB=$(BLIB)/libaveoVE.a \
+	env RELINKVEO_GEN=../scripts/gen_veorun_static_symtable \
+	    RELINKVEO_LIB=$(BVELIB)/libaveoVE.a \
 	    $(BLIBEX)/relink_aveorun $@ -fopenmp $<
 
 $(BVE)/%.o: %.c | $$(@D)/

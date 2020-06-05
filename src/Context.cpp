@@ -41,10 +41,22 @@ int Context::close()
     return 0;
   this->state = VEO_STATE_EXIT;
   uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
+  if (req < 0) {
+    VEO_ERROR("failed to send cmd %d", URPC_CMD_EXIT);
+    vh_urpc_peer_destroy(this->up);
+    return -1;
+  }
   auto rc = wait_req_ack(this->up, req);
   if (rc < 0) {
     VEO_ERROR("child sent no ACK to EXIT. Killing it.");
     vh_urpc_child_destroy(this->up);
+  }
+  if (this->up->child_pid > 0) {
+    int status;
+    VEO_TRACE("entering waitpid(%d)", this->up->child_pid);
+    waitpid(this->up->child_pid, &status, 0);
+    VEO_DEBUG("waitpid(%d) returned status=%d\n", this->up->child_pid, status);
+    this->up->child_pid = -1;
   }
   rc = vh_urpc_peer_destroy(this->up);
   return rc;
@@ -184,6 +196,10 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
   VEO_TRACE("VE function %#lx", addr);
 
   int64_t req = send_call_nolock(this->up, this->ve_sp, addr, args);
+  if (req < 0) {
+    VEO_ERROR("Sending callSync request failed\n");
+    return -1;
+  }
 
   // TODO: make sync call timeout configurable
   if (!urpc_recv_req_timeout(this->up, &m, req, (long)(15*REPLY_TIMEOUT), &payload, &plen)) {

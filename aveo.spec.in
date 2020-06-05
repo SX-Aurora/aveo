@@ -6,7 +6,7 @@
 Summary: VE Offloading Framework based on VE-UDMA RPC
 Name: @PACKAGE@
 Version: @VERSION@
-Release: 1
+Release: @RELEASE@%{?dist}
 Vendor: NEC HPC Europe
 Group: System Environment/Libraries
 License: LGPL
@@ -16,6 +16,12 @@ Requires: veos
 BuildRequires: vedebuginfo
 Requires: glibc-ve
 BuildRequires: glibc-ve-devel
+BuildConflicts: veoffload-devel
+%if 0%{?rhel} == 8
+Requires: platform-python
+BuildRequires: platform-python-devel
+%endif
+#Obsoletes: veoffload veoffload-devel veoffload-veorun veoffload-veorun-devel
 %description
 The Alternative VE Offloading framework (AVEO) is a faster and much
 lower latency replacement to VEO which brings multi-VE support,
@@ -24,28 +30,64 @@ heterogeneous programming of SX-Aurora TSUBASA vector engines with
 an accelerator-alike heterogeneous programming model like OpenMP and
 OpenACC.
 
+%package devel
+Summary: Development package for VE Offloading Framework based on VE-UDMA RPC
+Requires: glibc-ve
+BuildRequires: glibc-ve-devel
+Obsoletes: veoffload-devel veoffload-veorun-devel
+%description devel
+This package includes header files of VE offloading Framework
+
 %define _prefix @PREFIX@
-%define _docdir %{_prefix}/doc
-%define _testsdir %{_prefix}/tests
-%define _libdir %{_prefix}/lib
-%define _libexecdir %{_prefix}/libexec
-%define _includedir %{_prefix}/include
+%define _subprefix @SUBPREFIX@
+#%%define _docdir %%{_prefix}doc
+#%%define _testsdir %%{_prefix}tests
+%define _libdir %{_prefix}lib64
+%define _libexecdir %{_prefix}libexec
+%define _includedir %{_prefix}include
+%define _vebindir %{_subprefix}bin
+%define _velibexecdir %{_subprefix}libexec
+%define _velibdir %{_subprefix}lib
+%define _unpackaged_files_terminate_build 0
 
 %prep
 %setup -q -n @PACKAGE@-@VERSION@
+%if 0%{?rhel} == 8
+	pathfix.py -pn -i /usr/bin/python3 $RPM_BUILD_DIR/$RPM_PACKAGE_NAME-$RPM_PACKAGE_VERSION/scripts/gen_veorun_static_symtable
+%endif
 
 %build
 make DEST=%{_prefix} PREF=%{buildroot}
 
 %install
 make install DEST=%{_prefix} PREF=%{buildroot}
-install -d %{buildroot}%{_prefix}/doc/examples
-install README.md COPYING %{buildroot}%{_prefix}/doc
-cp -pr test/* %{buildroot}%{_prefix}/doc/examples
+install -d %{buildroot}%{_vebindir}
+install -d %{buildroot}%{_velibexecdir}
+install -d %{buildroot}%{_velibdir}
+install %{buildroot}%{_libexecdir}/mk_veorun_static %{buildroot}%{_vebindir}/mk_veorun_static
+install -t %{buildroot}%{_velibdir} %{buildroot}%{_prefix}lib/*
+ln -sf %{_vebindir}/mk_veorun_static %{buildroot}%{_libexecdir}/mk_veorun_static
+ln -sf %{_libexecdir}/aveorun %{buildroot}%{_velibexecdir}/aveorun
+ln -sf %{_velibdir}/libaveoVE.so.1.0.0 %{buildroot}%{_velibdir}/libaveoVE.so.1
+ln -sf %{_velibdir}/libaveoVE.so.1 %{buildroot}%{_velibdir}/libaveoVE.so
 
 %files
-%{_libexecdir}/*
-%{_libdir}/*
-%{_includedir}/*
-%{_docdir}/*
-%{_testsdir}/*
+%{_libexecdir}/aveorun
+%{_libdir}/libveo.so.1
+%{_libdir}/libveo.so.1.0.0
+%{_velibexecdir}/aveorun
+%{_velibdir}/libaveoVE.so.1
+%{_velibdir}/libaveoVE.so.1.0.0
+#%%{_docdir}/*
+#%%{_testsdir}/*
+
+%files devel
+%{_includedir}/ve_offload.h
+%{_libdir}/libveo.so
+%{_velibdir}/libaveoVE.a
+%{_velibdir}/liburpcVE.a
+%{_velibdir}/liburpcVE_omp.a
+%{_velibdir}/libaveoVE.so
+%{_vebindir}/mk_veorun_static
+%{_libexecdir}/gen_veorun_static_symtable
+%{_libexecdir}/mk_veorun_static

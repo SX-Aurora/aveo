@@ -64,6 +64,8 @@ int main()
   signal(SIGSEGV, signalHandler);
 
   main_up = ve_urpc_init(0);
+  if (main_up == NULL)
+    return 1;
   
   char *e;
   e = getenv("URPC_VE_CORE");
@@ -74,9 +76,6 @@ int main()
                                 .core = core };
 
   ve_handler_loop((void *)&arg);
-
-  if (main_up == NULL)
-    return -1;
 
   for (int i = 0; i < __num_ve_peers; i++) {
     void *ret;
