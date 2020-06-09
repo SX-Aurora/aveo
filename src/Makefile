@@ -110,16 +110,18 @@ $(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
 	if [ -z $(PREF) ]; then \
 		$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ -L. \
 			-L$(BLIB) -L$(BVELIB) -Wl,-rpath,/opt/nec/ve/lib \
-			$(NLDFLAGS) -laveoVE -lveio -lpthread;\
+			$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
+			-lveio -lpthread;\
 	else \
 		$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ -L. \
 			-L$(BLIB) -L$(BVELIB) -Wl,-rpath,/opt/nec/ve/lib \
-			-laveoVE -lveio -lpthread;\
+			$(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
+			-lveio -lpthread;\
 	fi
 
 $(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ $(NLDFLAGS) -L. \
-		-L$(BLIB) -laveoVE -lveio -lpthread
+		-L$(BLIB) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a -lveio -lpthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
 	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(BUILD)/lib,g" \
