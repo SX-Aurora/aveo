@@ -3,60 +3,60 @@ VE Offloading framework (VEO) is a framework to provide accelerator-style
 programming on Vector Engine (VE).
 
 ## Introduction
-Recently the accelerator programming model has become popular due to
-the wide usage of GPGPU and the increasing use of Xeon Phi processors.
+SX-Aurora TSUBASA provides VE Offloading framework (VEO) for
+the accelerator programming model.
 The accelerator programming model executes parallelized and/or vectorized
 numeric code such as matrix operations on accelerators and a main code
 controlling accelerators and performing I/O on a host.
-This programming model explicitly coded into parallel frameworks such as
-OpenMP 4 (device construct) and OpenACC, and into lower level APIs
-such as OpenCL and CUDA.
 
-SX-Aurora TSUBASA provides VE Offloading framework (VEO) for
-the accelerator programming model and enables to develop a program
-using both VEs and VH computing resources.
+The Alternative VE Offloading framework (AVEO) is a faster and much
+lower latency replacement to the previous VEO implementation which
+brings multi-VE support, simultaneous debugging of VE and VH side, API
+extensions.
+
+You can migrate to AVEO from the previous VEO implementation by
+installing the AVEO's packages and re-linking your program with AVEO
+without modification of makefiles.
+
+
+## Installation
+
+### Installing runtime package
+
+To run programs, please install @PACKAGE@ and @PACKAGE@run 
+and the runtime packages of the compiler (2.2.2 or later).
+
+To install the packages to run programs by yum, execute the following
+command as root:
+
+~~~
+# yum install @PACKAGE@ @PACKAGE@run
+~~~
+You need not uninstall veoffload and veoffload-veorun which are the
+packages of the previous VEO implementation. So, you can execute
+your program linked with the previous VEO implementation.
+
+
+### Installing development package
+
+To develop programs, @PACKAGE@-devel and @PACKAGE@run-devel and
+thedevelopment packages of the compiler (2.2.2 or later) are also
+required.
+
+To install the packages to develop programs by yum, execute the
+following command as root:
+
+~~~
+# yum install @PACKAGE@-devel @PACKAGE@run-devel
+~~~
+
+When you install these packages, veoffload-devel and
+veoffload-veorun-devel will be uninstalled automatically.
+If you want to link your program with the previous VEO implementation,
+please install its packages into another machine.
 
 ## Hello World
 First, let's try a "Hello, World!" program on VE.
-
-### Install required packages
-To run programs using VEO, please install aveo
-and runtime packages of the compiler.
-
-To develop programs using VEO, aveo-devel
-and development packages of compiler are also required.
-
-To install the packages to run VEO programs by yum, execute
-the following command as root:
-
-~~~
-# yum install aveo
-~~~
-
-veoffload-veorun is automatically installed by dependency.
-
-To install the packages to develop VEO programs by yum, execute
-the following command as root:
-
-~~~
-# yum install aveo-devel
-~~~
-
-The following runtime package of the compiler are required to run VEO programs.
- * nec-nc++-shared-2.3.0-2.3.0-1 or later
- * nec-nc++-shared-inst-2-2.3.0-1.noarch or later
- * nec-nfort-shared-2.3.0-2.3.0-1.x86_64 or later
- * nec-nfort-shared-inst-2-2.3.0-1.noarch or later
- * nec-nfort-runtime-2.0.0-1.x86_64 or later
- * binutils-ve-2.26-2.2.x86_64.rpm or later
-
-The following development packages of the compiler are also required to create a shared object for Fortran or C/C++ programs.
- * nec-nc++-2.3.0-2.3.0-1.x86_64 or later
- * nec-nc++-inst-2.3.0-1.noarch or later
- * nec-nc++-shared-devel-2.3.0-2.3.0-1.x86_64 or later
- * nec-nfort-2.3.0-2.3.0-1.x86_64 or later
- * nec-nfort-inst-2.3.0-1.noarch or later
- * nec-nfort-shared-devel-2.3.0-2.3.0-1.x86_64 or later
 
 ### The Required Number of HugePages for VEO
 VEO requires HugePages for data transfer.
