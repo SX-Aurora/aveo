@@ -17,6 +17,7 @@ VENDOR := NEC HPC Europe
 VERSION := $(shell cat VERSION)
 TARBALL := $(PACKAGE)-$(VERSION).tar.gz
 RELEASE := 1
+RPMBUILD_DIR := $(HOME)/rpmbuild
 include make_aveo.inc
 
 MAKEVARS = DEST=$(DEST) BUILD=$(BUILD) URPC_INST_DIR=$(URPC_INST_DIR) PREF=$(PREF)
@@ -80,9 +81,9 @@ $(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
 	rm -rf $(PACKAGE)-$(VERSION)
 
 rpm: $(TARBALL) aveo.spec aveorun.spec
-	cp $(TARBALL) $(HOME)/rpmbuild/SOURCES
-	rpmbuild -ba aveo.spec
-	rpmbuild -ba aveorun.spec
+	cp $(TARBALL) ${RPMBUILD_DIR}/SOURCES
+	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveo.spec
+	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveorun.spec
 
 # --------------------------
 
