@@ -63,6 +63,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
               binname, venode, vecore);
   }
   if (urpc_wait_peer_attach(this->up) != 0) {
+    vh_urpc_peer_destroy(this->up);
     throw VEOException("ProcHandle: VE process does not become ready.");
   }
 
