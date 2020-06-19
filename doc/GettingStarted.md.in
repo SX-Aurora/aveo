@@ -40,8 +40,17 @@ your program linked with the previous VEO implementation.
 ### Installing development package
 
 To develop programs, @PACKAGE@-devel and @PACKAGE@run-devel and
-thedevelopment packages of the compiler (2.2.2 or later) are also
-required.
+the development packages of the compiler (2.2.2 or later) are also
+required. These packages conflict with veoffload-devel and
+veoffload-veorun-devel. So, please uninstall veoffload-devel and
+veoffload-veorun-devel.
+
+To uninstall the conflicting packages by yum, execute the following
+command as root:
+
+~~~
+# yum remove veoffload-devel veoffload-veorun-devel
+~~~
 
 To install the packages to develop programs by yum, execute the
 following command as root:

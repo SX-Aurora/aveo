@@ -25,7 +25,6 @@ OpenACC.
 %package devel
 Summary: Development package for VE Offloading Framework based on VE-UDMA RPC
 Requires: %{name} = %{version}-%{release}
-Obsoletes: veoffload-devel veoffload-veorun-devel
 %description devel
 This package includes header files of VE offloading Framework
 
