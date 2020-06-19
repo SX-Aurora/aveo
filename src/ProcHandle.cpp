@@ -63,7 +63,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
               binname, venode, vecore);
   }
   if (urpc_wait_peer_attach(this->up) != 0) {
-    throw VEOException("ProcHandle: timeout while waiting for VE.");
+    throw VEOException("ProcHandle: VE process does not become ready.");
   }
 
   this->mctx = new Context(this, this->up, true);
