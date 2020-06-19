@@ -55,7 +55,8 @@ void signalHandler( int signum ) {
 
 int main()
 {
-  int err, core = 0;
+  int err = 0;
+  int core = -1;
   long ts = get_time_us();
 
   signal(SIGABRT, signalHandler);
