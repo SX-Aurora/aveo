@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
       VERBOSE=-v
       ;;
     '-fopenmp')
-        default_LDFLAGS="${default_LDFLAGS} ${option} @velibdir@/liburpcVE_omp.a"
+        default_LDFLAGS="${default_LDFLAGS} ${option} @velibdir@/liburpcVE.a"
         is_openmp=1
       ;;
     '-ftrace')
