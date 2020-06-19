@@ -58,6 +58,10 @@ The following development packages of the compiler are also required to create a
  * nec-nfort-inst-2.3.0-1.noarch or later
  * nec-nfort-shared-devel-2.3.0-2.3.0-1.x86_64 or later
 
+### The Required Number of HugePages for VEO
+VEO requires HugePages for data transfer.
+The required number of HugePages 32 per VEO thread context.
+
 ### VE Code
 Code to run on VE is shown below. Standard C functions are available,
 hence, you can use printf(3).
