@@ -7,9 +7,9 @@ Group: System Environment/Libraries
 License: LGPL
 BuildRoot: %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 Source0: @PACKAGE@-@VERSION@.tar.gz
-Requires: veos
 BuildRequires: vedebuginfo
 Requires: glibc-ve
+Requires: libsysve
 BuildRequires: glibc-ve-devel
 %if 0%{?rhel} == 8
 Requires: platform-python
@@ -25,7 +25,8 @@ OpenACC.
 
 %package devel
 Summary: Development package for VE Offloading Framework based on VE-UDMA RPC
-Requires: glibc-ve
+Requires: glibc-ve-devel
+Requires: %{name} = %{version}-%{release}
 BuildRequires: glibc-ve-devel
 Obsoletes: veoffload-devel veoffload-veorun-devel
 %description devel
