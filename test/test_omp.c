@@ -11,7 +11,7 @@
 int main()
 {
 	int ret;
-	struct veo_proc_handle *proc = veo_proc_create(0);
+	struct veo_proc_handle *proc = veo_proc_create(-1);
 	if (proc == NULL) {
 		printf("veo_proc_create() failed!\n");
 		exit(1);

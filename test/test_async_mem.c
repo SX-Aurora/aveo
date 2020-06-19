@@ -7,7 +7,7 @@ main()
   uint64_t retval;
   int ret;
 
-  struct veo_proc_handle *proc = veo_proc_create(0);
+  struct veo_proc_handle *proc = veo_proc_create(-1);
   if (proc == NULL) {
     perror("veo_proc_create");
     exit(1);
