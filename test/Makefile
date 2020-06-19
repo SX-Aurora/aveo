@@ -1,5 +1,12 @@
-DEST ?= ../install
-BUILD ?= ../build
+CWD = $(shell pwd)
+DEST ?= $(CWD)/../install
+BUILD ?= $(CWD)/../build
+
+ifeq ($(URPC_INST_DIR),)
+PREPARE := ve-urpc
+PREPAREINSTALL := ve-urpc-install
+URPC_INST_DIR := $(DEST)
+endif
 
 include ../make_aveo.inc
 
@@ -21,6 +28,7 @@ STATICS = $(addprefix $(BB)/, veorun_testomp)
 
 SCRIPTS = $(addprefix $(BB)/,scan_bandwidth.sh scan_call_latency.sh \
  run_tests.sh)
+
 
 ALL: $(TESTS) $(VELIBS) $(STATICS) $(SCRIPTS)
 
@@ -48,9 +56,9 @@ test: ALL
 .SECONDEXPANSION:
 
 $(BB)/%: %.c  | $$(@D)/
-	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
+	$(GCC) $(GCCFLAGS) -fpic $(LDFLAGS) -o $@ $< -lveo
 $(BB)/%: %.cpp  | $$(@D)/
-	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -L$(BLIB) -lveo
+	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -lveo
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
@@ -59,9 +67,14 @@ $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
 
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
-	env RELINKVEO_GEN=../scripts/gen_veorun_static_symtable \
-	    RELINKVEO_LIB=$(BVELIB)/libaveoVE.a \
-	    $(BLIBEX)/relink_aveorun $@ -fopenmp $<
+	if [ -x $(BLIBEX)/relink_aveorun ]; then \
+		env RELINKVEO_GEN=../scripts/gen_veorun_static_symtable \
+		    RELINKVEO_LIB=$(BVELIB)/libaveoVE.a \
+		    $(BLIBEX)/relink_aveorun $@ -fopenmp $< ; \
+	else \
+		$(DEST)/libexec/mk_veorun_static $@ -fopenmp $< ; \
+	fi
+
 
 $(BVE)/%.o: %.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -fopenmp -fpic -o $@ -c $<

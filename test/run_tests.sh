@@ -32,7 +32,11 @@ for t in test_*; do
     #
     if [ "${t%_ftrace}" != "$t" ]; then
 	[ -f ftrace.out ] && rm -f ftrace.out
-	env VEORUN_BIN=$LIBEXECDIR/aveorun-ftrace ./$t
+        if [ -x VEORUN_BIN=$LIBEXECDIR/aveorun-ftrace ]; then
+            env VEORUN_BIN=$LIBEXECDIR/aveorun-ftrace ./$t
+        else
+            ./$t
+        fi
         if [ $? -ne 0 ]; then
             bad=$((bad+1))
             failed[$t]=1
@@ -56,7 +60,12 @@ for t in test_*; do
     #
     # run normal dynamic test
     #
-    env VEORUN_BIN=$LIBEXECDIR/aveorun ./$t
+    if [ -x VEORUN_BIN=$LIBEXECDIR/aveorun ]; then
+        env VEORUN_BIN=$LIBEXECDIR/aveorun ./$t
+    else
+        ./$t
+    fi
+
     if [ $? -ne 0 ]; then
         bad=$((bad+1))
         failed[$t]=1
