@@ -31,6 +31,12 @@ int main()
 	long retval;
 	ret = veo_call_wait_result(ctx, req, &retval),
 
+	printf("ret %d nthread %d\n", ret, retval);
+	if (ret != 0 || retval < 2) {
+		printf("Test failed\n");
+		exit(1);
+	}
+
 	veo_args_free(arg);
 
 	veo_context_close(ctx);
