@@ -104,12 +104,12 @@ $(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
 $(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
-		-laveoVE -lveio -lpthread
+		-lveio -lpthread
 
 $(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
-		 -laveoVE -lveio -lpthread
+		-lveio -lpthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
 	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(BUILD)/lib,g" \
