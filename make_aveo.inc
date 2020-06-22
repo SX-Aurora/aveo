@@ -25,7 +25,7 @@ NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -
 NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
 NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL)
 LDFLAGS = \
-  -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64$(DEBUG) \
+  -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64 $(DEBUG) \
   -Wl,-rpath,$(URPC_INST_DIR)/lib64 -L$(URPC_INST_DIR)/lib64
 NLDFLAGS = -Wl,-rpath,$(VEDEST)/lib -L$(BVELIB) -L$(PREF)$(VEDEST)/lib -Wl,--build-id=sha1 $(DEBUG)
 
