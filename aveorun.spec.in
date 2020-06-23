@@ -71,5 +71,7 @@ make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %{_velibdir}/liburpcVE_omp.a
 %{_velibdir}/libaveoVE.so
 %{_vebindir}/mk_veorun_static
+%{_vebindir}/relink_aveorun
 %{_libexecdir}/gen_veorun_static_symtable
 %{_libexecdir}/mk_veorun_static
+%{_libexecdir}/relink_aveorun

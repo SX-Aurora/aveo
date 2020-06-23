@@ -46,8 +46,9 @@ install-ve: all-ve
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib $(VELIBS)
 	( cd $(PREF)$(VEDEST)/lib; ln -sf libaveoVE.so.1.0.0 libaveoVE.so; ln -sf libaveoVE.so.1.0.0 libaveoVE.so.1)
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib -m 0644 $(VEARCS)
-	/usr/bin/install $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
+	/usr/bin/cp -P $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
 	ln -sf $(DEST)/libexec/mk_veorun_static $(PREF)$(VEDEST)/bin/mk_veorun_static
+	ln -sf $(DEST)/libexec/relink_aveorun $(PREF)$(VEDEST)/bin/relink_aveorun
 
 install-vh: all-vh
 	mkdir -p $(PREF)$(DEST)/lib64/ $(PREF)$(DEST)/include/
@@ -116,10 +117,8 @@ $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
 		< $< > $@
 	chmod 755 $@
 
-$(BLIBEX)/mk_veorun_static: ../scripts/relink_aveorun.in
-	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(VEDEST)/lib,g" \
-		< $< > $@
-	chmod 755 $@
+$(BLIBEX)/mk_veorun_static: $(BLIBEX)/relink_aveorun
+	ln -sf ./relink_aveorun $@
 
 $(BLIBEX)/gen_veorun_static_symtable: ../scripts/gen_veorun_static_symtable
 	cp -p $< $@

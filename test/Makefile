@@ -68,8 +68,8 @@ $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
 	if [ -x $(BLIBEX)/relink_aveorun ]; then \
-		env RELINKVEO_GEN=../scripts/gen_veorun_static_symtable \
-		    RELINKVEO_LIB=$(BVELIB)/libaveoVE.a \
+		env VELIBEXECDIR=$(BLIBEX) \
+		    VELIBDIR=$(BVELIB) \
 		    $(BLIBEX)/relink_aveorun $@ -fopenmp $< ; \
 	else \
 		$(DEST)/libexec/mk_veorun_static $@ -fopenmp $< ; \
