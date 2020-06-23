@@ -58,9 +58,7 @@ following command as root:
 ~~~
 # yum install @PACKAGE@-devel @PACKAGE@run-devel
 ~~~
-
-When you install these packages, veoffload-devel and
-veoffload-veorun-devel will be uninstalled automatically.
+Then, you can link your program with AVEO.
 If you want to link your program with the previous VEO implementation,
 please install its packages into another machine.
 
