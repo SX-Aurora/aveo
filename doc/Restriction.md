@@ -1,7 +1,10 @@
 # Restriction
 
-VEO does not support to execute VEO program without setting the number of HugePages more than 32.
-VEO does not support to use quadruple precision real number a variable length character string as a return value and an argument of Fortran subroutines and functions,
+VEO requires 32 Huge Pages per a context.
+
+VEO does not support a quadruple precision real number and a variable length character string as an argument of Fortran subroutines and functions.
+
+VEO does not support a quadruple precision real number and a variable length character string as a return value of Fortran functions.
 
 Synchronous APIs wait the completion of previous requests submitted by asynchronous APIs.
 Synchronous APIs are below:
@@ -16,7 +19,3 @@ Synchronous APIs are below:
  - veo_read_mem()
  - veo_unload_library()
  - veo_write_mem()
-
-Asynchronous APIs are below:
- - veo_get_context()
- - veo_num_contexts()
