@@ -76,8 +76,8 @@ $(BINC)/%.h: %.h | $$(@D)/
 	/usr/bin/install -t $(BINC) $<
 
 $(BVELIB)/libaveoVE.so.1.0.0: $(VELIB_OBJS) | $$(@D)/
-	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fpic -shared \
-	-Wl,-soname=libaveoVE.so.1 -o $@ $^ $(BVELIB)/liburpcVE.a \
+	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared \
+	-Wl,-soname=libaveoVE.so.1 -o $@ $^ $(BVELIB)/liburpcVE_omp.a \
 	$(NLDFLAGS) -lveio -lveftrace -ldl
 
 $(BVELIB)/libaveoVE.so.1: $(BVELIB)/libaveoVE.so.1.0.0

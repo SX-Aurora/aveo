@@ -22,6 +22,7 @@ VELIBEXECDIR=${VELIBEXECDIR:-@libexecdir@}
 RPATH=@velibdir@
 default_LDFLAGS="-no-proginf -pthread -Wl,-rpath,$RPATH -lveio"
 default_CFLAGS=""
+is_openmp=0
 VERBOSE=
 while [ $# -gt 0 ]; do
   option="$1"
@@ -41,7 +42,8 @@ while [ $# -gt 0 ]; do
       VERBOSE=-v
       ;;
     '-fopenmp')
-      default_LDFLAGS="${default_LDFLAGS} ${option}"
+      default_LDFLAGS="${default_LDFLAGS} ${option} $VELIBDIR/liburpcVE_omp.a"
+      is_openmp=1
       ;;
     '-ftrace')
       default_CFLAGS="${default_CFLAGS} ${option}"
@@ -68,7 +70,9 @@ while [ $# -gt 0 ]; do
     LIBS=(${LIBS[@]} "$option")
   fi
 done
-default_LDFLAGS="${default_LDFLAGS} $VELIBDIR/liburpcVE.a"
+if [ $is_openmp -eq 0 ]; then
+    default_LDFLAGS="${default_LDFLAGS} $VELIBDIR/liburpcVE.a"
+fi
 default_LDFLAGS="${default_LDFLAGS} -ldl"
 
 if [ -z "$VEORUN" ]; then
