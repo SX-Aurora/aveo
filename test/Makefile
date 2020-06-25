@@ -45,7 +45,10 @@ install: $(TESTS) $(VELIBS) $(STATICS) | $(PREF)$(DEST)/tests/
 # run the tests from the build directory
 #
 test: ALL
-	cd $(BB); ./run_tests.sh
+	cd $(BB); \
+	env VEORUN_BIN=$(BLIBEX)/aveorun \
+	LD_LIBRARY_PATH=$(BLIB):$(LD_LIBRARY_PATH) \
+	./run_tests.sh
 #
 
 .PRECIOUS: $(BUILD)/ $(BUILD)%/ $(DEST)/ $(DEST)%/
