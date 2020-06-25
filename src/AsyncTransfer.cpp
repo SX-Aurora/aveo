@@ -54,6 +54,8 @@ uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
   auto u = [this, id] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
            {
              VEO_TRACE("[request #%d] reply ACK received (cmd=%d)...", id, m->c.cmd);
+             if (m->c.cmd == URPC_CMD_EXCEPTION)
+               return (int)-URPC_CMD_SENDBUFF;
              cmd->setResult(0, VEO_COMMAND_OK);
              VEO_TRACE("[request #%d] result end...", id);
              return 0;

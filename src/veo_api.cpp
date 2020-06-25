@@ -193,8 +193,12 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
   } catch (std::out_of_range &e) {
     VEO_ERROR("failed to create proc: %s", e.what());
     return 0;
+  } catch (VEOException &e) {
+    VEO_ERROR("failed to create proc: %s", e.what());
+    return 0;
   }
 }
+
  
 /**
  * @brief create a VE process

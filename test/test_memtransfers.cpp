@@ -7,7 +7,7 @@
 #define CHECK(err) if(err != VEO_COMMAND_OK) { std::cerr << "ERROR" << std::endl; exit(1); }
 
 int main(int argc, char** argv) {
-	auto proc = veo_proc_create(0);	assert(proc);
+	auto proc = veo_proc_create(-1);	assert(proc);
 	auto ctx = veo_context_open(proc); assert(ctx);
 
 	uint64_t d_ptr = 0;

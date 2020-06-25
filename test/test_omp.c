@@ -11,7 +11,7 @@
 int main()
 {
 	int ret;
-	struct veo_proc_handle *proc = veo_proc_create(0);
+	struct veo_proc_handle *proc = veo_proc_create(-1);
 	if (proc == NULL) {
 		printf("veo_proc_create() failed!\n");
 		exit(1);
@@ -30,6 +30,12 @@ int main()
 	uint64_t req = veo_call_async(ctx, sym, arg);
 	long retval;
 	ret = veo_call_wait_result(ctx, req, &retval),
+
+	printf("ret %d nthread %d\n", ret, retval);
+	if (ret != 0 || retval < 2) {
+		printf("Test failed\n");
+		exit(1);
+	}
 
 	veo_args_free(arg);
 

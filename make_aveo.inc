@@ -15,19 +15,19 @@ $(error "URPC_INST_DIR is undefined! Please point it to the place where veo-urpc
 endif
 endif
 
+VEDEST?=$(DEST)
+
 INCL = -I$(BUILD)/include -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
+NINCL = -I$(BUILD)/include -I$(VEDEST)/include -I. -I$(URPC_INST_DIR)/include
 GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL)
 GCCFLAGS = -std=c11 -pthread  $(OPT) $(DEBUG) $(INCL)
-NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(INCL) -finline -finline-functions
-NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(INCL) -finline -finline-functions
-NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(INCL)
+NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
+NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
+NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL)
 LDFLAGS = \
-  -Wl,-rpath,$(abspath $(DEST)/lib64) -L$(DEST)/lib64 \
-  -Wl,-rpath,$(abspath $(BLIB)) -L$(BLIB) \
-  -Wl,-rpath,$(abspath $(BVELIB)) -L$(BVELIB) \
-  -Wl,-rpath,$(abspath $(URPC_INST_DIR)/lib64) -L$(URPC_INST_DIR)/lib64 
-NLDFLAGS = -Wl,-rpath,/opt/nec/ve/lib64 -L/opt/nec/ve/lib64 $(LDFLAGS)
-
+  -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64 $(DEBUG) \
+  -Wl,-rpath,$(URPC_INST_DIR)/lib64 -L$(URPC_INST_DIR)/lib64
+NLDFLAGS = -Wl,-rpath,$(VEDEST)/lib -L$(BVELIB) -L$(PREF)$(VEDEST)/lib -Wl,--build-id=sha1 $(DEBUG)
 
 # build directory substructure
 BVE     = $(BUILD)/ve

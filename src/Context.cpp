@@ -131,6 +131,9 @@ void Context::_progress_nolock(int ops)
         if (rv == 0) {
           ++sent;
           this->comq.pushInFlight(std::move(cmd));
+        } else {
+          this->comq.pushCompletion(std::move(cmd));
+          VEO_ERROR("submit function failed(%d)", rv);
         }
       }
     }

@@ -17,7 +17,10 @@ option_end=0
 LIBS=()
 EXTRA_LIBS=()
 VEORUN=''
-default_LDFLAGS="-no-proginf -pthread -Wl,-rpath,@velibdir@ -lveio"
+VELIBDIR=${VELIBDIR:-@velibdir@}
+VELIBEXECDIR=${VELIBEXECDIR:-@libexecdir@}
+RPATH=@velibdir@
+default_LDFLAGS="-no-proginf -pthread -Wl,-rpath,$RPATH -lveio"
 default_CFLAGS=""
 is_openmp=0
 VERBOSE=
@@ -39,8 +42,8 @@ while [ $# -gt 0 ]; do
       VERBOSE=-v
       ;;
     '-fopenmp')
-        default_LDFLAGS="${default_LDFLAGS} ${option} @velibdir@/liburpcVE_omp.a"
-        is_openmp=1
+      default_LDFLAGS="${default_LDFLAGS} ${option} $VELIBDIR/liburpcVE_omp.a"
+      is_openmp=1
       ;;
     '-ftrace')
       default_CFLAGS="${default_CFLAGS} ${option}"
@@ -68,9 +71,8 @@ while [ $# -gt 0 ]; do
   fi
 done
 if [ $is_openmp -eq 0 ]; then
-    default_LDFLAGS="${default_LDFLAGS} @velibdir@/liburpcVE.a"
+    default_LDFLAGS="${default_LDFLAGS} $VELIBDIR/liburpcVE.a"
 fi
-    
 default_LDFLAGS="${default_LDFLAGS} -ldl"
 
 if [ -z "$VEORUN" ]; then
@@ -112,11 +114,11 @@ SRC_FILE=$(mktemp /tmp/veorunXXXXXXX.c)
 OBJ_FILE=${SRC_FILE/.c/.o}
 trap "rm -f $SRC_FILE $OBJ_FILE" EXIT
 
-RELINKVEO_GEN=${RELINKVEO_GEN:-@libexecdir@/gen_veorun_static_symtable}
-RELINKVEO_LIB=${RELINKVEO_LIB:-@velibdir@/libaveoVE.a}
+RELINKVEO_GEN=${RELINKVEO_GEN:-$VELIBEXECDIR/gen_veorun_static_symtable}
+RELINKVEO_LIB=${RELINKVEO_LIB:-$VELIBDIR/libaveoVE.a}
 
 $RELINKVEO_GEN "${LIBS[@]}" > $SRC_FILE
 
 $VECC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
 $VECCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \
-  $RELINKVEO_LIB -L@velibdir@ $LDFLAGS && echo "created specific $VEORUN"
+  $RELINKVEO_LIB -L$VELIBDIR $LDFLAGS && echo "created specific $VEORUN"
