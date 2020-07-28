@@ -7,7 +7,7 @@ GPP = g++
 AR = ar
 
 DEBUG = -g
-OPT = -O0
+OPT = -O2
 
 ifneq ($(MAKECMDGOALS),clean)
 ifndef URPC_INST_DIR
