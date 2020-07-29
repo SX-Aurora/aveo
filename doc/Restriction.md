@@ -6,6 +6,8 @@ VEO does not support a quadruple precision real number and a variable length cha
 
 VEO does not support a quadruple precision real number and a variable length character string as a return value of Fortran functions.
 
+When veo_proc_create() is invoked, multiple threads for a OpenMP program are created on VE side by default. If you do not use OpenMP, set environment variable OMP_NUM_THREADS=1.
+
 Synchronous APIs wait the completion of previous requests submitted by asynchronous APIs.
 Synchronous APIs are below:
  - veo_alloc_mem()
