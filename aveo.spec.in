@@ -13,6 +13,8 @@ BuildRequires: vedebuginfo
 %if 0%{?rhel} == 8
 Requires: platform-python
 BuildRequires: platform-python-devel
+%define debug_package %{nil}
+%global __strip /bin/true
 %endif
 %description
 The Alternative VE Offloading framework (AVEO) is a faster and much
