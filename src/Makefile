@@ -113,7 +113,7 @@ $(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
 		-lveio -lpthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
-	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(BUILD)/lib,g" \
+	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(VEDEST)/lib,g" \
 		< $< > $@
 	chmod 755 $@
 
