@@ -1,6 +1,7 @@
 // /opt/nec/ve/bin/ncc -fopenmp -fpic -shared -o libvetestomp.so libvetestomp.c
 //
 
+#include <sched.h>
 #include <stdio.h>
 #include <omp.h>
 #include <unistd.h>
@@ -22,7 +23,7 @@ int omp_loop(void)
     i = omp_get_thread_num();
     if (i == 0)
       nthreads = omp_get_num_threads();
-    printf("omp thread %d has tid=%d\n", i, tid);
+    printf("omp thread %d has tid=%d on core=%d\n", i, tid, sched_getcpu());
   }
   return nthreads;
 }
