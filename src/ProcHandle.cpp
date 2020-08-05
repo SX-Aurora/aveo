@@ -404,15 +404,16 @@ Context *ProcHandle::openContext(size_t stack_sz)
   }
   // compute core
   int core = -1;
+  int ve_omp_threads = -1;
+  const char *e = getenv("VE_OMP_NUM_THREADS");
+  if (e != nullptr) {
+    ve_omp_threads = stoi(std::string(e));
+  }
   int prev_core = this->ctx.back()->core;
   if (prev_core >= 0) {
-    core = prev_core + 1;
-
-#ifdef _OPENMP
-  core += omp_get_num_threads() - 1;
-#endif
+    core = prev_core + ve_omp_threads;
   }
-  VEO_DEBUG("core = %d", core);
+  VEO_DEBUG("core = %d, prev_core = %d, ve_omp_threads = %d", core, prev_core, ve_omp_threads);
   
   // create vh side peer
   auto new_up = vh_urpc_peer_create();
