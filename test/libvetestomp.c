@@ -15,14 +15,14 @@ int gettid(void)
 }
 
 int flag = 0;
-extern void __vthr$_init(void);
+//extern void __vthr$_init(void);
 
 int omp_loop(void)
 {
   int tid, i, nthreads = 0;
-  if (flag == 1) {
-    __vthr$_init();
-  }
+  //if (flag == 1) {
+  //  __vthr$_init();
+  //}
 #pragma omp parallel private(tid, i)
   {
     tid = gettid();
