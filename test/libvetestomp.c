@@ -14,9 +14,15 @@ int gettid(void)
   return syscall(SYS_gettid);
 }
 
+int flag = 0;
+extern void __vthr$_init(void);
+
 int omp_loop(void)
 {
   int tid, i, nthreads = 0;
+  if (flag == 1) {
+    __vthr$_init();
+  }
 #pragma omp parallel private(tid, i)
   {
     tid = gettid();
@@ -25,5 +31,6 @@ int omp_loop(void)
       nthreads = omp_get_num_threads();
     printf("omp thread %d has tid=%d on core=%d\n", i, tid, sched_getcpu());
   }
+  flag = 1;
   return nthreads;
 }
