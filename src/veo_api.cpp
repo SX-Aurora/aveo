@@ -63,7 +63,7 @@ template <typename T> int veo_args_set_(veo_args *ca, int argnum, T val)
 } // namespace veo::api
 } // namespace veo
 
-extern "C" { extern const char *VERSION; }
+extern "C" { extern const char *AVEO_VERSION; }
 
 using veo::api::ProcHandleFromC;
 using veo::api::ContextFromC;
@@ -97,7 +97,7 @@ int veo_api_version()
  */
 const char *veo_version_string()
 {
-  return VERSION;
+  return AVEO_VERSION;
 }
 
 /**

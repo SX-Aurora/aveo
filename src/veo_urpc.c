@@ -9,7 +9,7 @@
 #include "log.h"
 
 __thread int __veo_finish;
-const char *VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
+const char *AVEO_VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
 typedef struct {const char *n; void *v;} static_sym_t;
 /* without generated static symtable, this weak version is used. */
