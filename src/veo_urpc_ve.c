@@ -196,6 +196,10 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   }
   asm volatile("or %0, 0, %s0":"=r"(result));
 
+  // "cmd" seems to be overwritten when we call the function.
+  // We set "cmd", again
+  cmd = m->c.cmd;
+
   if (cmd == URPC_CMD_CALL_STKOUT ||
       cmd == URPC_CMD_CALL_STKINOUT) {
     // copying back from stack must happen in the same function,
