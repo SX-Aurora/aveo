@@ -22,27 +22,30 @@ void signalHandler( int signum ) {
   VEO_ERROR("Interrupt signal %d received", signum);
 
   // try to print info about stack trace
-  __builtin_traceback((unsigned long *)__builtin_frame_address(0));
-  void *f = __builtin_return_address(0);
-  if (f) {
-    if (dladdr(f, &di)) {
-      printf("%p -> %s\n", f, di.dli_sname);
-    } else {
-      printf("%p\n", f);
-    }
-    void *f = __builtin_return_address(1);
+  unsigned long frame = __builtin_frame_address(0);
+  if (frame) {
+    __builtin_traceback((unsigned long *)frame);
+    void *f = __builtin_return_address(0);
     if (f) {
       if (dladdr(f, &di)) {
         printf("%p -> %s\n", f, di.dli_sname);
       } else {
         printf("%p\n", f);
       }
-      void *f = __builtin_return_address(2);
+      void *f = __builtin_return_address(1);
       if (f) {
         if (dladdr(f, &di)) {
           printf("%p -> %s\n", f, di.dli_sname);
         } else {
           printf("%p\n", f);
+        }
+        void *f = __builtin_return_address(2);
+        if (f) {
+          if (dladdr(f, &di)) {
+            printf("%p -> %s\n", f, di.dli_sname);
+          } else {
+            printf("%p\n", f);
+          }
         }
       }
     }
