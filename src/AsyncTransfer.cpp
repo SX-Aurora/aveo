@@ -21,7 +21,7 @@ namespace veo {
  */
 uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
 {
-  VEO_TRACE("sendbuffAsync enter...\n");
+  VEO_TRACE("sendbuffAsync enter...");
   if (this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
@@ -65,7 +65,7 @@ uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
   if(this->comq.pushRequest(std::move(cmd)))
     return VEO_REQUEST_ID_INVALID;
   this->progress(3);
-  VEO_TRACE("sendbuffAsync leave...\n");
+  VEO_TRACE("sendbuffAsync leave...");
   return id;
 }
 
@@ -79,7 +79,7 @@ uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
  */
 uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE("recvbuffAsync enter...\n");
+  VEO_TRACE("recvbuffAsync enter...");
   if (this->state == VEO_STATE_EXIT)
     return VEO_REQUEST_ID_INVALID;
 
@@ -138,7 +138,7 @@ uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
   if(this->comq.pushRequest(std::move(cmd)))
     return VEO_REQUEST_ID_INVALID;
   this->progress(3);
-  VEO_TRACE("recvbuffAsync leave...\n");
+  VEO_TRACE("recvbuffAsync leave...");
   return id;
 }
 
@@ -152,7 +152,7 @@ uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
  */
 uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
 {
-  VEO_TRACE("asyncReadMem enter...\n");
+  VEO_TRACE("asyncReadMem enter...");
   if( this->state == VEO_STATE_EXIT )
     return VEO_REQUEST_ID_INVALID;
 
@@ -210,7 +210,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
       return VEO_REQUEST_ID_INVALID;
   }
   this->progress(3);
-  VEO_TRACE("asyncReadMem leave...\n");
+  VEO_TRACE("asyncReadMem leave...");
   return id;
 }
 
@@ -276,7 +276,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
              return rv;
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
-  dprintf("cmd is VH? %d", req.get()->isVH());
+  dprintf("cmd is VH? %d\n", req.get()->isVH());
   {
     std::lock_guard<std::mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(req)))

@@ -277,7 +277,7 @@ std::vector<uint64_t> CallArgs::getRegVal(uint64_t sp) const {
  * @param[in,out] sp reference to stack pointer
  * @return stack image
  */
-std::string CallArgs::getStackImage(uint64_t &sp) {
+std::string CallArgs::getStackImage(uint64_t sp) {
   VEO_TRACE("getStackImage(%#lx)", sp);
   // allocate stack
   size_t stack_size = PARAM_AREA_OFFSET + 8 * this->numArgs()
@@ -307,7 +307,7 @@ std::string CallArgs::getStackImage(uint64_t &sp) {
   return stack;
 }
 
-void CallArgs::setup(uint64_t &sp)
+void CallArgs::setup(uint64_t sp)
 {
   VEO_TRACE("setup CallArgs (sp = %#lx)...", sp);
   auto img = this->getStackImage(sp);

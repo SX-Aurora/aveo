@@ -119,6 +119,7 @@ clean:
 	make -C doc clean 
 	rm -f $(TARBALL)
 	rm -f aveo.spec
+	rm -f aveorun.spec
 realclean: clean
 	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs

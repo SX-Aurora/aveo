@@ -55,6 +55,9 @@ private:
     return ret;
   }
 
+  uint64_t simpleCallAsync(uint64_t, CallArgs &);
+  uint64_t doCallAsync(uint64_t, CallArgs &);
+
   // handlers for commands
   int _readMem(void *, uint64_t, size_t);
   int _writeMem(uint64_t, const void *, size_t);
@@ -79,6 +82,8 @@ public:
   uint64_t recvbuffAsync(void *dst, uint64_t src, size_t size);
   uint64_t asyncReadMem(void *dst, uint64_t src , size_t size);
   uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size);
+  int readMem(void *dst, uint64_t src , size_t size);
+  int writeMem(uint64_t dst, const void *src, size_t size);
 
   veo_thr_ctxt *toCHandle() {
     return reinterpret_cast<veo_thr_ctxt *>(this);

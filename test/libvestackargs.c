@@ -14,6 +14,7 @@ void ftest(double *d, char *t, int *i)
 long test_many_args(double d0, double d1, double d2, double d3, double d4,
                     double d5, double d6, double d7, double d8, double d9)
 {
+	int a;
 	double result;
 	result = d0 + d1 + d2 + d3 + d4 + d5 + d6 + d7 + d8 + d9;
 	printf("VE: %f + %f + %f + %f + %f + %f + %f + %f + %f + %f = %f\n",
@@ -22,6 +23,7 @@ long test_many_args(double d0, double d1, double d2, double d3, double d4,
 		double d;
 		long l;
 	} u;
+	printf("VE: sp = %p\n", (void *)&a);
 	u.d = result;
 	return u.l;
 }

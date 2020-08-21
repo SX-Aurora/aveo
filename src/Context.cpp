@@ -194,9 +194,33 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
   void *payload;
   size_t plen;
 
+  args.setup(this->ve_sp - RESERVED_STACK_SIZE);
+
+  auto reg_args_num = args.numArgs();
+  if (reg_args_num > NUM_ARGS_ON_REGISTER)
+    reg_args_num = NUM_ARGS_ON_REGISTER;
+  size_t reg_args_sz = reg_args_num * sizeof(uint64_t);
+
+  if ((args.copied_in || args.copied_out) &&
+      (args.stack_size > MAX_ARGS_STACK_SIZE - reg_args_sz)) {
+    // If we pass large arguments, we use the queue
+    auto req = this->doCallAsync(addr, args);
+    if (req == VEO_REQUEST_ID_INVALID) {
+      VEO_ERROR("failed! Aborting.");
+      return -1;
+    }
+    auto rv = this->callWaitResult(req, result);
+    if (rv != VEO_COMMAND_OK) {
+      VEO_TRACE("done. rv=%d", rv);
+      rv = -1;
+    }
+    return rv;
+  }
+
+  VEO_TRACE("VE function %#lx", addr);
+
   std::lock_guard<std::mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
-  VEO_TRACE("VE function %#lx", addr);
 
   int64_t req = send_call_nolock(this->up, this->ve_sp, addr, args);
   if (req < 0) {
@@ -221,8 +245,10 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
  * @param addr VEMVA of VE function to call
  * @param args arguments of the function
  * @return request ID
+ * @note the size of args need to be less than or equal to MAX_ARGS_STACK_SIZE
+ * @note The caller must invoke args.setup()
  */
-uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
+uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
 {
   VEO_TRACE("VE function %lx", addr);
   if ( addr == 0 || this->state == VEO_STATE_EXIT)
@@ -272,6 +298,109 @@ uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
   }
   this->progress(3);
   return id;
+}
+
+/**
+ * @brief call a VE function asynchronously
+ *
+ * @param addr VEMVA of VE function to call
+ * @param args arguments of the function
+ * @return request ID
+ * @note The caller must invoke args.setup()
+ */
+uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
+{
+  if ( addr == 0 || this->state == VEO_STATE_EXIT)
+    return VEO_REQUEST_ID_INVALID;
+
+  if ((this->ve_sp & 0xFFFFFFFFFC000000) !=
+       (args.stack_top & 0xFFFFFFFFFC000000)) {
+    VEO_ERROR("Stack crossed page boundary.");
+    return VEO_REQUEST_ID_INVALID;
+  }
+
+  auto reg_args_num = args.numArgs();
+  if (reg_args_num > NUM_ARGS_ON_REGISTER)
+    reg_args_num = NUM_ARGS_ON_REGISTER;
+  size_t reg_args_sz = reg_args_num * sizeof(uint64_t);
+
+  if (!(args.copied_in || args.copied_out) ||
+      (args.stack_size <= MAX_ARGS_STACK_SIZE - reg_args_sz)) {
+    VEO_TRACE("callAsync simple case");
+    return this->simpleCallAsync(addr, args);
+  }
+
+  VEO_TRACE("callAsync large arguments");
+
+  auto id = this->issueRequestID();
+  auto f = [this, addr, &args, reg_args_sz] (Command *cmd)
+           {
+             uint64_t extra_stk = (uint64_t)args.stack_top
+               + MAX_ARGS_STACK_SIZE - reg_args_sz;
+             void *extra_buf = (char *)args.stack_buf.get()
+               + MAX_ARGS_STACK_SIZE - reg_args_sz;
+             uint64_t extra_size = (uint64_t)args.stack_size
+               - MAX_ARGS_STACK_SIZE + reg_args_sz;
+             int rv;
+             if (args.copied_out) {
+               rv = this->writeMem(extra_stk, extra_buf, extra_size);
+               if (rv != 0) {
+                 VEO_ERROR("Writing memory failed! Aborting.");
+                 return -1;
+               }
+             }
+             auto req = this->simpleCallAsync(addr, args);
+             if (req == VEO_REQUEST_ID_INVALID) {
+               VEO_ERROR("failed! Aborting.");
+               return -1;
+             }
+             int status = 0;
+             uint64_t result = 0;
+             status = this->callWaitResult(req, &result);
+
+             if (status != 0) {
+               return status;
+             }
+
+             if (args.copied_in) {
+               rv = this->readMem(extra_buf, extra_stk, extra_size);
+               if (rv != 0) {
+                 VEO_ERROR("Reading memory failed! Aborting.");
+                 return -1;
+               }
+             }
+             cmd->setResult(result, status);
+             args.copyout();
+             return status;
+           };
+  std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+  {
+    std::lock_guard<std::mutex> lock(this->submit_mtx);
+    if(this->comq.pushRequest(std::move(req)))
+      return VEO_REQUEST_ID_INVALID;
+  }
+  this->progress(3);
+  VEO_TRACE("callAsync leave...\n");
+
+  return id;
+}
+
+/**
+ * @brief call a VE function asynchronously
+ *
+ * @param addr VEMVA of VE function to call
+ * @param args arguments of the function
+ * @return request ID
+ */
+uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
+{
+  VEO_TRACE("callAsync");
+  if ( addr == 0 || this->state == VEO_STATE_EXIT)
+    return VEO_REQUEST_ID_INVALID;
+
+  args.setup(this->ve_sp - RESERVED_STACK_SIZE);
+
+  return doCallAsync(addr, args);
 }
 
 /**
@@ -332,7 +461,6 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
  */
 int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
-  VEO_TRACE("req %lu", reqid);
   this->progress(3);
   std::lock_guard<std::mutex> lock(this->req_mtx);
   auto itr = rem_reqid.find(reqid);
@@ -405,6 +533,54 @@ void ThreadContextAttr::setStacksize(size_t stack_sz)
    throw VEOException("invalid stack size of VEO context", EINVAL);
   }
  this->stacksize = stack_sz;
+}
+
+/**
+ * @brief read data from VE memory
+ * @param[out] dst buffer to store the data
+ * @param src VEMVA to read
+ * @param size size to transfer in byte
+ * @return zero upon success; negative upon failure
+ */
+int Context::readMem(void *dst, uint64_t src, size_t size)
+{
+  VEO_TRACE("(%p, %lx, %ld)", dst, src, size);
+  auto req = this->asyncReadMem(dst, src, size);
+  if (req == VEO_REQUEST_ID_INVALID) {
+    VEO_ERROR("failed! Aborting.");
+    return -1;
+  }
+  uint64_t dummy;
+  auto rv = this->callWaitResult(req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done, rv=%d", rv);
+    rv = -1;
+  }
+  return rv;
+}
+
+/**
+ * @brief write data to VE memory
+ * @param dst VEMVA to write the data
+ * @param src buffer holding data to write
+ * @param size size to transfer in byte
+ * @return zero upon success; negative upon failure
+ */
+int Context::writeMem(uint64_t dst, const void *src, size_t size)
+{
+  VEO_TRACE("(%p, %lx, %ld)", dst, src, size);
+  auto req = this->asyncWriteMem(dst, src, size);
+  if (req == VEO_REQUEST_ID_INVALID) {
+    VEO_ERROR("failed! Aborting.");
+    return -1;
+  }
+  uint64_t dummy;
+  auto rv = this->callWaitResult(req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done. rv=%d", rv);
+    rv = -1;
+  }
+  return rv;
 }
 
 } // namespace veo
