@@ -64,3 +64,8 @@ int test_16(int i16, unsigned int u16)
     printf("VE: argument passed: %hd, %hu\n", i16, u16);
     return 0;
 }
+
+int test_bandwidth(void *data)
+{
+    return 0;
+}
