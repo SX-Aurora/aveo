@@ -1,6 +1,6 @@
-# Restriction
+# Restrictions
 
-VEO requires 32 Huge Pages per VE context.
+VEO requires 32 Huge Pages per VE context. Make sure the system is configured with huge pages by checking `/proc/meminfo`.
 
 VEO does not support quadruple precision real number and variable length character strings as arguments of Fortran subroutines and functions.
 
