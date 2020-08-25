@@ -342,7 +342,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
              uint64_t extra_size = (uint64_t)args.stack_size
                - MAX_ARGS_STACK_SIZE + reg_args_sz;
              int rv;
-             if (args.copied_out) {
+             if (args.copied_in) {
                rv = this->writeMem(extra_stk, extra_buf, extra_size);
                if (rv != 0) {
                  VEO_ERROR("Writing memory failed! Aborting.");
@@ -362,7 +362,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
                return status;
              }
 
-             if (args.copied_in) {
+             if (args.copied_out) {
                rv = this->readMem(extra_buf, extra_stk, extra_size);
                if (rv != 0) {
                  VEO_ERROR("Reading memory failed! Aborting.");
