@@ -13,6 +13,8 @@ BuildRequires: vedebuginfo
 %if 0%{?rhel} == 8
 Requires: platform-python
 BuildRequires: platform-python-devel
+%define debug_package %{nil}
+%global __strip /bin/true
 %endif
 %description
 The Alternative VE Offloading framework (AVEO) is a faster and much
@@ -25,6 +27,7 @@ OpenACC.
 %package devel
 Summary: Development package for VE Offloading Framework based on VE-UDMA RPC
 Requires: %{name} = %{version}-%{release}
+Obsoletes: veoffload-devel veoffload-veorun-devel
 %description devel
 This package includes header files of VE offloading Framework
 

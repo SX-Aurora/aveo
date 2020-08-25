@@ -37,7 +37,7 @@ class CallArgs {
   template<typename T> void push_(T val);
   template<typename T> void set_(int argnum, T val);
 
-  std::string getStackImage(uint64_t &);
+  std::string getStackImage(uint64_t);
 
 public:
   uint64_t stack_top;
@@ -85,7 +85,7 @@ public:
 
   std::vector<uint64_t> getRegVal(uint64_t) const;
 
-  void setup(uint64_t &);
+  void setup(uint64_t);
   void copyin(std::function<int(uint64_t, const void *, size_t)>);
   void copyout();
 

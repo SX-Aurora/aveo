@@ -41,16 +41,7 @@ your program linked with the previous VEO implementation.
 
 To develop programs, @PACKAGE@-devel and @PACKAGE@run-devel and
 the development packages of the compiler (2.2.2 or later) are also
-required. These packages conflict with veoffload-devel and
-veoffload-veorun-devel. So, please uninstall veoffload-devel and
-veoffload-veorun-devel.
-
-To uninstall the conflicting packages by yum, execute the following
-command as root:
-
-~~~
-# yum remove veoffload-devel veoffload-veorun-devel
-~~~
+required.
 
 To install the packages to develop programs by yum, execute the
 following command as root:
@@ -58,6 +49,10 @@ following command as root:
 ~~~
 # yum install @PACKAGE@-devel @PACKAGE@run-devel
 ~~~
+veoffload-devel and veoffload-veorun-devel will be uninstalled
+automatically, because they conflict with @PACKAGE@-devel and
+@PACKAGE@run-devel.
+
 Then, you can link your program with AVEO.
 If you want to link your program with the previous VEO implementation,
 please install its packages into another machine.

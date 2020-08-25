@@ -11,6 +11,15 @@
 // multipart SEND/RECVFRAG transfer size
 #define PART_SENDFRAG (6*1024*1024)
 
+// The maximum size of arguments we can send using URPC_CMD_CALL_STKxx.
+// 40 is the size to send message with "LPLLP".
+#define MAX_ARGS_STACK_SIZE (DATA_BUFF_END - 40)
+
+// The size of a reserved stack area to avoid overwrite of arguments
+// We chose a big value as possible as we can, because the code to
+// print debug messages use stack.
+#define RESERVED_STACK_SIZE 512*1024
+
 #ifdef __cplusplus
 extern "C" {
 #endif

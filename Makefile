@@ -77,6 +77,7 @@ $(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
 	mkdir -p $(PACKAGE)-$(VERSION)
 	cp -p aveo.spec $(PACKAGE)-$(VERSION)
 	cp -rl Makefile make_aveo.inc prereqs README.md scripts src doc test VERSION COPYING $(PACKAGE)-$(VERSION)
+	rm -rf $(PACKAGE)-$(VERSION)/prereqs/ve-urpc/.git/*
 	tar czvf $(TARBALL) $(PACKAGE)-$(VERSION)
 	rm -rf $(PACKAGE)-$(VERSION)
 
@@ -118,6 +119,7 @@ clean:
 	make -C doc clean 
 	rm -f $(TARBALL)
 	rm -f aveo.spec
+	rm -f aveorun.spec
 realclean: clean
 	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs

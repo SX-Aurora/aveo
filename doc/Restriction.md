@@ -6,6 +6,8 @@ VEO does not support a quadruple precision real number and a variable length cha
 
 VEO does not support a quadruple precision real number and a variable length character string as a return value of Fortran functions.
 
+When veo_proc_create() is invoked, multiple threads for a OpenMP program are created on VE side by default. If you do not use OpenMP, set environment variable OMP_NUM_THREADS=1.
+
 Synchronous APIs wait the completion of previous requests submitted by asynchronous APIs.
 Synchronous APIs are below:
  - veo_alloc_mem()
@@ -19,3 +21,5 @@ Synchronous APIs are below:
  - veo_read_mem()
  - veo_unload_library()
  - veo_write_mem()
+
+The size of arguments passed to functions is limited to 63MB, since the size of the initial stack is 64MB. Allocate and use memory buffers on heap when you have huge argument arrays to pass.
