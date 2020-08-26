@@ -22,9 +22,6 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <wait.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 namespace veo {
 
