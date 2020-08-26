@@ -13,10 +13,12 @@ int main(int argc, char *argv[])
 	int err = 0;
   struct veo_proc_handle *proc;
 
-	if (argc > 1) {
-		nloop = atoi(argv[1]);
-	}
+  if (argc > 1) {
+    nloop = atoi(argv[1]);
+  }
 
+  // needed with multiple contexts
+  setenv("VE_OMP_NUM_THREADS", "1", 1);
   proc = veo_proc_create(-1);
   printf("proc = %p\n", (void *)proc);
   if (proc == NULL)

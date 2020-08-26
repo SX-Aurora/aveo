@@ -12,9 +12,9 @@ int main()
 {
 	int ret;
         //
-        // set VE_OMP_NUM_THREADS to 4 such that we can accomodate 2 contexts
+        // set VE_OMP_NUM_THREADS to 1
         //
-        setenv("VE_OMP_NUM_THREADS", "4", 1);
+        setenv("VE_OMP_NUM_THREADS", "1", 1);
 	struct veo_proc_handle *proc = veo_proc_create(-1);
 	if (proc == NULL) {
 		printf("veo_proc_create() failed!\n");
@@ -34,7 +34,7 @@ int main()
 	long retval;
 	ret = veo_call_wait_result(ctx1, req, &retval),
 	printf("ctx1 ret %d nthread %d\n", ret, retval);
-	if (ret != 0 || retval < 2) {
+	if (ret != 0 || retval != 1) {
 		printf("Test failed\n");
 		exit(1);
 	}
@@ -43,7 +43,7 @@ int main()
         req = veo_call_async(ctx2, sym, arg);
 	ret = veo_call_wait_result(ctx2, req, &retval),
 	printf("ctx2 ret %d nthread %d\n", ret, retval);
-	if (ret != 0 || retval < 2) {
+	if (ret != 0 || retval != 1) {
 		printf("Test failed\n");
 		exit(1);
 	}
@@ -51,7 +51,7 @@ int main()
         req = veo_call_async(ctx1, sym, arg);
 	ret = veo_call_wait_result(ctx1, req, &retval),
 	printf("2nd call ctx1 ret %d nthread %d\n", ret, retval);
-	if (ret != 0 || retval < 2) {
+	if (ret != 0 || retval != 1) {
 		printf("Test failed\n");
 		exit(1);
 	}

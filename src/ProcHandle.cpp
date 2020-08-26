@@ -408,17 +408,10 @@ Context *ProcHandle::openContext(size_t stack_sz)
   const char *e = getenv("VE_OMP_NUM_THREADS");
   if (e != nullptr) {
     ve_omp_threads = stoi(std::string(e));
-  } else {
-    const char *e = getenv("OMP_NUM_THREADS");
-    if (e != nullptr) {
-      ve_omp_threads = stoi(std::string(e));
-    } else {
-#ifdef _OPENMP
-      ve_omp_threads = omp_get_max_threads();
-#else
-      ve_omp_threads = 1;
-#endif
-    }
+  }
+  if (ve_omp_threads != 1) {
+    VEO_ERROR("Env variable VE_OMP_NUM_THREADS must be set to 1 when using multiple contexts!");
+    throw VEOException("ProcHandle: VE_OMP_NUM_THREADS not set to 1 with multiple contexts.");
   }
   int prev_core = this->ctx.back()->core;
   if (prev_core >= 0) {
