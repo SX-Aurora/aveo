@@ -39,6 +39,10 @@ int main(int argc, char *argv[])
         long ts, te;
         uint64_t reqs[nloop], res[nloop];
 
+        //------- warm up ------
+        err = 0;
+        reqs[0] = veo_call_async(ctx, sym, argp);
+        err += veo_call_wait_result(ctx, reqs[0], &res[0]);
 
 	//----------------------
 	printf("Test 1: submit %d calls, then wait for %d results\n", nloop, nloop);
