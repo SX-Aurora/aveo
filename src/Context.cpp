@@ -284,6 +284,7 @@ uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
              VEO_TRACE("[request #%d] unpacked", id);
              if (rv < 0) {
                cmd->setResult(result, VEO_COMMAND_EXCEPTION);
+               this->state = VEO_STATE_EXIT;
                return rv;
              }
              cmd->setResult(result, VEO_COMMAND_OK);
