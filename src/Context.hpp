@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#include "log.h"
 #include <urpc.h>
 #include <ve_offload.h>
 
