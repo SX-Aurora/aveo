@@ -22,7 +22,7 @@ namespace veo {
 uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
 {
   VEO_TRACE("sendbuffAsync enter...");
-  if (this->state == VEO_STATE_EXIT)
+  if (!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   auto id = this->issueRequestID();
@@ -80,7 +80,7 @@ uint64_t Context::sendbuffAsync(uint64_t dst, void *src, size_t size)
 uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
 {
   VEO_TRACE("recvbuffAsync enter...");
-  if (this->state == VEO_STATE_EXIT)
+  if (!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   auto id = this->issueRequestID();
@@ -153,7 +153,7 @@ uint64_t Context::recvbuffAsync(void *dst, uint64_t src, size_t size)
 uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
 {
   VEO_TRACE("asyncReadMem enter...");
-  if( this->state == VEO_STATE_EXIT )
+  if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   const char* env_p = std::getenv("VEO_RECVFRAG");
@@ -226,7 +226,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
                                       size_t size)
 {
   VEO_TRACE("asyncWriteMem enter...\n");
-  if( this->state == VEO_STATE_EXIT )
+  if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   const char* env_p = std::getenv("VEO_SENDFRAG");

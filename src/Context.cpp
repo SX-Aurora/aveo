@@ -23,7 +23,7 @@
 
 namespace veo {
 
-  Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
+Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
   proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0) {}
 
 /**
@@ -37,7 +37,7 @@ namespace veo {
 int Context::close()
 {
   VEO_TRACE("ctx=%p", this);
-  if ( this->state == VEO_STATE_EXIT )
+  if (!this->is_alive())
     return 0;
   this->state = VEO_STATE_EXIT;
   uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
@@ -194,6 +194,8 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
   void *payload;
   size_t plen;
 
+  if (!this->is_alive())
+    return -1;
   args.setup(this->ve_sp - RESERVED_STACK_SIZE);
 
   auto reg_args_num = args.numArgs();
@@ -251,7 +253,7 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
 uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
 {
   VEO_TRACE("VE function %lx", addr);
-  if ( addr == 0 || this->state == VEO_STATE_EXIT)
+  if ( addr == 0 || !this->is_alive())
     return VEO_REQUEST_ID_INVALID;
   
   auto id = this->issueRequestID();
@@ -311,7 +313,8 @@ uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
  */
 uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
 {
-  if ( addr == 0 || this->state == VEO_STATE_EXIT)
+  // alive check was done before
+  if ( addr == 0)
     return VEO_REQUEST_ID_INVALID;
 
   if ((this->ve_sp & 0xFFFFFFFFFC000000) !=
@@ -396,7 +399,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
 uint64_t Context::callAsync(uint64_t addr, CallArgs &args)
 {
   VEO_TRACE("callAsync");
-  if ( addr == 0 || this->state == VEO_STATE_EXIT)
+  if ( addr == 0 || !this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   args.setup(this->ve_sp - RESERVED_STACK_SIZE);
@@ -428,7 +431,7 @@ uint64_t Context::callAsyncByName(uint64_t libhdl, const char *symname, CallArgs
 uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
 {
   VEO_TRACE("VH function %lx", func);
-  if ( func == nullptr || this->state == VEO_STATE_EXIT)
+  if ( func == nullptr ||  !this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
   auto id = this->issueRequestID();

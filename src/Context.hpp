@@ -54,6 +54,25 @@ private:
     rem_reqid.insert(ret);
     return ret;
   }
+  /**
+   * @brief check if context is alive
+   *
+   * @return true or false
+   *
+   * Check if context state is exiting or receiver end has unexpected state.
+   */
+  bool is_alive() {
+    urpc_comm_t *uc = &this->up->send;
+    if (this->state == VEO_STATE_EXIT) {
+      VEO_TRACE("context %p state is VEO_STATE_EXIT", this);
+      return false;
+    } else if (urpc_get_receiver_flags(uc) & URPC_FLAG_EXITED) {
+      VEO_TRACE("context %p urpc recv flag is EXITING", this);
+      return false;
+    }
+    // TODO: add sleeping / wakeup some day
+    return true;
+  }
 
   uint64_t simpleCallAsync(uint64_t, CallArgs &);
   uint64_t doCallAsync(uint64_t, CallArgs &);
