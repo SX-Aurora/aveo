@@ -52,7 +52,7 @@ void signalHandler( int signum ) {
   }
   urpc_generic_send(main_up, URPC_CMD_EXCEPTION, (char *)"L", (int64_t)signum);
   // mark this side as "in exception". "this side" is the sender side
-  urpc_set_recv_flags(&main_up->recv, urpc_get_recv_flags(&main_up->recv) | URPC_FLAG_EXCEPTION);
+  urpc_set_receiver_flags(&main_up->recv, urpc_get_receiver_flags(&main_up->recv) | URPC_FLAG_EXCEPTION);
   ve_urpc_fini(main_up);
   exit(signum);  
 }
