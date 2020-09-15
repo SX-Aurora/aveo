@@ -34,9 +34,9 @@ int main()
 #endif
 
   arg = veo_args_alloc();
-  ptr = 0x00000001;
+  ptr = (void *)0x00000001;
   veo_args_set_i32(arg, 0, 1);
-  veo_args_set_stack(arg, VEO_INTENT_OUT, 1, &ptr, sizeof(ptr));
+  veo_args_set_stack(arg, VEO_INTENT_OUT, 1, (char *)&ptr, sizeof(ptr));
   ret = veo_call_sync(proc, sym, arg, &retval);
   veo_args_free(arg);
   printf("out = %p\n", ptr);
