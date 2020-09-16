@@ -150,4 +150,6 @@ $(BVE)/aveorun-ftrace.o: aveorun.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:
-	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(LIBS) $(VELIBS) $(VEARCS) $(PROGS)
+	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(LIBS) \
+		$(VELIBS) $(VEARCS) $(PROGS) $(INCLUDES) \
+		$(BVE)/aveorun.o $(BVE)/aveorun-ftrace.o 

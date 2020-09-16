@@ -117,11 +117,11 @@ clean:
 	make -C src clean $(MAKEVARS)
 	make -C test clean $(MAKEVARS)
 	make -C doc clean 
+	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -f $(TARBALL)
 	rm -f aveo.spec
 	rm -f aveorun.spec
 realclean: clean
-	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs
 
 .PHONY: aveo tests test install ve-urpc clean realclean doc

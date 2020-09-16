@@ -90,4 +90,4 @@ $(BB)/%.sh: %.sh | $$(@D)/
 	cp -p $< $@
 
 clean:
-	rm -f $(TESTS)
+	rm -f $(TESTS) $(TESTS) $(VELIBS) $(STATICS) $(SCRIPTS)
