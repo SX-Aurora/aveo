@@ -667,20 +667,19 @@ int veo_args_set_float(veo_args *ca, int argnum, float val)
  * @brief set VEO function calling argument pointing to buffer on stack
  *
  * @param ca pointer to veo_args object
- * @param inout intent of argument, currently only VEO_INTENT_IN is supported
+ * @param inout intent of argument. VEO_INTENT_IN, VEO_INTENT_OUT, VEO_INTENT_INOUT are supported
  * @param argnum argument number that is being set
  * @param buff char pointer to buffer that will be copied to the VE stack
  * @param len length of buffer that is copied to the VE stack
  * @retval  0 argumen is successfully set.
  * @retval -1 an error occurred.
  *
- * The buffer is copied to the stack and will look to the VE callee like a
- * local variable of the caller function. It is currently erased right after
- * the call returns, thus only intent IN args passing is supported. Use this
- * to pass structures to the VE "kernel" function. The size of arguments 
- * passed on the stack is limited to 63MB, since the size of the initial 
- * stack is 64MB. Try staying well below this value, allocate and use memory
- * buffers on heap when you have huge argument arrays to pass.
+ * The buffer is copied to the stack and will look to the VE callee
+ * like a local variable of the caller function. Use this to pass
+ * structures to the VE "kernel" function. The size of arguments
+ * passed on the stack is limited to 63MB, since the size of the
+ * initial stack is 64MB. Allocate and use memory buffers on heap when
+ * you have huge argument arrays to pass.
  */
 int veo_args_set_stack(veo_args *ca, enum veo_args_intent inout,
                        int argnum, char *buff, size_t len)
