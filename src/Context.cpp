@@ -40,7 +40,7 @@ int Context::close()
   if ( this->state == VEO_STATE_EXIT )
     return 0;
   this->state = VEO_STATE_EXIT;
-  uint64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
+  int64_t req = urpc_generic_send(this->up, URPC_CMD_EXIT, (char *)"");
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_EXIT);
     vh_urpc_peer_destroy(this->up);

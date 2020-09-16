@@ -84,16 +84,16 @@ namespace veo {
   
   int unpack_call_result(urpc_mb_t *m, CallArgs *args, void *payload, size_t plen, uint64_t *result)
   {
-    int rc;
+    int rc = -1;
 
     if (m->c.cmd == URPC_CMD_RESULT) {
       if (plen) {
-        rc =urpc_unpack_payload(payload, plen, (char *)"L", (int64_t *)result);
+        rc = urpc_unpack_payload(payload, plen, (char *)"L", (int64_t *)result);
       } else {
         VEO_ERROR("message had no payload!?");
       }
     } else if (m->c.cmd == URPC_CMD_RES_STK) {
-      void *stack_buf;
+      void *stack_buf = nullptr;
       rc = urpc_unpack_payload(payload, plen, (char *)"LP", (int64_t *)result,
                                &stack_buf, &args->stack_size);
       if (rc == 0) {
@@ -101,9 +101,9 @@ namespace veo {
         args->copyout();
       }
     } else if (m->c.cmd == URPC_CMD_EXCEPTION) {
-      uint64_t exc;
-      char *msg;
-      size_t msglen;
+      uint64_t exc = 0;
+      char *msg = nullptr;
+      size_t msglen = 0;
       rc = urpc_unpack_payload(payload, plen, (char *)"LP", &exc, (void *)&msg, &msglen);
       VEO_ERROR("VE exception %d\n%s", exc, msg);
       *result = exc;
