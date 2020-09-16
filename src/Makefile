@@ -102,12 +102,12 @@ $(BVELIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 $(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
 	$(AR) rv $@ $^
 
-$(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
+$(BLIBEX)/aveorun: $(BVE)/aveorun.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
 		-lveio -lpthread
 
-$(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
+$(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
 		-lveio -lpthread
