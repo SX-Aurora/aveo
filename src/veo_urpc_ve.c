@@ -69,7 +69,6 @@ static int newpeer_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   pthread_attr_destroy(&_a);
 
   __num_ve_peers++;
-  while (new_up->core != core);
 
   ve_urpc_init_dma(up, up->core);
   
