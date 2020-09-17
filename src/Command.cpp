@@ -152,8 +152,15 @@ void CommQueue::cancelAll()
   for(;;) {
     auto command = this->request.popNoWait();
     if ( command == nullptr )
-      return;
-    command->setResult(0, VEO_COMMAND_UNFINISHED);
+      break;
+    command->setResult(0, VEO_COMMAND_ERROR);
+    this->completion.insert(std::move(command));
+  }
+  for(;;) {
+    auto command = this->inflight.popNoWait();
+    if ( command == nullptr )
+      break;
+    command->setResult(0, VEO_COMMAND_ERROR);
     this->completion.insert(std::move(command));
   }
 }
