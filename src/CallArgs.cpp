@@ -61,12 +61,9 @@ public:
 
   /**
    * @brief a value on register
-   * @param sp stack pointer
-   * @param n_args the number of arguments
-   * @param used_size the size of stack used
    * @return a value to be set to on a register
    */
-  int64_t getRegVal(uint64_t sp, int n_args, size_t &used_size) const {
+  int64_t getRegVal() const {
     return static_cast<int64_t>(this->value_);
   }
 
@@ -85,7 +82,7 @@ public:
   }
 
   size_t sizeOnStack() const { return 0;}
-  void copyoutFromStackImage(uint64_t sp, const char *img){}// nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
 };
 
 template<> class ArgType<double>: public ArgBase {
@@ -96,7 +93,7 @@ template<> class ArgType<double>: public ArgBase {
   } u_;
 public:
   explicit ArgType(const double d): u_(d) {}
-  int64_t getRegVal(uint64_t sp, int n_args, size_t &used_size) const {
+  int64_t getRegVal() const {
     return this->u_.i64_;
   }
   void setStackImage(uint64_t sp, std::string &stack, int n,
@@ -111,7 +108,7 @@ public:
     set_value(stack, pos, this->u_.i64_);
   }
   size_t sizeOnStack() const { return 0;}
-  void copyoutFromStackImage(uint64_t sp, const char *img){}// nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
 };
 
 template<> class ArgType<float>: public ArgBase {
@@ -122,7 +119,7 @@ template<> class ArgType<float>: public ArgBase {
   } u_;
 public:
   explicit ArgType(const float f): u_(f) {}
-  int64_t getRegVal(uint64_t sp, int n_args, size_t &used_size) const {
+  int64_t getRegVal() const {
     return this->u_.i64_;
   }
   void setStackImage(uint64_t sp, std::string &stack, int n,
@@ -138,7 +135,7 @@ public:
   }
 
   size_t sizeOnStack() const { return 0;}
-  void copyoutFromStackImage(uint64_t sp, const char *img){}// nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
 };
 
 class ArgOnStack: public ArgBase {
@@ -153,12 +150,9 @@ public:
 
   /**
    * @brief a value on register
-   * @param sp stack pointer
-   * @param n_args the number of arguments
-   * @param used_size the size of stack used
    * @return a value to be set to on a register
    */
-  int64_t getRegVal(uint64_t sp, int n_args, size_t &used_size) const {
+  int64_t getRegVal() const {
     return this->vemva_;
   }
 
@@ -192,13 +186,20 @@ public:
     }
     return rv;
   }
-  void copyoutFromStackImage(uint64_t sp, const char *img) {
-    VEO_TRACE("%s(%#012lx, ...)", __func__, sp);
-    if (!this->out_)
-      return;
-    VEO_DEBUG("copy out to VH: offset %#lx -> %p, size = %d",
-      this->vemva_ - sp, this->buff_, this->len_);
-    std::memcpy(this->buff_, img + (this->vemva_ - sp), this->len_);
+  std::function<void(void *)> copyoutFromStackImage(uint64_t stack_top) {
+    if (!this->out_) {
+      auto f = [](void *_dummy) -> void {};
+      return f;
+    }
+    auto buff = this->buff_;
+    auto len = this->len_;
+    auto vemva = this->vemva_;
+    VEO_TRACE("copyoutFromStackImage buff=%p len=%ld vemva=%lx stack_top=%lx", (void*)buff, len, vemva, stack_top);
+    auto f = [stack_top, buff, len, vemva](void *stack_payload) {
+               VEO_DEBUG("copy out to VH: offset %#lx -> %p, size = %d", vemva - stack_top, buff, len);
+               std::memcpy(buff, stack_payload + (vemva - stack_top), len);
+             };
+    return f;
   }
 };
 } // namespace internal
@@ -260,12 +261,11 @@ void CallArgs::setOnStack(enum veo_args_intent inout, int argnum,
  * @param sp stack pointer
  * @return registar arguments
  */
-std::vector<uint64_t> CallArgs::getRegVal(uint64_t sp) const {
-  size_t stack_consumed = 0;
+std::vector<uint64_t> CallArgs::getRegVal() {
   std::vector<uint64_t> rv;
   int count = 0;
   for (auto &arg: this->arguments) {
-    rv.push_back(arg->getRegVal(sp, this->numArgs(), stack_consumed));
+    rv.push_back(arg->getRegVal());
     if (++count >= NUM_ARGS_ON_REGISTER)
       break;
   }
@@ -317,31 +317,29 @@ void CallArgs::setup(uint64_t sp)
   this->stack_buf.reset(buf);
 }
 
-void CallArgs::copyin(std::function<int(uint64_t, const void *, size_t)> xfer)
-{
-  if (this->copied_in) {
-    VEO_TRACE("transfer stack image (VH %p -> VE %#lx, %d bytes)",
-              this->stack_buf.get(), this->stack_top, this->stack_size);
-    xfer(this->stack_top, this->stack_buf.get(), this->stack_size);
-  } else {
-    VEO_TRACE("the current stack (%#lx) is not copied in.",
-              this->stack_top);
-  }
-}
-
-void CallArgs::copyout()
+// Create a copyout function
+//
+// external: a newly allocated stack buffer
+std::function<void(void *)> CallArgs::copyout()
 {
   if (this->copied_out) {
-    VEO_TRACE("transfer stack image (VE %#lx -> VH %p, %d bytes)",
-              this->stack_top, this->stack_buf.get(), this->stack_size);
-    // transfer done by veo_urpc
-    //xfer(this->stack_buf.get(), this->stack_top, this->stack_size);
+    auto stack_size = this->stack_size;
+    auto stack_top = this->stack_top;
+    std::vector<std::function<void(void *)> > funcs;
     for (auto &arg: this->arguments) {
-      arg->copyoutFromStackImage(this->stack_top, this->stack_buf.get());
+      if (typeid(*(arg.get())) == typeid(internal::ArgOnStack)) {
+        funcs.emplace_back(arg->copyoutFromStackImage(stack_top));
+      }
     }
+    auto f = [funcs, stack_size](void *stack_payload) -> void {
+               for (auto &g: funcs) {
+                 g(stack_payload);
+               }
+             };
+    return f;
   } else {
-    VEO_TRACE("the current stack (%#lx) is not copied out.",
-              this->stack_top);
+    auto f = [](void *_dummy) -> void {};
+    return f;
   }
 }
 } // namespace veo

@@ -149,7 +149,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
                                    libname, (size_t)strlen(libname) + 1);
   if (req < 0) {   
     VEO_ERROR("failed to send cmd %d", URPC_CMD_LOADLIB);
-    return NULL;
+    return 0UL;
   }
 
   // wait for result
@@ -229,7 +229,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
                                    libhdl, symname, (size_t)strlen(symname) + 1);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_GETSYM);
-    return NULL;
+    return 0UL;
   }
 
   uint64_t symaddr = 0;
@@ -258,7 +258,7 @@ uint64_t ProcHandle::allocBuff(const size_t size)
   uint64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_ALLOC);
-    return NULL;
+    return 0UL;
   }
   uint64_t addr = 0;
   wait_req_result(this->up, req, (int64_t *)&addr);
