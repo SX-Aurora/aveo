@@ -71,7 +71,6 @@ aveo.spec: aveo.spec.in
 aveorun.spec: aveorun.spec.in
 	$(edit) $< > $@
 
-
 $(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
 	if [ -d $(PACKAGE)-$(VERSION) ]; then rm -rf $(PACKAGE)-$(VERSION); fi
 	mkdir -p $(PACKAGE)-$(VERSION)
@@ -82,9 +81,12 @@ $(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
 	rm -rf $(PACKAGE)-$(VERSION)
 
 rpm: $(TARBALL) aveo.spec aveorun.spec
+	mkdir -p ${RPMBUILD_DIR}/SOURCES
 	cp $(TARBALL) ${RPMBUILD_DIR}/SOURCES
 	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveo.spec
 	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveorun.spec
+
+.PHONY: aveo.spec aveorun.spec $(TARBALL) rpm
 
 # --------------------------
 
@@ -117,11 +119,11 @@ clean:
 	make -C src clean $(MAKEVARS)
 	make -C test clean $(MAKEVARS)
 	make -C doc clean 
+	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -f $(TARBALL)
 	rm -f aveo.spec
 	rm -f aveorun.spec
 realclean: clean
-	make -C prereqs/ve-urpc clean BUILD=$(BUILD) DEST=$(URPC_INST_DIR)
 	rm -rf $(BUILD) prereqs
 
 .PHONY: aveo tests test install ve-urpc clean realclean doc

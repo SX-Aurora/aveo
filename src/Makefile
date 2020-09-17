@@ -102,14 +102,14 @@ $(BVELIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
 $(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
 	$(AR) rv $@ $^
 
-$(BLIBEX)/aveorun: $(BVE)/aveorun.o | $$(@D)/
+$(BLIBEX)/aveorun: $(BVE)/aveorun.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ \
-		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
+		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
 		-lveio -lpthread
 
-$(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o | $$(@D)/
+$(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ \
-		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE.a \
+		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
 		-lveio -lpthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
@@ -150,4 +150,6 @@ $(BVE)/aveorun-ftrace.o: aveorun.c | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -fpic -o $@ -c $<
 
 clean:
-	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(LIBS) $(VELIBS) $(VEARCS) $(PROGS)
+	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(LIBS) \
+		$(VELIBS) $(VEARCS) $(PROGS) $(INCLUDES) \
+		$(BVE)/aveorun.o $(BVE)/aveorun-ftrace.o 
