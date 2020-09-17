@@ -56,8 +56,8 @@ static int exit_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int loadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                            void *payload, size_t plen)
 {
-  size_t psz;
-  char *libname;
+  size_t psz = 0;
+  char *libname = NULL;
 
   urpc_unpack_payload(payload, plen, (char *)"P", &libname, &psz);
 
@@ -76,8 +76,8 @@ static int loadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int unloadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                              void *payload, size_t plen)
 {
-  size_t psz;
-  uint64_t libhndl;
+  size_t psz = 0;
+  uint64_t libhndl = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"L", &libhndl);
 
@@ -91,9 +91,9 @@ static int unloadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                           void *payload, size_t plen)
 {
-  uint64_t libhndl;
-  char *sym;
-  size_t psz;
+  uint64_t libhndl = 0;
+  char *sym = NULL;
+  size_t psz = 0;
   uint64_t symaddr = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"LP", &libhndl, &sym, &psz);
@@ -122,8 +122,8 @@ static int getsym_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int alloc_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                          void *payload, size_t plen)
 {
-  size_t psz;
-  size_t allocsz;
+  size_t psz = 0;
+  size_t allocsz = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"L", &allocsz);
 
@@ -138,8 +138,8 @@ static int alloc_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int free_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                         void *payload, size_t plen)
 {
-  size_t psz;
-  uint64_t addr;
+  size_t psz = 0;
+  uint64_t addr = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"L", &addr);
 
@@ -160,9 +160,9 @@ static int free_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int sendbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                             void *payload, size_t plen)
 {
-  uint64_t dst;
-  void *buff;
-  size_t buffsz;
+  uint64_t dst = 0;
+  void *buff = NULL;
+  size_t buffsz = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"LP", &dst, &buff, &buffsz);
   VEO_DEBUG("dst=%p size=%lu", (void *)dst, buffsz);
@@ -183,8 +183,8 @@ static int sendbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 static int recvbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
                             void *payload, size_t plen)
 {
-  uint64_t src, dst;
-  size_t size;
+  uint64_t src, dst = 0;
+  size_t size = 0;
 
   urpc_unpack_payload(payload, plen, (char *)"LLL", &src, &dst, &size);
   VEO_DEBUG("src=%p dst=%p size=%lu", (void *)src, (void *)dst, size);

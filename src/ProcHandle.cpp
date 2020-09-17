@@ -145,7 +145,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   }
 
   // send loadlib cmd
-  uint64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
+  int64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
                                    libname, (size_t)strlen(libname) + 1);
   if (req < 0) {   
     VEO_ERROR("failed to send cmd %d", URPC_CMD_LOADLIB);
@@ -183,7 +183,7 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
   sym_mtx.unlock();
 
   // send unloadlib cmd
-  uint64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
+  int64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
                                    handle);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_UNLOADLIB);
@@ -225,7 +225,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   
   // lock peer (not needed any more because using proc mutex)
 
-  uint64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
+  int64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
                                    libhdl, symname, (size_t)strlen(symname) + 1);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_GETSYM);
@@ -255,7 +255,7 @@ uint64_t ProcHandle::allocBuff(const size_t size)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
-  uint64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
+  int64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_ALLOC);
     return 0UL;
@@ -275,7 +275,7 @@ void ProcHandle::freeBuff(const uint64_t buff)
 {
   std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
-  uint64_t req = urpc_generic_send(up, URPC_CMD_FREE, (char *)"L", buff);
+  int64_t req = urpc_generic_send(up, URPC_CMD_FREE, (char *)"L", buff);
   if (req < 0) {
     VEO_ERROR("failed to send cmd %d", URPC_CMD_FREE);
     return;
