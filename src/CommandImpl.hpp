@@ -1,3 +1,5 @@
+#ifndef _COMMAND_IMPL_HPP_
+#define _COMMAND_IMPL_HPP_
 /**
  * @file CommandImpl.hpp
  * @brief VEO command implementation
@@ -36,3 +38,4 @@ public:
 
 } // namespace internal
 } // namespace veo
+#endif
