@@ -122,14 +122,15 @@ std::unique_ptr<Command> CommQueue::tryPopRequest()
   return this->request.popNoWait();
 }
 
-void CommQueue::pushInFlight(std::unique_ptr<Command> req)
+void CommQueue::pushInFlight(std::unique_ptr<Command> cmd)
 {
-  this->inflight.push(std::move(req));
+  auto req = cmd.get()->getURPCReq();
+  this->inflight.insert(req, std::move(cmd));
 }
 
-std::unique_ptr<Command> CommQueue::popInFlight()
+std::unique_ptr<Command> CommQueue::popInFlight(int64_t id)
 {
-  return this->inflight.popNoWait();
+  return this->inflight.tryFind(id);
 }
 
 void CommQueue::pushCompletion(std::unique_ptr<Command> req)
