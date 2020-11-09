@@ -9,7 +9,7 @@
  
 long syscall(long n, ...);
  
-int rounds = 10;
+int rounds = 40;
 
 int gettid(void)
 {
