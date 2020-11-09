@@ -6,13 +6,21 @@
 #define _VEO_THREAD_CONTEXT_HPP_
 
 #include "Command.hpp"
+#include "CommandImpl.hpp"
 #include <mutex>
 #include <unordered_set>
+#include <utility>
+#include <tuple>
+#include <functional>
+
 #include <pthread.h>
 #include <semaphore.h>
 
 #include "log.h"
 #include <urpc.h>
+#include "veo_urpc.h"
+#include "veo_urpc_vh.hpp"
+
 #include <ve_offload.h>
 
 namespace veo {
@@ -78,11 +86,79 @@ private:
   uint64_t simpleCallAsync(uint64_t, CallArgs &);
   uint64_t doCallAsync(uint64_t, CallArgs &);
 
+  /**
+   * @brief Generic Async Request
+   *
+   * @param urpc_cmd VE-URPC command
+   * @param fmt format string for urpc_generic_send
+   * @param args... arguments for urpc_generic_send
+   * @return request ID
+   */
+  template <typename ... Args>
+  uint64_t genericAsyncReq(int urpc_cmd, char *fmt, Args&&... args)
+  {
+    //VEO_TRACE("start");
+    if (!this->is_alive())
+      return VEO_REQUEST_ID_INVALID;
+
+    auto id = this->issueRequestID();
+    //
+    // submit function, called when cmd is issued to URPC
+    //
+    auto f = [this, id, urpc_cmd, fmt,
+              args = std::make_tuple(this->up, urpc_cmd, fmt,
+                                     std::forward<Args>(args)...)](Command *cmd)
+             {
+               int req = std::apply(urpc_generic_send, args);
+               VEO_TRACE("[request #%d] urpcreq = %ld", id, req);
+               if (req >= 0) {
+                 cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
+               } else {
+                 // TODO: anything more meaningful into result?
+                 cmd->setResult(0, VEO_COMMAND_ERROR);
+                 VEO_TRACE("[request #%d] error return...", id);
+                 return -EAGAIN;
+               }
+               return 0;
+             };
+    //
+    // result function, called when response has arrived from URPC
+    //
+    auto u = [this, id] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
+             {
+               if (m->c.cmd == URPC_CMD_ACK)
+                 cmd->setResult(0, VEO_COMMAND_OK);
+               else if (m->c.cmd != URPC_CMD_RES_STK) {
+                 uint64_t result;
+                 int rv = unpack_call_result(m, nullptr, payload, plen, &result);
+                 if (rv < 0) {
+                   cmd->setResult(result, VEO_COMMAND_EXCEPTION);
+                   this->state = VEO_STATE_EXIT;
+                   return rv;
+                 }
+                 cmd->setResult(result, VEO_COMMAND_OK);
+               }
+               VEO_TRACE("[request #%d] result end...", id);
+               return 0;
+             };
+
+    std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+    {
+      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      if(this->comq.pushRequest(std::move(cmd)))
+        return VEO_REQUEST_ID_INVALID;
+      VEO_TRACE("submitted [request #%lu]", id);
+    }
+    this->progress(2);
+    return id;
+  }
+
   // handlers for commands
   int _readMem(void *, uint64_t, size_t);
   int _writeMem(uint64_t, const void *, size_t);
   uint64_t _callOpenContext(ProcHandle *, uint64_t, CallArgs &);
   void _delFromProc();
+  int _peekResult(uint64_t reqid, uint64_t *retp);
 
 public:
   Context(ProcHandle *, urpc_peer_t *up, bool is_main);
@@ -98,8 +174,9 @@ public:
   int callPeekResult(uint64_t, uint64_t *);
   void synchronize();
 
-  uint64_t sendbuffAsync(uint64_t dst, void *src, size_t size);
-  uint64_t recvbuffAsync(void *dst, uint64_t src, size_t size);
+  uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
+  uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
+
   uint64_t asyncReadMem(void *dst, uint64_t src , size_t size);
   uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size);
   int readMem(void *dst, uint64_t src , size_t size);
