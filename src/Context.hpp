@@ -165,6 +165,7 @@ public:
   Context(ProcHandle *);
   ~Context() {}
   Context(const Context &) = delete;//non-copyable
+  void getStackPointer(uint64_t *sp);
   veo_context_state getState() { return this->state; }
   int callSync(uint64_t addr, CallArgs &arg, uint64_t *result);
   uint64_t callAsync(uint64_t, CallArgs &);

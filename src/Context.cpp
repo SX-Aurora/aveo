@@ -198,6 +198,34 @@ void Context::_synchronize_nolock()
 }
 
 /**
+ * @brief Retrieve the stack pointer of a context thread on VE
+ *
+ * @param sp pointer to variable which receives the stack pointer
+ * @throws VEOException when failing
+ */
+void Context::getStackPointer(uint64_t *sp)
+{
+  urpc_mb_t m;
+  void *payload;
+  size_t plen;
+  auto req = urpc_generic_send(this->up, URPC_CMD_CALL,
+                               (char *)"LP", 0, nullptr, 0);
+  if (req < 0) {
+    VEO_ERROR("Sending ve-urpc request failed\n");
+    throw VEOException("Failed to get the VE SP.");
+  }
+  if (!urpc_recv_req_timeout(this->up, &m, req,
+                             (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
+    // timeout! complain.
+    VEO_ERROR("timeout waiting for RESULT req=%ld", req);
+    throw VEOException("Failed to get the VE SP.");
+  }
+  int rc = unpack_call_result(&m, nullptr, payload, plen, sp);
+  urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
+}
+
+
+/**
  * @brief start a function on the VE, wait for result and return it.
  *
  * @param addr VEMVA of function called
@@ -207,64 +235,21 @@ void Context::_synchronize_nolock()
  */
 int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
 {
-  urpc_mb_t m;
-  void *payload;
-  size_t plen;
-
   if (!this->is_alive())
     return -1;
+
   args.setup(this->ve_sp - RESERVED_STACK_SIZE);
-
-  auto reg_args_num = args.numArgs();
-  if (reg_args_num > NUM_ARGS_ON_REGISTER)
-    reg_args_num = NUM_ARGS_ON_REGISTER;
-  size_t reg_args_sz = reg_args_num * sizeof(uint64_t);
-
-  if ((args.copied_in || args.copied_out) &&
-      (args.stack_size > MAX_ARGS_STACK_SIZE - reg_args_sz)) {
-    // If we pass large arguments, we use the queue
-    auto req = this->doCallAsync(addr, args);
-    if (req == VEO_REQUEST_ID_INVALID) {
-      VEO_ERROR("failed! Aborting.");
-      return -1;
-    }
-    auto rv = this->callWaitResult(req, result);
-    if (rv != VEO_COMMAND_OK) {
-      VEO_TRACE("done. rv=%d", rv);
-      rv = -1;
-    }
-    return rv;
-  }
-
-  VEO_TRACE("VE function %#lx", addr);
-
-  auto regs = args.getRegVal();
-  auto stack_top = args.stack_top;
-  auto stack_size = args.stack_size;
-  bool copyin = args.copied_in;
-  bool copyout = args.copied_out;
-  std::unique_ptr<char[]> stack = std::move(args.stack_buf);
-  auto copyout_func = args.copyout();
-
-  std::lock_guard<std::mutex> lock(this->submit_mtx);
-  this->_synchronize_nolock();
-
-  int64_t req = send_call_nolock(this->up, this->ve_sp, addr, regs, stack_top,
-                                 stack_size, copyin, copyout, (void *)stack.get());
-  if (req < 0) {
-    VEO_ERROR("Sending callSync request failed\n");
+  auto req = this->doCallAsync(addr, args);
+  if (req == VEO_REQUEST_ID_INVALID) {
+    VEO_ERROR("failed! Aborting.");
     return -1;
   }
-
-  // TODO: make sync call timeout configurable
-  if (!urpc_recv_req_timeout(this->up, &m, req, (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
-    // timeout! complain.
-    VEO_ERROR("callSync timeout waiting for RESULT req=%ld", req);
-    return -1;
+  auto rv = this->callWaitResult(req, result);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done. rv=%d", rv);
+    rv = -1;
   }
-  int rc = unpack_call_result(&m, copyout_func, payload, plen, result);
-  urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
-  return rc;
+  return rv;
 }
 
 /**

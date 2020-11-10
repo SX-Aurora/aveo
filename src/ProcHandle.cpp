@@ -65,15 +65,8 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   }
 
   this->mctx = new Context(this, this->up, true);
-  //this->ctx.push_back(this->mctx);
 
-  // The sync call returns the stack pointer from inside the VE kernel
-  // call handler if the function address passed is 0.
-  CallArgs args;
-  auto rc = this->callSync(0, args, &this->ve_sp);
-  if (rc < 0) {
-    throw VEOException("ProcHandle: failed to get the VE SP.");
-  }
+  this->mctx->getStackPointer(&this->ve_sp);
   VEO_DEBUG("proc stack pointer: %p", (void *)this->ve_sp);
 
   this->mctx->state = VEO_STATE_RUNNING;
@@ -433,13 +426,8 @@ Context *ProcHandle::openContext(size_t stack_sz)
   new_ctx->core = core;
   this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 
-  CallArgs args;
-  auto rc2 = new_ctx->callSync(0, args, &new_ctx->ve_sp);
-  if (rc2 < 0) {
-    vh_urpc_peer_destroy(new_up);
-    throw VEOException("ProcHandle: failed to get the new VE SP.");
-  }
-  dprintf("proc stack pointer: %p\n", (void *)new_ctx->ve_sp);
+  new_ctx->getStackPointer(&new_ctx->ve_sp);
+  VEO_DEBUG("proc stack pointer: %p", (void *)new_ctx->ve_sp);
 
   new_ctx->state = VEO_STATE_RUNNING;
   return new_ctx;
