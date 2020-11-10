@@ -149,49 +149,39 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   //
   // set up registers
   //
-#if 0
-#define SREG(N,V) asm volatile ("or %s" #N ", 0, %0"::"r"(V):"s" #N )
-  if (nregs == 1) {
-    SREG(0,regs[0]);
-  } else if (nregs == 2) {
-    SREG(0,regs[0]); SREG(1,regs[1]);
-  } else if (nregs == 3) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]);
-  } else if (nregs == 4) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]); SREG(3,regs[3]);
-  } else if (nregs == 5) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]); SREG(3,regs[3]);
-    SREG(4,regs[4]);
-  } else if (nregs == 6) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]); SREG(3,regs[3]);
-    SREG(4,regs[4]); SREG(5,regs[5]);
-  } else if (nregs == 7) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]); SREG(3,regs[3]);
-    SREG(4,regs[4]); SREG(5,regs[5]); SREG(6,regs[6]);
-  } else if (nregs >= 8) {
-    SREG(0,regs[0]); SREG(1,regs[1]); SREG(2,regs[2]); SREG(3,regs[3]);
-    SREG(4,regs[4]); SREG(5,regs[5]); SREG(6,regs[6]); SREG(7,regs[7]);
-  }
-#undef SREG
-#endif
-
-  if (nregs > 0)
-    asm volatile ("or %s0, 0, %0"::"r"(regs[0]):"s0");
-  if (nregs > 1)
-    asm volatile ("or %s1, 0, %0"::"r"(regs[1]):"s1");
-  if (nregs > 2)
-    asm volatile ("or %s2, 0, %0"::"r"(regs[2]):"s2");
-  if (nregs > 3)
-    asm volatile ("or %s3, 0, %0"::"r"(regs[3]):"s3");
-  if (nregs > 4)
-    asm volatile ("or %s4, 0, %0"::"r"(regs[4]):"s4");
-  if (nregs > 5)
-    asm volatile ("or %s5, 0, %0"::"r"(regs[5]):"s5");
-  if (nregs > 6)
-    asm volatile ("or %s6, 0, %0"::"r"(regs[6]):"s6");
-  if (nregs > 7)
-    asm volatile ("or %s7, 0, %0"::"r"(regs[7]):"s7");
-  
+  uint64_t maxoffs = nregs * 8;
+  asm volatile("or %s61, 0, %0\n\t"		// max offset
+               "or %s62, 0, %1\n\t"		// regs pointer
+               "and %s63, 0, %s63\n\t"		// offset
+               "breq.l %s63,%s61,_regs_done\n\t"	// done if no more regs to set
+               "ld %s0,0(,%s62)\n\t"			// set argument #0
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s1,8(,%s62)\n\t"			// set argument #1
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s2,16(,%s62)\n\t"			// set argument #2
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s3,24(,%s62)\n\t"
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s4,32(,%s62)\n\t"
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s5,40(,%s62)\n\t"
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s6,48(,%s62)\n\t"
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n\t"
+               "ld %s7,56(,%s62)\n\t"
+               "addu.l %s63,8,%s63\n\t"
+               "breq.l %s63,%s61,_regs_done\n"
+               "_regs_done:"
+               ::"r"(maxoffs),"r"(&regs[0])
+               :"s61","s62","s63",
+                "s0","s1","s2","s3","s4","s5","s6","s7");
   //
   // And now we call the function!
   //
