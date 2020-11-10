@@ -72,6 +72,9 @@ The memory transfer latency, measured by transfering 1 byte 30000 times, is simi
 
 ## Installation
 
+The VH side of AVEO now requires C++17, therefore use at least gcc-8
+for compilation, for example from devtoolset-8 (SCL repository) on CentOS 7.
+
 Make sure you can connect to github.com. Then
 
 ```

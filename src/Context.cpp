@@ -76,18 +76,20 @@ void Context::_progress_nolock(int ops)
   size_t plen;
   int recvd, sent;
 
+  //VEO_TRACE("start");
   do {
-    --ops;
     //
-    // try to receive a command reply
+    // try to receive command replies
     //
     recvd = sent = 0;
     int64_t req = urpc_get_cmd(tq, &m);
     if (req >= 0) {
       ++recvd;
-      auto cmd = std::move(this->comq.popInFlight());
+      auto cmd = std::move(this->comq.popInFlight(req));
       if (cmd == nullptr) {
         // ooops!
+        VEO_ERROR("Reply urpcreq %ld -> No inflight cmd found!", req);
+        VEO_ERROR("urpc cmd = %d", m.c.cmd);
         throw VEOException("URPC req without corresponding cmd!?", req);
       }
       set_recv_payload(uc, &m, &payload, &plen);
@@ -103,13 +105,15 @@ void Context::_progress_nolock(int ops)
         VEO_ERROR("Internal error on executing a command(%d)", rv);
         return;
       }
+      // continue receiving replies
+      // We need this until we can manage buffer memory pressure
+      continue;
     }
     //
     // try to submit a new command
     //
-    if (urpc_next_send_slot(this->up) < 0) {
+    if (urpc_next_send_slot(this->up) < 0)
       continue;
-    }
     auto cmd = std::move(this->comq.tryPopRequest());
     if (cmd) {
       if (cmd->isVH()) {
@@ -117,10 +121,12 @@ void Context::_progress_nolock(int ops)
           //
           // call command "submit function"
           //
+          //VEO_TRACE("executing VH command id = %lu", cmd->getID());
           auto rv = (*cmd)();
           this->comq.pushCompletion(std::move(cmd));
           ++sent;
         } else {
+          //VEO_TRACE("delaying VH cmd submit because VE cmds in flight");
           this->comq.pushRequestFront(std::move(cmd));
         }
       } else {
@@ -132,12 +138,14 @@ void Context::_progress_nolock(int ops)
           ++sent;
           this->comq.pushInFlight(std::move(cmd));
         } else {
+          cmd->setResult(rv, VEO_COMMAND_ERROR);
           this->comq.pushCompletion(std::move(cmd));
           VEO_ERROR("submit function failed(%d)", rv);
         }
       }
     }
-  } while(recvd + sent > 0); // || ops != 0);
+  } while((recvd + sent > 0) && (recvd + sent < ops));
+  //VEO_TRACE("end");
 }
 
 /**
@@ -152,8 +160,13 @@ void Context::_progress_nolock(int ops)
  */
 void Context::progress(int ops)
 {
-  std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
-  _progress_nolock(ops);
+  //VEO_TRACE("start");
+  //std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
+  if (this->prog_mtx.try_lock()) {
+    _progress_nolock(ops);
+    this->prog_mtx.unlock();
+  }
+  //VEO_TRACE("end");
 }
 
 /**
@@ -164,8 +177,10 @@ void Context::progress(int ops)
  */
 void Context::synchronize()
 {
+  //VEO_TRACE("start");
   std::lock_guard<std::mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
+  //VEO_TRACE("end");
 }
   
 /**
@@ -175,10 +190,40 @@ void Context::synchronize()
  */
 void Context::_synchronize_nolock()
 {
+  //VEO_TRACE("start");
   while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
-    this->progress(0);
+    this->progress(10000000);
   }
+  //VEO_TRACE("end");
 }
+
+/**
+ * @brief Retrieve the stack pointer of a context thread on VE
+ *
+ * @param sp pointer to variable which receives the stack pointer
+ * @throws VEOException when failing
+ */
+void Context::getStackPointer(uint64_t *sp)
+{
+  urpc_mb_t m;
+  void *payload;
+  size_t plen;
+  auto req = urpc_generic_send(this->up, URPC_CMD_CALL,
+                               (char *)"LP", 0, nullptr, 0);
+  if (req < 0) {
+    VEO_ERROR("Sending ve-urpc request failed\n");
+    throw VEOException("Failed to get the VE SP.");
+  }
+  if (!urpc_recv_req_timeout(this->up, &m, req,
+                             (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
+    // timeout! complain.
+    VEO_ERROR("timeout waiting for RESULT req=%ld", req);
+    throw VEOException("Failed to get the VE SP.");
+  }
+  int rc = unpack_call_result(&m, nullptr, payload, plen, sp);
+  urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
+}
+
 
 /**
  * @brief start a function on the VE, wait for result and return it.
@@ -190,64 +235,21 @@ void Context::_synchronize_nolock()
  */
 int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
 {
-  urpc_mb_t m;
-  void *payload;
-  size_t plen;
-
   if (!this->is_alive())
     return -1;
+
   args.setup(this->ve_sp - RESERVED_STACK_SIZE);
-
-  auto reg_args_num = args.numArgs();
-  if (reg_args_num > NUM_ARGS_ON_REGISTER)
-    reg_args_num = NUM_ARGS_ON_REGISTER;
-  size_t reg_args_sz = reg_args_num * sizeof(uint64_t);
-
-  if ((args.copied_in || args.copied_out) &&
-      (args.stack_size > MAX_ARGS_STACK_SIZE - reg_args_sz)) {
-    // If we pass large arguments, we use the queue
-    auto req = this->doCallAsync(addr, args);
-    if (req == VEO_REQUEST_ID_INVALID) {
-      VEO_ERROR("failed! Aborting.");
-      return -1;
-    }
-    auto rv = this->callWaitResult(req, result);
-    if (rv != VEO_COMMAND_OK) {
-      VEO_TRACE("done. rv=%d", rv);
-      rv = -1;
-    }
-    return rv;
-  }
-
-  VEO_TRACE("VE function %#lx", addr);
-
-  auto regs = args.getRegVal();
-  auto stack_top = args.stack_top;
-  auto stack_size = args.stack_size;
-  bool copyin = args.copied_in;
-  bool copyout = args.copied_out;
-  std::unique_ptr<char[]> stack = std::move(args.stack_buf);
-  auto copyout_func = args.copyout();
-
-  std::lock_guard<std::mutex> lock(this->submit_mtx);
-  this->_synchronize_nolock();
-
-  int64_t req = send_call_nolock(this->up, this->ve_sp, addr, regs, stack_top,
-                                 stack_size, copyin, copyout, (void *)stack.get());
-  if (req < 0) {
-    VEO_ERROR("Sending callSync request failed\n");
+  auto req = this->doCallAsync(addr, args);
+  if (req == VEO_REQUEST_ID_INVALID) {
+    VEO_ERROR("failed! Aborting.");
     return -1;
   }
-
-  // TODO: make sync call timeout configurable
-  if (!urpc_recv_req_timeout(this->up, &m, req, (long)(15*REPLY_TIMEOUT), &payload, &plen)) {
-    // timeout! complain.
-    VEO_ERROR("callSync timeout waiting for RESULT req=%ld", req);
-    return -1;
+  auto rv = this->callWaitResult(req, result);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_TRACE("done. rv=%d", rv);
+    rv = -1;
   }
-  int rc = unpack_call_result(&m, copyout_func, payload, plen, result);
-  urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
-  return rc;
+  return rv;
 }
 
 /**
@@ -355,7 +357,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
     return this->simpleCallAsync(addr, args);
   }
 
-  VEO_TRACE("callAsync large arguments");
+  //VEO_TRACE("callAsync large arguments");
 
   auto id = this->issueRequestID();
   auto f = [this, addr, &args, reg_args_sz] (Command *cmd)
@@ -405,7 +407,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
       return VEO_REQUEST_ID_INVALID;
   }
   this->progress(3);
-  VEO_TRACE("callAsync leave...\n");
+  //VEO_TRACE("callAsync leave...\n");
 
   return id;
 }
@@ -470,8 +472,25 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
     std::lock_guard<std::mutex> lock(this->submit_mtx);
     this->comq.pushRequest(std::move(req));
   }
-  this->progress(3);
+  this->progress(2);
   return id;
+}
+
+int Context::_peekResult(uint64_t reqid, uint64_t *retp)
+{
+  std::lock_guard<std::mutex> lock(this->req_mtx);
+  auto itr = rem_reqid.find(reqid);
+  if( itr == rem_reqid.end() ) {
+    return VEO_COMMAND_ERROR;
+  }
+  auto c = this->comq.peekCompletion(reqid);
+  if (c != nullptr) {
+    if (!rem_reqid.erase(reqid))
+      return VEO_COMMAND_ERROR;
+    *retp = c->getRetval();
+    return c->getStatus();
+  }
+  return VEO_COMMAND_UNFINISHED;
 }
 
 /**
@@ -487,19 +506,7 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
 int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
   this->progress(3);
-  std::lock_guard<std::mutex> lock(this->req_mtx);
-  auto itr = rem_reqid.find(reqid);
-  if( itr == rem_reqid.end() ) {
-    return VEO_COMMAND_ERROR;
-  }
-  auto c = this->comq.peekCompletion(reqid);
-  if (c != nullptr) {
-    if (!rem_reqid.erase(reqid))
-      return VEO_COMMAND_ERROR;
-    *retp = c->getRetval();
-    return c->getStatus();
-  }
-  return VEO_COMMAND_UNFINISHED;
+  return this->_peekResult(reqid, retp);
 }
 
 /**

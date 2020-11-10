@@ -9,7 +9,7 @@
 #define REPLY_TIMEOUT 20000000
 
 // multipart SEND/RECVFRAG transfer size
-#define PART_SENDFRAG (6*1024*1024)
+#define PART_SENDFRAG (4*1024*1024)
 
 // The maximum size of arguments we can send using URPC_CMD_CALL_STKxx.
 // 40 is the size to send message with "LPLLP".

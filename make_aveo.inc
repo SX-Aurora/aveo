@@ -19,7 +19,7 @@ VEDEST?=$(DEST)
 
 INCL = -I$(BUILD)/include -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
 NINCL = -I$(BUILD)/include -I$(VEDEST)/include -I. -I$(URPC_INST_DIR)/include
-GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL)
+GPPFLAGS = -std=c++17 -pthread $(OPT) $(DEBUG) $(INCL)
 GCCFLAGS = -std=c11 -pthread  $(OPT) $(DEBUG) $(INCL)
 NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
 NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions

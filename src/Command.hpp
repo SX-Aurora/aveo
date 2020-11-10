@@ -95,15 +95,21 @@ private:
   std::mutex mtx;
   std::condition_variable cond; // Note: not needed any more, since we busy wait, maybe later
   std::unordered_map<uint64_t, std::unique_ptr<Command>> map;
-  std::unique_ptr<Command> tryFindNoLock(uint64_t);
 
 public:
   BlockingMap() {}
   void insert(std::unique_ptr<Command> cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     auto id = cmd->getID();
-    //this->map[id] = std::move(cmd);
     this->map.insert(std::make_pair(id, std::move(cmd)));
+  };
+  void insert(uint64_t id, std::unique_ptr<Command> cmd) {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    this->map.insert(std::make_pair(id, std::move(cmd)));
+  };
+  void insert(int64_t id, std::unique_ptr<Command> cmd) {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    this->map.insert(std::make_pair((uint64_t)id, std::move(cmd)));
   };
   std::unique_ptr<Command> tryFind(uint64_t id) {
     std::lock_guard<std::mutex> lock(this->mtx);
@@ -114,7 +120,21 @@ public:
     this->map.erase(id);
     return rv;
   };
-  //std::unique_ptr<Command> wait(uint64_t);
+  std::unique_ptr<Command> tryFind(int64_t id) {
+    return this->tryFind((uint64_t)id);
+  };
+  std::unique_ptr<Command> popNoWait() {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    if (!this->map.empty()) {
+      auto it = map.begin();
+      auto id = it->first;
+      auto rv = std::move(it->second);
+      map.erase(id);
+      return rv;
+    }
+    return nullptr;
+  };
+  
   bool empty() { return this->map.empty(); }
 };
 
@@ -124,7 +144,7 @@ public:
 class CommQueue {
 private:
   BlockingQueue request;/*! request queue: for async calls */
-  BlockingQueue inflight;/*! reqs that have been submitted to URPC */
+  BlockingMap inflight;/*! reqs that have been submitted to URPC */
   BlockingMap completion;/*! completion map: finished reqs picked up from URPC */
 
 public:
@@ -137,7 +157,7 @@ public:
   bool emptyRequest() { return this->request.empty(); }
   void pushInFlight(std::unique_ptr<Command>);
   bool emptyInFlight() { return this->inflight.empty(); }
-  std::unique_ptr<Command> popInFlight();
+  std::unique_ptr<Command> popInFlight(int64_t);
   void pushCompletion(std::unique_ptr<Command>);
   //std::unique_ptr<Command> waitCompletion(uint64_t msgid);
   std::unique_ptr<Command> peekCompletion(uint64_t msgid);

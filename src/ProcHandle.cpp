@@ -65,15 +65,8 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   }
 
   this->mctx = new Context(this, this->up, true);
-  //this->ctx.push_back(this->mctx);
 
-  // The sync call returns the stack pointer from inside the VE kernel
-  // call handler if the function address passed is 0.
-  CallArgs args;
-  auto rc = this->callSync(0, args, &this->ve_sp);
-  if (rc < 0) {
-    throw VEOException("ProcHandle: failed to get the VE SP.");
-  }
+  this->mctx->getStackPointer(&this->ve_sp);
   VEO_DEBUG("proc stack pointer: %p", (void *)this->ve_sp);
 
   this->mctx->state = VEO_STATE_RUNNING;
@@ -136,25 +129,19 @@ int ProcHandle::exitProc()
  */
 uint64_t ProcHandle::loadLibrary(const char *libname)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   VEO_TRACE("libname %s", libname);
-  this->mctx->_synchronize_nolock();
   size_t len = strlen(libname);
   if (len > VEO_SYMNAME_LEN_MAX) {
     throw VEOException("Library name too long", ENAMETOOLONG);
   }
 
-  // send loadlib cmd
-  int64_t req = urpc_generic_send(up, URPC_CMD_LOADLIB, (char *)"P",
-                                   libname, (size_t)strlen(libname) + 1);
-  if (req < 0) {   
-    VEO_ERROR("failed to send cmd %d", URPC_CMD_LOADLIB);
-    return 0UL;
-  }
-
-  // wait for result
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_LOADLIB, (char *)"P",
+                                         libname, (size_t)strlen(libname) + 1);
   uint64_t handle = 0;
-  wait_req_result(this->up, req, (int64_t *)&handle);
+  auto rv = this->mctx->callWaitResult(req, &handle);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+  }
 
   VEO_TRACE("handle = %#lx", handle);
   return handle;
@@ -168,9 +155,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
  */
 int ProcHandle::unloadLibrary(const uint64_t handle)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
   VEO_TRACE("lib handle %lx", handle);
-  this->mctx->_synchronize_nolock();
 
   // remove all symbol names belonging to this library
   sym_mtx.lock();
@@ -182,17 +167,13 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
     sym_name.erase(key);
   sym_mtx.unlock();
 
-  // send unloadlib cmd
-  int64_t req = urpc_generic_send(up, URPC_CMD_UNLOADLIB, (char *)"L",
-                                   handle);
-  if (req < 0) {
-    VEO_ERROR("failed to send cmd %d", URPC_CMD_UNLOADLIB);
-    return -1;
-  }
-
-  // wait for result
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_UNLOADLIB, (char *)"L",
+                                         handle);
   int64_t result = -1;
-  wait_req_result(this->up, req, (int64_t *)&result);
+  auto rv = this->mctx->callWaitResult(req, (uint64_t *)&result);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+  }
 
   VEO_TRACE("result = %ld", result);
   return (int)result;
@@ -207,8 +188,7 @@ int ProcHandle::unloadLibrary(const uint64_t handle)
  */
 uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
-  this->mctx->_synchronize_nolock();
+  uint64_t symaddr = 0;
   size_t len = strlen(symname);
   if (len > VEO_SYMNAME_LEN_MAX) {
     throw VEOException("Too long name", ENAMETOOLONG);
@@ -222,22 +202,17 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
     return itr->second;
   }
   sym_mtx.unlock();
-  
-  // lock peer (not needed any more because using proc mutex)
 
-  int64_t req = urpc_generic_send(up, URPC_CMD_GETSYM, (char *)"LP",
-                                   libhdl, symname, (size_t)strlen(symname) + 1);
-  if (req < 0) {
-    VEO_ERROR("failed to send cmd %d", URPC_CMD_GETSYM);
-    return 0UL;
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_GETSYM, (char *)"LP",
+                                         libhdl, symname, (size_t)strlen(symname) + 1);
+  auto rv = this->mctx->callWaitResult(req, &symaddr);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
   }
-
-  uint64_t symaddr = 0;
-  wait_req_result(this->up, req, (int64_t *)&symaddr);
 
   VEO_TRACE("symbol name = %s, addr = %#lx", symname, symaddr);
   if (symaddr == 0) {
-    return symaddr;
+    return 0;
   }
   sym_mtx.lock();
   sym_name[sym_pair] = symaddr;
@@ -253,15 +228,14 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
  */
 uint64_t ProcHandle::allocBuff(const size_t size)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
-  this->mctx->_synchronize_nolock();
-  int64_t req = urpc_generic_send(up, URPC_CMD_ALLOC, (char *)"L", size);
-  if (req < 0) {
-    VEO_ERROR("failed to send cmd %d", URPC_CMD_ALLOC);
-    return 0UL;
-  }
+  VEO_TRACE("start");
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_ALLOC, (char *)"L", size);
   uint64_t addr = 0;
-  wait_req_result(this->up, req, (int64_t *)&addr);
+  auto rv = this->mctx->callWaitResult(req, &addr);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+  }
+  VEO_TRACE("returned addr 0x%lx", addr);
   return addr;
 }
 
@@ -273,14 +247,14 @@ uint64_t ProcHandle::allocBuff(const size_t size)
  */
 void ProcHandle::freeBuff(const uint64_t buff)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
-  this->mctx->_synchronize_nolock();
-  int64_t req = urpc_generic_send(up, URPC_CMD_FREE, (char *)"L", buff);
-  if (req < 0) {
-    VEO_ERROR("failed to send cmd %d", URPC_CMD_FREE);
-    return;
+  VEO_TRACE("start");
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_FREE, (char *)"L", buff);
+  uint64_t dummy;
+  auto rv = this->mctx->callWaitResult(req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
   }
-  wait_req_ack(this->up, req);
+  VEO_TRACE("end");
 }
 
 /**
@@ -298,6 +272,7 @@ int ProcHandle::readMem(void *dst, uint64_t src, size_t size)
     VEO_ERROR("failed! Aborting.");
     return -1;
   }
+  VEO_TRACE("[request #%lu]", req);
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
   if (rv != VEO_COMMAND_OK) {
@@ -322,6 +297,7 @@ int ProcHandle::writeMem(uint64_t dst, const void *src, size_t size)
     VEO_ERROR("failed! Aborting.");
     return -1;
   }
+  VEO_TRACE("[request #%lu]", req);
   uint64_t dummy;
   auto rv = this->mctx->callWaitResult(req, &dummy);
   if (rv != VEO_COMMAND_OK) {
@@ -450,13 +426,8 @@ Context *ProcHandle::openContext(size_t stack_sz)
   new_ctx->core = core;
   this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 
-  CallArgs args;
-  auto rc2 = new_ctx->callSync(0, args, &new_ctx->ve_sp);
-  if (rc2 < 0) {
-    vh_urpc_peer_destroy(new_up);
-    throw VEOException("ProcHandle: failed to get the new VE SP.");
-  }
-  dprintf("proc stack pointer: %p\n", (void *)new_ctx->ve_sp);
+  new_ctx->getStackPointer(&new_ctx->ve_sp);
+  VEO_DEBUG("proc stack pointer: %p", (void *)new_ctx->ve_sp);
 
   new_ctx->state = VEO_STATE_RUNNING;
   return new_ctx;
