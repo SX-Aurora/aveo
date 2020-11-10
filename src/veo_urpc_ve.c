@@ -149,7 +149,8 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   //
   // set up registers
   //
-#define SREG(N,V) asm volatile ("or %s" #N ", 0, %0"::"r"(V))
+#if 0
+#define SREG(N,V) asm volatile ("or %s" #N ", 0, %0"::"r"(V):"s" #N )
   if (nregs == 1) {
     SREG(0,regs[0]);
   } else if (nregs == 2) {
@@ -172,6 +173,25 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
     SREG(4,regs[4]); SREG(5,regs[5]); SREG(6,regs[6]); SREG(7,regs[7]);
   }
 #undef SREG
+#endif
+
+  if (nregs > 0)
+    asm volatile ("or %s0, 0, %0"::"r"(regs[0]):"s0");
+  if (nregs > 1)
+    asm volatile ("or %s1, 0, %0"::"r"(regs[1]):"s1");
+  if (nregs > 2)
+    asm volatile ("or %s2, 0, %0"::"r"(regs[2]):"s2");
+  if (nregs > 3)
+    asm volatile ("or %s3, 0, %0"::"r"(regs[3]):"s3");
+  if (nregs > 4)
+    asm volatile ("or %s4, 0, %0"::"r"(regs[4]):"s4");
+  if (nregs > 5)
+    asm volatile ("or %s5, 0, %0"::"r"(regs[5]):"s5");
+  if (nregs > 6)
+    asm volatile ("or %s6, 0, %0"::"r"(regs[6]):"s6");
+  if (nregs > 7)
+    asm volatile ("or %s7, 0, %0"::"r"(regs[7]):"s7");
+  
   //
   // And now we call the function!
   //
