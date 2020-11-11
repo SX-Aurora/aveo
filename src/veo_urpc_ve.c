@@ -147,63 +147,56 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
     memcpy((void *)stack_top, stack, stack_size);
   }
   //
-  // set up registers
+  // set up registers and call the function
   //
-  uint64_t maxoffs = nregs * 8;
-  asm volatile("or %s61, 0, %0\n\t"		// max offset
-               "or %s62, 0, %1\n\t"		// regs pointer
-               "and %s63, 0, %s63\n\t"		// offset
-               "breq.l %s63,%s61,_regs_done\n\t"	// done if no more regs to set
-               "ld %s0,0(,%s62)\n\t"			// set argument #0
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s1,8(,%s62)\n\t"			// set argument #1
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s2,16(,%s62)\n\t"			// set argument #2
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s3,24(,%s62)\n\t"
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s4,32(,%s62)\n\t"
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s5,40(,%s62)\n\t"
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s6,48(,%s62)\n\t"
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n\t"
-               "ld %s7,56(,%s62)\n\t"
-               "addu.l %s63,8,%s63\n\t"
-               "breq.l %s63,%s61,_regs_done\n"
-               "_regs_done:"
-               ::"r"(maxoffs),"r"(&regs[0])
-               :"s61","s62","s63",
-                "s0","s1","s2","s3","s4","s5","s6","s7");
-  //
-  // And now we call the function!
-  //
+  uint64_t r[MAX_ARGS_IN_REGS];
+  for (int i = 0; i < (nregs > MAX_ARGS_IN_REGS ? MAX_ARGS_IN_REGS : nregs); i++)
+    r[i] = regs[i];
   if (cmd == URPC_CMD_CALL) {
-    asm volatile("or %s12, 0, %0\n\t"          /* target function address */
-                 ::"r"(addr));
-    asm volatile("bsic %lr, (,%s12)":::);
+    if (nregs == 0) {
+      asm volatile(
+                   "or %s12, 0, %1\n\t"          /* target function address */
+                   "bsic %lr, (,%s12)\n\t"       /* call */
+                   "or %0, 0, %s0"
+                   :"=r"(result):"r"(addr), "r"(r));
+    } else {
+      asm volatile("ld %s0, 0x0(,%2)\n\t"
+                   "ld %s1, 0x8(,%2)\n\t"
+                   "ld %s2, 0x10(,%2)\n\t"
+                   "ld %s3, 0x18(,%2)\n\t"
+                   "ld %s4, 0x20(,%2)\n\t"
+                   "ld %s5, 0x28(,%2)\n\t"
+                   "ld %s6, 0x30(,%2)\n\t"
+                   "ld %s7, 0x38(,%2)\n\t"
+                   "or %s12, 0, %1\n\t"          /* target function address */
+                   "bsic %lr, (,%s12)\n\t"       /* call */
+                   "or %0, 0, %s0"
+                   :"=r"(result):"r"(addr), "r"(r)
+                   :"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7");
+    }
   } else {
-    asm volatile("or %s12, 0, %0\n\t"          /* target function address */
+    asm volatile("ld %s0, 0x0(,%2)\n\t"
+                 "ld %s1, 0x8(,%2)\n\t"
+                 "ld %s2, 0x10(,%2)\n\t"
+                 "ld %s3, 0x18(,%2)\n\t"
+                 "ld %s4, 0x20(,%2)\n\t"
+                 "ld %s5, 0x28(,%2)\n\t"
+                 "ld %s6, 0x30(,%2)\n\t"
+                 "ld %s7, 0x38(,%2)\n\t"
+                 "or %s12, 0, %1\n\t"          /* target function address */
                  "st %fp, 0x0(,%sp)\n\t"       /* save original fp */
                  "st %lr, 0x8(,%sp)\n\t"       /* fake prologue */
                  "st %got, 0x18(,%sp)\n\t"
                  "st %plt, 0x20(,%sp)\n\t"
                  "or %fp, 0, %sp\n\t"          /* switch fp to new frame */
-                 "or %sp, 0, %1"               /* switch sp to new frame */
-                 ::"r"(addr), "r"(stack_top));
-    asm volatile("bsic %lr, (,%s12)":::);
-    asm volatile("or %sp, 0, %fp\n\t"          /* restore original sp */
-                 "ld %fp, 0x0(,%sp)"           /* restore original fp */
-                 :::);
+                 "or %sp, 0, %3\n\t"           /* switch sp to new frame */
+                 "bsic %lr, (,%s12)\n\t"       /* call */
+                 "or %sp, 0, %fp\n\t"          /* restore original sp */
+                 "ld %fp, 0x0(,%sp)\n\t"       /* restore original fp */
+                 "or %0, 0, %s0"
+                 :"=r"(result):"r"(addr), "r"(r), "r"(stack_top)
+                 :"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7");
   }
-  asm volatile("or %0, 0, %s0":"=r"(result));
 
   // "cmd" seems to be overwritten when we call the function.
   // We set "cmd", again

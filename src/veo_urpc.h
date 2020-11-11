@@ -20,6 +20,9 @@
 // print debug messages use stack.
 #define RESERVED_STACK_SIZE 512*1024
 
+// maximum number of arguments transfered in registers on VE
+#define MAX_ARGS_IN_REGS 8
+
 #ifdef __cplusplus
 extern "C" {
 #endif
