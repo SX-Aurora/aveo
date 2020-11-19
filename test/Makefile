@@ -19,7 +19,8 @@ TESTS = $(addprefix $(BB)/,test_callsync test_callasync test_stackargs \
  test_child1 test_child2 test_async_mem test_thread_main_call_race \
  test_2ctx_callasync test_omp test_omp_static test_arith_ftrace \
  test_stackout test_unloadlib test_noproc test_memtransfers test_multithread_alloc_write_read_free \
- test_veexcept_async bandwidth_stackargs bandwidth_async test_omp_2ctx)
+ test_veexcept_async bandwidth_stackargs bandwidth_async test_omp_2ctx \
+ test_hmem)
 
 VELIBS = $(addprefix $(BB)/,libvehello.so libvehello2.so \
  libvestackargs.so libveexcept.so libveasyncmem.so libvetestomp.so \
