@@ -75,9 +75,66 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   this->mctx->core = vecore;
   this->ve_number = venode;
   std::lock_guard<std::mutex> lock(veo::__procs_mtx);
-  if (veo::__procs == nullptr)
+  if (veo::__procs == nullptr) {
     veo::__procs = new std::vector<ProcHandle *>();
-  veo::__procs->push_back(this);
+    veo::__procs->push_back(this);
+    VEO_DEBUG("Create new std::vector<ProcHandle *>");
+    return;
+  }
+
+  // Reuse veo::__procs to identify VE processes.
+  std::vector<ProcHandle *>::iterator itr;
+  itr = std::find(veo::__procs->begin(), veo::__procs->end(), nullptr);
+  if (itr == veo::__procs->end()) {
+    veo::__procs->push_back(this);
+    VEO_DEBUG("Added new ProcHandle pointer to veo::__prcos");
+    return;
+  }
+  // Find the nullptr element and calculate the element number.
+  const int idx = std::distance(veo::__procs->begin(), itr);
+  VEO_DEBUG("Element number of the destroyed proc = %d", idx);
+  veo::__procs->at(idx) = this;
+  VEO_DEBUG("Added veo::__procs->at(%d) = %p", idx, veo::__procs->at(idx));
+}
+
+/**
+ * @brief Get VE process identifier
+ * @return VE process identifier upon success; negative upon failure.
+ */
+int ProcHandle::getProcIdentifier()
+{
+  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
+  //std::lock_guard<std::mutex> lock2(this->mctx->submit_mtx);
+
+  // Get element number of this pointer included in veo::__procs.
+  std::vector<ProcHandle *>::iterator itr;
+  itr = std::find(veo::__procs->begin(), veo::__procs->end(), this);
+  if (itr == veo::__procs->end()) {
+    VEO_ERROR("Search failed.");
+    return -1;
+  }
+  const int idx = std::distance(veo::__procs->begin(), itr);
+  VEO_TRACE("proc %p identifier = %d", (void *)this, idx);
+  return idx;
+}
+
+/**
+ * @brief Get number of VE processes
+ * @return the number of VE processes
+ */
+int ProcHandle::numProcs()
+{
+  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
+  return veo::__procs->size();
+}
+
+/**
+ * @brief Get process handle
+ * @return a pointer to ProcHandle upon success; nullptr upon failure.
+ */
+ProcHandle *ProcHandle::getProcHandle(int proc_ident)
+{
+  return veo::__procs->at(proc_ident);
 }
 
 /**
@@ -114,12 +171,15 @@ int ProcHandle::exitProc()
   for (auto p = veo::__procs->begin(); p != veo::__procs->end(); p++) {
     if (*p == this) {
       VEO_DEBUG("erasing proc %lx", this);
-      veo::__procs->erase(p);
+      //veo::__procs->erase(p);
+      // replace this obj pointer to nullptr
+      veo::__procs->at(getProcIdentifier()) = nullptr;
       break;
     }
   }
   return 0;
 }
+
 
 /**
  * @brief Load a VE library in VE process space
@@ -432,7 +492,6 @@ Context *ProcHandle::openContext(size_t stack_sz)
   new_ctx->state = VEO_STATE_RUNNING;
   return new_ctx;
 }
-
 } // namespace veo
 
 //
@@ -445,12 +504,13 @@ static void _cleanup_procs(void)
   if (!veo::__procs)
     return;
   for (auto it = veo::__procs->begin(); it != veo::__procs->end();) {
-    // we don't increment the iterator because exitProc() is actually
+    // we don't increment the iterator because erase() is actually
     // doing the remove.
     if (*it) {
       (*it)->exitProc();
+      veo::__procs->erase(it);
     } else {
-      VEO_DEBUG("proc destructor: proc pointer is NULL!\n");
+      VEO_DEBUG("proc destructor: proc pointer is NULL!");
       it++;
     }
   }

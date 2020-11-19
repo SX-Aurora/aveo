@@ -33,8 +33,13 @@ VERSION_1 {
     veo_call_wait_result;
     veo_alloc_mem;
     veo_free_mem;
+    veo_alloc_hmem;
+    veo_free_hmem;
     veo_read_mem;
     veo_write_mem;
+    veo_hmemcpy;
+    veo_args_set_hmem;
+    veo_is_ve_addr;
     veo_async_read_mem;
     veo_async_write_mem;
     veo_context_open_with_attr;

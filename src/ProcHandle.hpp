@@ -46,6 +46,7 @@ public:
   ProcHandle(int, char *);
   ~ProcHandle() { this->exitProc(); }
 
+  static ProcHandle *getProcHandle(int);
   uint64_t loadLibrary(const char *);
   int unloadLibrary(const uint64_t libhdl);
   uint64_t getSym(const uint64_t, const char *);
@@ -56,6 +57,8 @@ public:
   int readMem(void *, uint64_t, size_t);
   int writeMem(uint64_t, const void *, size_t);
   int exitProc(void);
+  int getProcIdentifier(void);
+  int numProcs(void);
 
   int numContexts(void);
   Context *getContext(int);
