@@ -61,7 +61,7 @@ static int loadlib_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 
   urpc_unpack_payload(payload, plen, (char *)"P", &libname, &psz);
 
-  uint64_t handle = (uint64_t)dlopen(libname, RTLD_NOW);
+  uint64_t handle = (uint64_t)dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
   VEO_DEBUG("libname=%s handle=%p", libname, handle);
   if (!handle) {
     char *e = dlerror();
