@@ -407,7 +407,10 @@ veo_thr_ctxt *veo_get_context(veo_proc_handle *proc, int idx)
     VEO_ERROR("failed to retrieve context %d: %s", idx, e.what());
     errno = e.err();
     return NULL;
-  }
+  } catch (std::out_of_range &e) {
+    VEO_ERROR("failed to retrieve context %d: %s", idx, e.what());
+    return NULL;
+  } 
 }
 
 /**

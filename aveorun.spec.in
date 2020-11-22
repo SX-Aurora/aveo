@@ -11,6 +11,7 @@ BuildRequires: vedebuginfo
 Requires: glibc-ve
 Requires: libsysve
 BuildRequires: glibc-ve-devel
+AutoReqProv: no
 %if 0%{?rhel} == 8
 Requires: platform-python
 BuildRequires: platform-python-devel
@@ -29,6 +30,7 @@ Requires: glibc-ve-devel
 Requires: %{name} = %{version}-%{release}
 BuildRequires: glibc-ve-devel
 Obsoletes: veoffload-devel veoffload-veorun-devel
+AutoReqProv: no
 %description devel
 This package includes header files of VE offloading Framework
 
@@ -47,7 +49,6 @@ This package includes header files of VE offloading Framework
 %else
 %global __debug_install_post /opt/nec/ve/libexec/find-debuginfo.sh %{nil}
 %endif
-%define __requires_exclude ^libn(cc|c\\+\\+|fort)\\.so\\..*$
 
 %prep
 %setup -q -n @PACKAGE@-@VERSION@
