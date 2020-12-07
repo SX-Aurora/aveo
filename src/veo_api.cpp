@@ -28,7 +28,8 @@
 #include "ProcHandle.hpp"
 #include "CallArgs.hpp"
 #include "VEOException.hpp"
-#include "log.h"
+#include "veo_hmem.h"
+#include "veo_hmem_macros.h"
 
 namespace veo {
 namespace api {
@@ -316,29 +317,27 @@ int veo_alloc_mem(veo_proc_handle *h, uint64_t *addr, const size_t size)
   return 0;
 }
 
-/*
-int veo_get_proc_identifier(veo_proc_handle *h)
-{
-  return ProcHandleFromC(h)->getProcIdentifier();
-}
-*/
-
 /**
- * @brief Allocate a VE memory buffer
+ * @brief Allocate a VE memory buffer or a VH memory buffer which
+ * users can use them as heterogeneous memory.
  *
- * This function returns the address with the process identifier. 
+ * This function allocates a VE memory buffer if h is a valid
+ * handle. This function allocates a VH memory buffer if h is NULL.
+ * This function returns the address with the process identifier.
  * Since the number of processes that can be identified by the process 
- * identifier is 8, this function will fail if the user attempts to 
- * identify more than 8 processes. The memory allocated using this 
- * function must be transferred to the VE side with veo_args_set_hmem() 
- * and freed with veo_free_hmem(). And the data transfer of this 
- * memory between VH and VE must be done by veo_hmemcpy(). veo_hmemcpy() 
+ * identifier is 16, this function will fail if the user attempts to 
+ * identify more than 16 processes. The memory allocated using this 
+ * function must be transferred to the VE side with veo_args_set_hmem().
+ * and freed with veo_free_hmem(). The data transfer of this memory
+ * between VH and VE must be done by veo_hmemcpy(). veo_hmemcpy()
  * allows user to transfer data from VH to VE, from VE to VH, or from 
  * VH to VH. The transfer direction is determined from the identifier 
  * of the virtual address of the argument passed to veo_hmemcpy(). 
- * User can check with veo_is_ve_addr() that the target address is 
- * flagged with the VE process identifier. So, if user pass this 
- * memory to veo_is_ve_addr(), it will return 1.
+ * Users can check with veo_is_ve_addr() that the target address is 
+ * flagged with the VE process identifier or not.
+ * Users need to remove the process identifier using
+ * veo_get_virt_addr_ve() or veo_get_virt_addr_vh() before using
+ * the allocated memory.
  *
  * @param h VEO process handle
  * @param addr [out] a pointer to VEMVA address with the identifier
@@ -352,10 +351,16 @@ int veo_alloc_hmem(veo_proc_handle *h, void **addr, const size_t size)
   uint64_t veaddr = 0UL;
   int ret = -1;
   try {
+    if (h == nullptr) {
+      *addr = malloc(size);
+      if (*addr == nullptr)
+        return -1;
+      return 0;
+    }
     int nprocs = ProcHandleFromC(h)->numProcs();
     VEO_DEBUG("nprocs = %d", nprocs);
-    if (nprocs > VEO_MAX_MPI_PROCS) {
-      VEO_ERROR("VEO procs exceeded VEO_MAX_MPI_PROCS.");
+    if (nprocs > VEO_MAX_HMEM_PROCS) {
+      VEO_ERROR("VEO procs exceeded VEO_MAX_HMEM_PROCS.");
       return -1;
     }
     ret = veo_alloc_mem(h, &veaddr, size);
@@ -366,7 +371,7 @@ int veo_alloc_hmem(veo_proc_handle *h, void **addr, const size_t size)
     if (proc_ident < 0)
       return proc_ident;
     *addr = (void *)SET_VE_FLAG(veaddr);
-    *addr = (void *)SET_PROC_FLAG(*addr, proc_ident);
+    *addr = (void *)SET_PROC_IDENT(*addr, proc_ident);
   } catch (VEOException &e) {
     VEO_ERROR("failed to allocate memory : %s", e.what());
     return -1;
@@ -397,7 +402,6 @@ int veo_free_mem(veo_proc_handle *h, uint64_t addr)
  *
  * This function free the memory allocated by veo_alloc_hmem().
  *
- * @param h VEO process handle
  * @param addr [in] a pointer to VEMVA address
  * @retval 0 memory is successfully freed.
  * @retval -1 internal error.
@@ -407,8 +411,10 @@ int veo_free_hmem(void *addr)
   int ret = -1;
   try {
     //std::lock_guard<std::mutex> lock(ProcHandle::__procs_mtx);
-    if (!veo_is_ve_addr(addr))
-      return -1;
+    if (!veo_is_ve_addr(addr)) {
+      free(addr);
+      return 0;
+    }
     int proc_ident = GET_PROC_IDENT(addr);
     veo::ProcHandle *p = veo::ProcHandle::getProcHandle(proc_ident);
     veo_proc_handle *h = p->toCHandle();
@@ -474,7 +480,7 @@ int veo_write_mem(veo_proc_handle *h, uint64_t dst, const void *src,
  * @param size size in byte
  * @return zero upon success; negative upon failure.
  */
-int veo_hmemcpy(void *dest, const void *src, size_t size)
+int veo_hmemcpy(void *dst, void *src, size_t size)
 {
   try
   {
@@ -482,18 +488,20 @@ int veo_hmemcpy(void *dest, const void *src, size_t size)
     veo_proc_handle *h;
     veo::ProcHandle *p;
     int proc_ident = -1;
-    if (IS_VE(dest) && !IS_VE(src)) {
-      proc_ident = GET_PROC_IDENT(dest);
+    if (IS_VE(dst) && !IS_VE(src)) {
+      proc_ident = GET_PROC_IDENT(dst);
       p = veo::ProcHandle::getProcHandle(proc_ident);
       h = p->toCHandle();
-      return veo_write_mem(h, VIRT_ADDR_VE(dest), src, size);
-    } else if (!IS_VE(dest) && IS_VE(src)) {
+      return veo_write_mem(h, VIRT_ADDR_VE(dst), src, size);
+      //return veo_write_mem(h, (uint64_t)dst, src, size);
+    } else if (!IS_VE(dst) && IS_VE(src)) {
       proc_ident = GET_PROC_IDENT(src);
       p = veo::ProcHandle::getProcHandle(proc_ident);
       h = p->toCHandle();
-      return veo_read_mem(h, dest, VIRT_ADDR_VE(src), size);
-    } else if (!IS_VE(dest) && !IS_VE(src)) {
-      memcpy(dest, src, size);
+      //return veo_read_mem(h, dst, (uint64_t)src, size);
+      return veo_read_mem(h, dst, VIRT_ADDR_VE(src), size);
+    } else if (!IS_VE(dst) && !IS_VE(src)) {
+      memcpy(dst, src, size);
       return 0;
     }
     return -1;
@@ -504,40 +512,6 @@ int veo_hmemcpy(void *dest, const void *src, size_t size)
   {
     return -1;
   }
-}
-
-/**
- * @brief set a pointer argument
- *
- * This function removes the identifier from the address allocated 
- * by veo_alloc_hmem() and passes the valid pointer to VE.
- *
- * @param ca veo_args
- * @param argnum the argnum-th argument
- * @param val a pointer to value to be set
- * @return zero upon success; negative upon failure.
- */
-int veo_args_set_hmem(struct veo_args *ca, int argnum, void *val)
-{
-  //std::lock_guard<std::mutex> lock(ProcHandle::__procs_mtx);
-  if (!veo_is_ve_addr(val))
-    return -1;
-  return veo_args_set_u64(ca, argnum, VIRT_ADDR_VE(val));
-}
-
-/**
- * @brief check the address
- *
- * This function determines if the address is allocated by 
- * veo_alloc_hmem(). 
- *
- * @param addr a pointer to virtual address
- * @return one when addr was allocated by veo_alloc_hmem();
- *         zero when addr was not allocated by veo_alloc_hmem().
- */
-int veo_is_ve_addr(void *addr)
-{
-  return IS_VE(addr) ? 1 : 0;
 }
 
 /**
@@ -861,6 +835,19 @@ int veo_args_set_stack(veo_args *ca, enum veo_args_intent inout,
               argnum, e.what());
     return -1;
   }
+}
+
+ /**
+ * @brief set a heteroginious memory argument
+ *
+ * @param ca veo_args
+ * @param argnum the argnum-th argument
+ * @param val a pointer to value to be set
+ * @return zero upon success; negative upon failure.
+ */
+int veo_args_set_hmem(struct veo_args *ca, int argnum, void *val)
+{
+  return veo_args_set_u64(ca, argnum, (uint64_t)val);
 }
 
 /**

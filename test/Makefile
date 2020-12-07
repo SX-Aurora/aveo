@@ -24,7 +24,7 @@ TESTS = $(addprefix $(BB)/,test_callsync test_callasync test_stackargs \
 
 VELIBS = $(addprefix $(BB)/,libvehello.so libvehello2.so \
  libvestackargs.so libveexcept.so libveasyncmem.so libvetestomp.so \
- libvestackout.so libvearith_ftrace.so)
+ libvestackout.so libvearith_ftrace.so libvehmem.so)
 
 STATICS = $(addprefix $(BB)/, veorun_testomp)
 
@@ -66,10 +66,10 @@ $(BB)/%: %.cpp  | $$(@D)/
 	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -lveo
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
-	$(NCC) $(NCCFLAGS) -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
+	$(NCC) $(NCCFLAGS) -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace -lveohmem
 
 $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
-	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(LDFLAGS) -o $@ $< -lveftrace
+	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace
 
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
 	if [ -x $(BLIBEX)/relink_aveorun ]; then \

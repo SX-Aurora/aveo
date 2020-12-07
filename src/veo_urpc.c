@@ -23,7 +23,6 @@ static int gettid(void)
   return syscall(SYS_gettid);
 }
 
-
 //
 // Handlers
 //
@@ -188,7 +187,6 @@ static int recvbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 
   urpc_unpack_payload(payload, plen, (char *)"LLL", &src, &dst, &size);
   VEO_DEBUG("src=%p dst=%p size=%lu", (void *)src, (void *)dst, size);
-
   int64_t new_req = urpc_generic_send(up, URPC_CMD_SENDBUFF, (char *)"LP",
                                       dst, (void *)src, size);
   CHECK_REQ(new_req, req);

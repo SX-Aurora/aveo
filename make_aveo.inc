@@ -38,6 +38,7 @@ BLIB    = $(BUILD)/lib64
 BVELIB	= $(BUILD)/lib
 BLIBEX  = $(BUILD)/libexec
 BINC    = $(BUILD)/include
+BVEINC    = $(BUILD)/include-ve
 
 # rule for creating directories
 %/:

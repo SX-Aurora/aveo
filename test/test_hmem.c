@@ -9,8 +9,8 @@ main()
 	printf("proc = %p\n", proc);
 	struct veo_thr_ctxt    *ctx  = veo_context_open( proc );
 	struct veo_args        *argp = veo_args_alloc();
-	uint64_t handle = veo_load_library( proc, "./libvehello.so" );
-	void *vebuf;
+	uint64_t handle = veo_load_library( proc, "./libvehmem.so" );
+	void *vebuf, *vhbuf;
 	int nelems = 1000;
 	int ret = veo_alloc_hmem( proc, &vebuf, sizeof(int) * nelems );
 	if (ret != 0) {
@@ -29,6 +29,10 @@ main()
 	uint64_t rc;
 	if (veo_call_wait_result( ctx, id, &rc ) != 0)
 		exit(1);
+	if (rc == 0) {
+		fprintf(stderr, "The return value of init() is not expected : %d\n", rc);
+		exit(1);
+	}
 
 	void *q = vebuf;
 	if (veo_is_ve_addr(vebuf)) {
@@ -79,8 +83,39 @@ main()
 	printf( "rc:%lx (%s)\n", rc, rc ? "fail" : "success" );
 	if (rc)
 		exit(1);
-	if (veo_free_hmem( vebuf ) != 0)
+	if (veo_free_hmem( vebuf ) != 0) {
+		fprintf(stderr, "The return value of veo_free_hmem() is not expected\n", rc);
 		exit(1);
+	}
+
+	ret = veo_alloc_hmem(NULL, &vhbuf, sizeof(int) * nelems );
+	if (ret != 0) {
+		fprintf(stderr, "veo_alloc_mem failed: %d", ret);
+		exit(1);
+	}
+	a = veo_get_virt_addr_vh(vhbuf);
+	for (int i = 0; i < nelems; i++)
+		a[i] = 1;
+
+	veo_args_clear( argp );
+	ret = veo_args_set_hmem(argp, 0, vhbuf );
+	if (ret != 0) {
+		fprintf(stderr, "veo_args_set_hmem failed: %d", ret);
+		exit(1);
+	}
+	id = veo_call_async_by_name( ctx, handle, "test_addr", argp );
+	if (veo_call_wait_result( ctx, id, &rc ) != 0)
+		exit(1);
+	if (rc != 0) {
+		fprintf(stderr, "The return value of test_addr() is not expected : %d\n", rc);
+		exit(1);
+	}
+
+	if (veo_free_hmem( vhbuf ) != 0) {
+		fprintf(stderr, "The return value of veo_free_hmem() is not expected\n");
+		exit(1);
+	}
+
 	veo_context_close( ctx );
 	veo_proc_destroy( proc );
 

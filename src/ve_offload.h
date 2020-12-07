@@ -31,22 +31,9 @@
 
 #define VEO_REQUEST_ID_INVALID (~0UL)
 
-#define VEO_MAX_MPI_PROCS 8
-#define IDENT_OFFSET_BITS 59 // bit 62:59 is used as VE process identifier.
-#define VEADDR_MBITS	0x8000000000000000 // bit 63 VE virtual adress mask bits
-#define PIDENT_MBITS	0x7800000000000000 // bit 62:59 VE process identifier mask bits
-#define VEIDENT_MBITS	(VEADDR_MBITS | PIDENT_MBITS)
-#define SET_VE_FLAG(addr)       (VEADDR_MBITS | (uint64_t)addr)
-#define IS_VE(addr)             (VEADDR_MBITS & (uint64_t)addr)
-#define VIRT_ADDR_VE(addr)      (~VEIDENT_MBITS & (uint64_t)addr)
-// this MACRO set addr to process identifier number.
-#define SET_PROC_FLAG(addr, proc_ident)	((uint64_t)addr | (uint64_t)proc_ident \
-					<<(int)IDENT_OFFSET_BITS)
-#define GET_PROC_IDENT(addr)	(((uint64_t)addr & PIDENT_MBITS) \
-				>>(int)IDENT_OFFSET_BITS)
-
 #include <stdint.h>
 #include <stddef.h>
+#include "veo_hmem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,13 +78,8 @@ int veo_unload_library(struct veo_proc_handle *, const uint64_t);
 uint64_t veo_get_sym(struct veo_proc_handle *, uint64_t, const char *);
 int veo_alloc_mem(struct veo_proc_handle *, uint64_t *, const size_t);
 int veo_free_mem(struct veo_proc_handle *, uint64_t);
-int veo_alloc_hmem(struct veo_proc_handle *, void **, const size_t);
-int veo_free_hmem(void *);
 int veo_read_mem(struct veo_proc_handle *, void *, uint64_t, size_t);
 int veo_write_mem(struct veo_proc_handle *, uint64_t, const void *, size_t);
-int veo_hmemcpy(void *, const void *, size_t);
-int veo_is_ve_addr(void *);
-int veo_args_set_hmem(struct veo_args *, int, void *);
 int veo_num_contexts(struct veo_proc_handle *);
 struct veo_thr_ctxt *veo_get_context(struct veo_proc_handle *, int);
 
@@ -142,10 +124,14 @@ struct veo_thr_ctxt_attr *veo_alloc_thr_ctxt_attr(void);
 int veo_free_thr_ctxt_attr(struct veo_thr_ctxt_attr *);
 int veo_set_thr_ctxt_stacksize(struct veo_thr_ctxt_attr *, size_t);
 int veo_get_thr_ctxt_stacksize(struct veo_thr_ctxt_attr *, size_t *);
-//int veo_get_proc_identifier(struct veo_proc_handle *);
 
 const char *veo_version_string(void);
 int veo_api_version(void);
+
+int veo_alloc_hmem(struct veo_proc_handle *, void **, const size_t);
+int veo_free_hmem(void *);
+int veo_hmemcpy(void *, void *, size_t);
+int veo_args_set_hmem(struct veo_args *, int, void *);
 
 #ifdef __cplusplus
 } // extern "C"
