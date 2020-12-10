@@ -336,8 +336,7 @@ int veo_alloc_mem(veo_proc_handle *h, uint64_t *addr, const size_t size)
  * Users can check with veo_is_ve_addr() that the target address is 
  * flagged with the VE process identifier or not.
  * Users need to remove the process identifier using
- * veo_get_virt_addr_ve() or veo_get_virt_addr_vh() before using
- * the allocated memory.
+ * veo_get_hmem_addr() before using the allocated memory.
  *
  * @param h VEO process handle
  * @param addr [out] a pointer to VEMVA address with the identifier

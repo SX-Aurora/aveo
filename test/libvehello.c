@@ -30,32 +30,3 @@ uint64_t empty2(void)
   empty_cnt2++;
   return empty_cnt2;
 }
-
-uint64_t
-init( int *p, int v, int n )
-{
-    printf( "VE init %d %d\n", v, n );
-    fflush( stdout );
-
-    int i;
-    for ( i = 0; i < n; i++ ) p[i] = v + 1;
-
-    return (uint64_t)p;
-}
-
-uint64_t
-check( int *p, int v, int n )
-{
-    printf( "VE check %d %d\n", v, n );
-    fflush( stdout );
-
-    int i;
-    for ( i = 0; i < n; i++ ) {
-        if ( p[i] != v ) {
-            printf("p[%d] = %d\n", i, p[i]);
-            break;
-        }
-    }
-
-    return i < n ? ~0 : 0;
-}

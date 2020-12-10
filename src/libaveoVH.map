@@ -53,8 +53,7 @@ VERSION_1 {
     veo_get_context;
     veo_context_sync;
     veo_is_ve_addr;
-    veo_get_virt_addr_ve;
-    veo_get_virt_addr_vh;
+    veo_get_hmem_addr;
   local:
     *;
 };

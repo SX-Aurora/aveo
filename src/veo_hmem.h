@@ -8,8 +8,7 @@
 extern "C" {
 #endif
 int veo_is_ve_addr(void *);
-void *veo_get_virt_addr_ve(void *);
-void *veo_get_virt_addr_vh(void *);
+void *veo_get_hmem_addr(void *);
 #ifdef __cplusplus
 } // extern "C"
 #endif

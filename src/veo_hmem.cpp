@@ -30,31 +30,16 @@ int veo_is_ve_addr(void *addr)
 }
 
 /**
- * @brief get a virtual address of VE memory without identifier
- * allocated by veo_alloc_hmem().
- * @param addr a pointer to heterogeneous memory
- * @return a virtual address without identifier;
- *         NULL if the specified memory is not VE memory
+ * @brief get a virtual address of VE or VH memory without 
+ * identifier allocated by veo_alloc_hmem().
+ * @param addr a pointer to virtual address of VE or VH memory
+ * @return a virtual address without identifier
  */
-void* veo_get_virt_addr_ve(void *addr)
+void* veo_get_hmem_addr(void *addr)
 {
   if (veo_is_ve_addr(addr))
     return (void *)(~VEIDENT_MBITS & (uint64_t)addr);
-  return NULL;
-}
-
-/**
- * @brief get a virtual address of VH memory without identifier
- * allocated by veo_alloc_hmem().
- * @param addr a pointer to heterogeneous memory
- * @return a virtual address without identifier;
- *         NULL if the specified memory is not VH memory
- */
-void* veo_get_virt_addr_vh(void *addr)
-{
-  if (!veo_is_ve_addr(addr))
+  else
     return addr;
-  return NULL;
 }
-
 //@}

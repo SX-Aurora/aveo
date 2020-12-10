@@ -93,7 +93,7 @@ main()
 		fprintf(stderr, "veo_alloc_mem failed: %d", ret);
 		exit(1);
 	}
-	a = veo_get_virt_addr_vh(vhbuf);
+	a = veo_get_hmem_addr(vhbuf);
 	for (int i = 0; i < nelems; i++)
 		a[i] = 1;
 
