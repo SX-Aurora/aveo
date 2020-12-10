@@ -37,7 +37,7 @@ init( int *p, int v, int n )
     if (!veo_is_ve_addr(p))
         return 0;
     printf("p = %p\n", (void *)p);
-    p = (int *)veo_get_virt_addr_ve(p);
+    p = (int *)veo_get_hmem_addr(p);
     printf("p = %p\n", (void *)p);
     printf( "VE init %d %d\n", v, n );
     fflush( stdout );
@@ -52,7 +52,7 @@ uint64_t
 check( int *p, int v, int n )
 {
     printf("p = %p\n", (void *)p);
-    p = (int *)veo_get_virt_addr_ve(p);
+    p = (int *)veo_get_hmem_addr(p);
     printf("p = %p\n", (void *)p);
     printf( "VE check %d %d\n", v, n );
     fflush( stdout );
