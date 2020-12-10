@@ -42,6 +42,7 @@ This package includes header files of VE offloading Framework
 %define _vebindir %{_subprefix}/bin
 %define _velibexecdir %{_subprefix}/libexec
 %define _velibdir %{_subprefix}/lib
+%define _veincludedir %{_subprefix}/include
 %define __strip /opt/nec/ve/bin/nstrip
 %define _unpackaged_files_terminate_build 0
 %if 0%{?rhel} == 8
@@ -66,14 +67,18 @@ make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %{_libexecdir}/aveorun
 %{_velibdir}/libaveoVE.so.1
 %{_velibdir}/libaveoVE.so.1.0.0
+%{_velibdir}/libveohmem.so.1
+%{_velibdir}/libveohmem.so.1.0.0
 
 %files devel
 %{_velibdir}/libaveoVE.a
 %{_velibdir}/liburpcVE.a
 %{_velibdir}/liburpcVE_omp.a
 %{_velibdir}/libaveoVE.so
+%{_velibdir}/libveohmem.so
 %{_vebindir}/mk_veorun_static
 %{_vebindir}/relink_aveorun
 %{_libexecdir}/gen_veorun_static_symtable
 %{_libexecdir}/mk_veorun_static
 %{_libexecdir}/relink_aveorun
+%{_veincludedir}/veo_hmem.h

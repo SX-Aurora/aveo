@@ -17,21 +17,24 @@ GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o Context.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o log.o)
+ veo_urpc.o veo_urpc_vh.o log.o veo_hmem.o)
 
-VELIB_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o log.o)
+AVEORUN_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o log.o veo_hmem.o)
+HMEM_OBJS := $(addprefix $(BVE)/,veo_hmem.o)
+VELIB_OBJS := $(AVEORUN_OBJS) $(HMEM_OBJS)
 
 LIBS = $(addprefix $(BLIB)/,libveo.so libveo.a libveo.so.1 libveo.so.1.0.0)
 ARCS = $(addprefix $(BLIB)/,libveo.a)
-VELIBS = $(addprefix $(BVELIB)/,libaveoVE.so.1.0.0 libaveoVE.so libaveoVE.so.1)
+VELIBS = $(addprefix $(BVELIB)/,libaveoVE.so.1.0.0 libaveoVE.so libaveoVE.so.1 \
+	libveohmem.so.1.0.0 libveohmem.so libveohmem.so.1)
 VEARCS = $(addprefix $(BVELIB)/,libaveoVE.a)
 PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun mk_veorun_static gen_veorun_static_symtable)
-INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h)
-
+INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h veo_hmem.h)
+VEINCLUDES := $(addprefix $(BVEINC)/,veo_hmem.h)
 
 ALL: all-ve all-vh
 
-all-ve: $(VELIBS) $(VEARCS) $(PROGS)
+all-ve: $(VEINCLUDES) $(VELIBS) $(VEARCS) $(PROGS)
 all-vh: $(INCLUDES) $(LIBS) $(ARCS)
 
 .PRECIOUS: $(DEST)/ $(DEST)%/
@@ -42,13 +45,14 @@ all-vh: $(INCLUDES) $(LIBS) $(ARCS)
 install: install-ve install-vh
 
 install-ve: all-ve
-	mkdir -p $(PREF)$(VEDEST)/lib/ $(PREF)$(dir $(VEORUN_BIN))/ $(PREF)$(DEST)/libexec/ $(PREF)$(VEDEST)/bin/
+	mkdir -p $(PREF)$(VEDEST)/lib/ $(PREF)$(dir $(VEORUN_BIN))/ $(PREF)$(DEST)/libexec/ $(PREF)$(VEDEST)/bin/ $(PREF)$(VEDEST)/include
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib $(VELIBS)
 	( cd $(PREF)$(VEDEST)/lib; ln -sf libaveoVE.so.1.0.0 libaveoVE.so; ln -sf libaveoVE.so.1.0.0 libaveoVE.so.1)
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib -m 0644 $(VEARCS)
 	/usr/bin/cp -P $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
 	ln -sf $(DEST)/libexec/mk_veorun_static $(PREF)$(VEDEST)/bin/mk_veorun_static
 	ln -sf $(DEST)/libexec/relink_aveorun $(PREF)$(VEDEST)/bin/relink_aveorun
+	/usr/bin/install -t $(PREF)$(VEDEST)/include -m 0644 $(VEINCLUDES)
 
 install-vh: all-vh
 	mkdir -p $(PREF)$(DEST)/lib64/ $(PREF)$(DEST)/include/
@@ -67,7 +71,7 @@ install-vh: all-vh
 %/log.o: log.cpp log.h
 %/aveorun.o: aveorun.c veo_urpc.h
 %/aveorun-ftrace.o: aveorun.c veo_urpc.h
-
+%/veo_hmem.o: veo_hmem.cpp veo_hmem.h veo_hmem_macros.h
 
 .SECONDEXPANSION:
 
@@ -75,7 +79,10 @@ install-vh: all-vh
 $(BINC)/%.h: %.h | $$(@D)/
 	/usr/bin/install -t $(BINC) $<
 
-$(BVELIB)/libaveoVE.so.1.0.0: $(VELIB_OBJS) | $$(@D)/
+$(BVEINC)/%.h: %.h | $$(@D)/
+	/usr/bin/install -t $(BVEINC) $<
+
+$(BVELIB)/libaveoVE.so.1.0.0: $(AVEORUN_OBJS) | $$(@D)/
 	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fopenmp -fpic -shared \
 	-Wl,-soname=libaveoVE.so.1 -o $@ $^ $(BVELIB)/liburpcVE_omp.a \
 	$(NLDFLAGS) -lveio -lveftrace -ldl
@@ -84,6 +91,17 @@ $(BVELIB)/libaveoVE.so.1: $(BVELIB)/libaveoVE.so.1.0.0
 	ln -sf $< $@
 
 $(BVELIB)/libaveoVE.so: $(BVELIB)/libaveoVE.so.1
+	ln -sf $< $@
+
+$(BVELIB)/libveohmem.so.1.0.0: $(HMEM_OBJS) | $$(@D)/
+	$(NCPP) -Wl,-zdefs $(NCPPFLAGS) -fpic -shared \
+	-Wl,-soname=libveohmem.so.1 -o $@ $^ \
+	$(NLDFLAGS) -Wl,-z,max-page-size=0x200000
+
+$(BVELIB)/libveohmem.so.1: $(BVELIB)/libveohmem.so.1.0.0
+	ln -sf $< $@
+
+$(BVELIB)/libveohmem.so: $(BVELIB)/libveohmem.so.1
 	ln -sf $< $@
 
 $(BLIB)/libveo.so.1.0.0: $(VHLIB_OBJS) | $$(@D)/
@@ -96,7 +114,7 @@ $(BLIB)/libveo.so.1: $(BLIB)/libveo.so.1.0.0
 $(BLIB)/libveo.so: $(BLIB)/libveo.so.1.0.0
 	ln -sf $< $@
 
-$(BVELIB)/libaveoVE.a: $(VELIB_OBJS) $(BVE)/aveorun.o | $$(@D)/
+$(BVELIB)/libaveoVE.a: $(AVEORUN_OBJS) $(BVE)/aveorun.o | $$(@D)/
 	$(NAR) rv $@ $^
 
 $(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
@@ -151,5 +169,5 @@ $(BVE)/aveorun-ftrace.o: aveorun.c | $$(@D)/
 
 clean:
 	rm -f $(VHLIB_OBJS) $(VELIB_OBJS) $(VELIB_OBJS_OMP) $(LIBS) $(LIBS) \
-		$(VELIBS) $(VEARCS) $(PROGS) $(INCLUDES) \
+		$(VELIBS) $(VEARCS) $(PROGS) $(INCLUDES) $(VEINCLUDES) \
 		$(BVE)/aveorun.o $(BVE)/aveorun-ftrace.o 

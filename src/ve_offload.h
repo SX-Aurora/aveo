@@ -24,7 +24,7 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 9
+#define VEO_API_VERSION 10
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "veo_hmem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,6 +127,11 @@ int veo_get_thr_ctxt_stacksize(struct veo_thr_ctxt_attr *, size_t *);
 
 const char *veo_version_string(void);
 int veo_api_version(void);
+
+int veo_alloc_hmem(struct veo_proc_handle *, void **, const size_t);
+int veo_free_hmem(void *);
+int veo_hmemcpy(void *, void *, size_t);
+int veo_args_set_hmem(struct veo_args *, int, void *);
 
 #ifdef __cplusplus
 } // extern "C"
