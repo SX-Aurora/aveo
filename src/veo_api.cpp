@@ -531,8 +531,16 @@ int veo_num_contexts(veo_proc_handle *h)
 /**
  * @brief Return a pointer of VEO thread context in a proc
  *
+ * The argument idx takes an integer value zero or more and less 
+ * than the result of veo_num_contexts(). The context with idx=0 
+ * is the main context of the ProcHandle. It will not be destroyed 
+ * when closed, instead it is destroyed when the proc is killed by 
+ * veo_proc_destroy(), or when the program ends. veo_get_context() 
+ * returns NULL if a user specifies idx with a value which is the 
+ * result of veo_num_contexts() or more.
+ * 
  * @param proc VEO process handle
- * @param idx index / position inside the ctx vector
+ * @param idx a index which takes an integer value zero or more and less than the result of veo_num_contexts()
  * @return a pointer to VEO thread context upon success.
  */
 veo_thr_ctxt *veo_get_context(veo_proc_handle *proc, int idx)

@@ -25,3 +25,7 @@ Synchronous APIs are below:
  - veo_write_mem()
 
 The size of arguments passed to functions is limited to 63MB, since the size of the initial stack is 64MB. Allocate and use memory buffers on heap when you have huge argument arrays to pass.
+
+The transfer speed of veo_write_mem() or veo_async_write_mem() become slow depending on the memory location(NUMA node) of the write destination. The data transfer speed may become stably high by running the program via numactl. Please note that the optimal command option will change depending on the operating conditions of the machine and software. Execute the following command and try to validate if the transfer speed become stably high.
+-# `numactl --localalloc <filename>`
+-# `numactl --cpunodebind=<NUMA node> --localalloc <filename>`
