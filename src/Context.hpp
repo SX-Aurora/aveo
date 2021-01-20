@@ -114,22 +114,44 @@ private:
    * @param args... arguments for urpc_generic_send
    * @return request ID
    */
+#ifndef NOCPP17
   template <typename ... Args>
   uint64_t genericAsyncReq(int urpc_cmd, char *fmt, Args&&... args)
+#else
+  uint64_t genericAsyncReq(int urpc_cmd, char *fmt, ...)
+#endif
   {
     //VEO_TRACE("start");
     if (!this->is_alive())
       return VEO_REQUEST_ID_INVALID;
 
     auto id = this->issueRequestID();
+#ifdef NOCPP17
+    // We pass 3 arguments to urpc_generic_send().
+    // If the caller of this function specify less than 3 arguments,
+    // we will pass garbage data. But, it will not break something.
+    va_list ap;
+    va_start(ap, fmt);
+    uint64_t arg1 = va_arg(ap, uint64_t);
+    uint64_t arg2 = va_arg(ap, uint64_t);
+    uint64_t arg3 = va_arg(ap, uint64_t);
+    va_end(ap);
+#endif
     //
     // submit function, called when cmd is issued to URPC
     //
+#ifndef NOCPP17
     auto f = [this, id, urpc_cmd, fmt,
               args = std::make_tuple(this->up, urpc_cmd, fmt,
                                      std::forward<Args>(args)...)](Command *cmd)
              {
                int req = std::apply(urpc_generic_send, args);
+#else
+    auto f = [this, id, urpc_cmd, fmt, arg1, arg2, arg3](Command *cmd)
+             {
+               int req = urpc_generic_send(this->up, urpc_cmd, fmt,
+					   arg1, arg2, arg3);
+#endif
                VEO_TRACE("[request #%d] urpcreq = %ld", id, req);
                if (req >= 0) {
                  cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
