@@ -12,7 +12,7 @@
  * @author Erich Focht
  *
  * @author NEC Corporation
- * @copyright 2017-2020. Licensed under the terms of LGPL v2.1.
+ * @copyright 2017-2021. Licensed under the terms of LGPL v2.1.
  */
 #include "ve_offload.h"
 
