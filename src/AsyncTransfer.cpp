@@ -56,19 +56,21 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
            {
              //VEO_TRACE("[request #%d] reply ACK (cmd=%d)...", id, m->c.cmd);
              uint64_t result = 0;
+	     int status = VEO_COMMAND_OK;
              if (prev != VEO_REQUEST_ID_INVALID) {
                auto rc = this->_peekResult(prev, &result);
                if (rc != VEO_COMMAND_OK) {
                  VEO_ERROR("request #%ld in chain has unexpected status %d",
                            prev, rc);
                  // TODO: handle this
+		 status = rc;
                }
              }
              if (m->c.cmd == URPC_CMD_EXCEPTION) {
                cmd->setResult(-URPC_CMD_SENDBUFF, VEO_COMMAND_EXCEPTION);
                return (int)-URPC_CMD_SENDBUFF;
              }
-             cmd->setResult(result, VEO_COMMAND_OK);
+             cmd->setResult(result, status);
              return 0;
            };
 
@@ -142,15 +144,17 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
              }
              memcpy((void *)dst, buff, buffsz);
              uint64_t result = 0;
+             int status = VEO_COMMAND_OK;
              if (prev != VEO_REQUEST_ID_INVALID) {
                auto rc = this->_peekResult(prev, &result);
                if (rc != VEO_COMMAND_OK) {
                  VEO_ERROR("request #%ld in chain has unexpected status %d",
                            prev, rc);
                  // TODO: handle this
+                 status = rc;
                }
              }
-             cmd->setResult(result, VEO_COMMAND_OK);
+             cmd->setResult(result, status);
              return 0;
            };
 
