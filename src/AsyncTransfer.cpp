@@ -177,6 +177,25 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
   if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
 
+  if (size == 0) {
+    auto id = this->issueRequestID();
+    auto f = [id] (Command *cmd)
+             {
+               VEO_TRACE("[request #%d] start...", id);
+               cmd->setResult(0, VEO_COMMAND_OK);
+               return 0;
+             };
+    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    {
+      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      if(this->comq.pushRequest(std::move(req)))
+        return VEO_REQUEST_ID_INVALID;
+    }
+    this->progress(2);
+    VEO_TRACE("asyncWriteMem leave...\n");
+    return id;
+  }
+
   const char* env_p = std::getenv("VEO_RECVFRAG");
   const char* cut_p = std::getenv("VEO_RECVCUT");
   size_t maxfrag = PART_SENDFRAG;
@@ -233,6 +252,25 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
   VEO_TRACE("src=%p dst=%p size=%lu", src, (void *)dst, size);
   if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
+
+  if (size == 0) {
+    auto id = this->issueRequestID();
+    auto f = [id] (Command *cmd)
+             {
+               VEO_TRACE("[request #%d] start...", id);
+               cmd->setResult(0, VEO_COMMAND_OK);
+               return 0;
+             };
+    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    {
+      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      if(this->comq.pushRequest(std::move(req)))
+        return VEO_REQUEST_ID_INVALID;
+    }
+    this->progress(2);
+    VEO_TRACE("asyncWriteMem leave...\n");
+    return id;
+  }
 
   const char* env_p = std::getenv("VEO_SENDFRAG");
   const char* cut_p = std::getenv("VEO_SENDCUT");
