@@ -68,6 +68,7 @@ int main()
   signal(SIGFPE, signalHandler);
   signal(SIGILL, signalHandler);
   signal(SIGSEGV, signalHandler);
+  signal(SIGBUS, signalHandler);
 
   main_up = ve_urpc_init(0);
   if (main_up == NULL)
