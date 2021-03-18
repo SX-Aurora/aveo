@@ -441,7 +441,7 @@ To build code written in Fortran, change the compiler to nfort.
 Execute a MPI program which calls VEO API as follows.
 
 ~~~
-mpiexec -vh -veo ./a.out
+mpiexec -veo ./a.out
 ~~~
 
 Please see MPI document "NEC MPI User's Guide" for mpiexec and MPI API details.
@@ -460,7 +460,7 @@ $ source /opt/nec/ve/mpi/2.15.0/bin/necmpivars.sh
 $ mpincc -vh mpi-veo.c -o mpi-veo -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64 \
   -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
 $ mpincc -fpic -shared libmpive.c -lveohmem -o libmpive.so
-$ VE_OMP_NUM_THREADS=1 mpirun -vh -veo -np 4 ./mpi-veo
+$ VE_OMP_NUM_THREADS=1 mpirun -veo -np 4 ./mpi-veo
 ~~~
 
 ##How to get ftrace.out

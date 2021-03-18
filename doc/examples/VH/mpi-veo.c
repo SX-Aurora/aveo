@@ -35,7 +35,7 @@ main()
     struct veo_thr_ctxt    *ctx  = veo_context_open( proc );
     struct veo_args        *argp = veo_args_alloc();
 
-    uint64_t handle = veo_load_library( proc, "./libve.so" );
+    uint64_t handle = veo_load_library( proc, "./libmpive.so" );
 
     if ( handle ) { 
       printf( "myrank = %d, nprocs = %d, handle = %16p, VE code loaded\n", myrank, nprocs, handle );
