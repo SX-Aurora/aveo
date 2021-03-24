@@ -28,6 +28,8 @@ namespace std {
 
 namespace veo {
 
+  int _getProcIdentifier(ProcHandle *);
+
 /**
  * @brief VEO process handle
  */

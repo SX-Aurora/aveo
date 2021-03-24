@@ -241,6 +241,17 @@ int veo_proc_destroy(veo_proc_handle *proc)
 }
 
 /**
+ * @brief find a veo_proc_handle's identifier
+ * @param proc pointer to VEO process handle
+ * @retval >= 0 VEO process identifier, i.e. index in the proc list
+ * @retval -1 VEO process not found in list
+ */
+int veo_proc_identifier(veo_proc_handle *proc)
+{
+  return veo::_getProcIdentifier(ProcHandleFromC(proc));
+}
+
+/**
  * @brief load a VE library
  * @param proc VEO process handle
  * @param libname a library file name to load

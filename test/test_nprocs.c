@@ -44,6 +44,16 @@ int main(int argc, char *argv[])
     }
   }
 
+  // test proc indentifiers
+  for (int i = 0; i < nprocs; i++) {
+    int procid = veo_proc_identifier(proc[i]);
+    if (procid != i) {
+      printf("unexpected proc identifier: %d instead of %d\n", procid, i);
+      rc = -1;
+      goto done;
+    }
+  }
+
   struct veo_args *argp = veo_args_alloc();
   for (int i = 0; i < nprocs; i++) {
     if (proc[i] == NULL)

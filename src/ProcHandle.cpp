@@ -32,6 +32,28 @@ std::vector<ProcHandle *> *__procs;
 std::mutex __procs_mtx;
 
 /**
+ * @brief Get VE process identifier for a proc
+ * @return VE process identifier upon success; negative upon failure.
+ */
+int _getProcIdentifier(ProcHandle *proc)
+{
+  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
+  //std::lock_guard<std::mutex> lock2(this->mctx->submit_mtx);
+
+  // Get element number of this pointer included in veo::__procs.
+  std::vector<ProcHandle *>::iterator itr;
+  itr = std::find(veo::__procs->begin(), veo::__procs->end(), proc);
+  if (itr == veo::__procs->end()) {
+    VEO_ERROR("Search failed.");
+    return -1;
+  }
+  const int idx = std::distance(veo::__procs->begin(), itr);
+  VEO_TRACE("proc %p identifier = %d", (void *)proc, idx);
+  return idx;
+}
+  
+  
+/**
  * @brief constructor
  *
  * @param venode VE node ID for running child peer
@@ -98,24 +120,12 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
 }
 
 /**
- * @brief Get VE process identifier
+ * @brief Get VE process identifier for this proc
  * @return VE process identifier upon success; negative upon failure.
  */
 int ProcHandle::getProcIdentifier()
 {
-  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
-  //std::lock_guard<std::mutex> lock2(this->mctx->submit_mtx);
-
-  // Get element number of this pointer included in veo::__procs.
-  std::vector<ProcHandle *>::iterator itr;
-  itr = std::find(veo::__procs->begin(), veo::__procs->end(), this);
-  if (itr == veo::__procs->end()) {
-    VEO_ERROR("Search failed.");
-    return -1;
-  }
-  const int idx = std::distance(veo::__procs->begin(), itr);
-  VEO_TRACE("proc %p identifier = %d", (void *)this, idx);
-  return idx;
+  return veo::_getProcIdentifier(this);
 }
 
 /**

@@ -47,6 +47,7 @@ VERSION_1 {
     veo_free_thr_ctxt_attr;
     veo_set_thr_ctxt_stacksize;
     veo_get_thr_ctxt_stacksize;
+    veo_version_string;
     /* AVEO API extensions */
     veo_call_sync;
     veo_num_contexts;
@@ -54,6 +55,7 @@ VERSION_1 {
     veo_context_sync;
     veo_is_ve_addr;
     veo_get_hmem_addr;
+    veo_proc_identifier;
   local:
     *;
 };
