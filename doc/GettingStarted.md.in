@@ -503,3 +503,33 @@ The log is output as standard output.
 ~~~
 export VEO_LOG_DEBUG=1
 ~~~
+
+##Environment variables to optimize data transfer
+AVEO(2.7.5 or later) supports the environment variables to optimize the performance of data transfer.
+
+Environment variables | Brief | Default value
+----- | ----- | -----
+VEO_SENDFRAG | The maximum size of fragments of data to write (send). | 4MiB |
+VEO_SENDCUT | The threshold to cut data into fragments to write (send). | 2MiB |
+VEO_RECVFRAG | The maximum size of fragments of data to read (receive). | 4MiB |
+VEO_RECVCUT | The threshold to cut data into fragments to read (receive).  | 2MiB |
+
+AVEO cuts data into the flagments to write (send) as described in the below table:
+
+Data size[MiB] | Fragment size[MiB]
+----- | -----
+>= VEO_SENDFRAG * 5 | VEO_SENDFRAG 
+\> VEO_SENDCUT | Data size / 4
+\> VEO_SENDCUT / 2 | Data size / 3
+\> VEO_SENDCUT / 4 | Data size / 2
+\> 0 | Data size
+
+AVEO cuts data into the flagments to read (receive) as described in the below table:
+
+Data size[MiB] | Fragment size[MiB]
+----- | -----
+>= VEO_RECVFRAG * 5 | VEO_RECVFRAG 
+\> VEO_RECVCUT | Data size / 5
+\> VEO_RECVCUT / 2 | Data size / 4
+\> VEO_RECVCUT / 4 | Data size / 2
+\> 0 | Data size

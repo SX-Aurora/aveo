@@ -29,3 +29,9 @@ The size of arguments passed to functions is limited to 63MB, since the size of 
 The transfer speed of veo_write_mem() or veo_async_write_mem() become slow depending on the memory location(NUMA node) of the write destination. The data transfer speed may become stably high by running the program via numactl. Please note that the optimal command option will change depending on the operating conditions of the machine and software. Execute the following command and try to validate if the transfer speed become stably high.
 -# `numactl --localalloc <filename>`
 -# `numactl --cpunodebind=<NUMA node> --localalloc <filename>`
+
+The default values of tuning parameters have been changed from v2.7.5 to improve the performance of asynchronous data transfers. If you find the decrease of the performance of data transfers, please set both environment variable VEO_SENDCUT and VEO_RECVCUT to 524288, so that the behavior will be similar to the behavior of the previous version.
+~~~
+$ export VEO_SENDCUT=524288
+$ export VEO_RECVCUT=524288
+~~~
