@@ -130,7 +130,7 @@ int veo_api_version(void);
 
 int veo_alloc_hmem(struct veo_proc_handle *, void **, const size_t);
 int veo_free_hmem(void *);
-int veo_hmemcpy(void *, void *, size_t);
+int veo_hmemcpy(void *, const void *, size_t);
 int veo_args_set_hmem(struct veo_args *, int, void *);
 
 #ifdef __cplusplus
