@@ -1,20 +1,3 @@
-/**
- * @mainpage Introduction
- *
- * VE offloading is a framework to provide accelerator-style programming
- * on Vector Engine (VE).
- * Using VEO, a programmer can execute code on VE and can control the
- * execution from VH main program.
- *
- * This document describes public APIs for VEO.
- * The page "Modules" shows a list of VEO API functions.
- * The page "Examples" shows a list of all example.
- *
- * @author Erich Focht
- *
- * @author NEC Corporation
- * @copyright 2017-2021. Licensed under the terms of LGPL v2.1.
- */
 #include "ve_offload.h"
 
 #include <cstdio>
@@ -128,7 +111,7 @@ const char *veo_version_string()
  * this function.
  *
  * @param venode VE node number
- * @param veobin VE alternative veorun binary path
+ * @param tmp_veobin VE alternative veorun binary path
  * @return pointer to VEO process handle upon success
  * @retval NULL VE process creation failed.
  */
