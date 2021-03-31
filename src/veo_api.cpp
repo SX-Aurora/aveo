@@ -8,6 +8,7 @@
  *
  * This document describes public APIs for VEO.
  * The page "Modules" shows a list of VEO API functions.
+ * The page "Examples" shows a list of all example.
  *
  * @author Erich Focht
  *
