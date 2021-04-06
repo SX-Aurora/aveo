@@ -7,7 +7,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-int veo_is_ve_addr(void *);
+int veo_is_ve_addr(const void *);
 void *veo_get_hmem_addr(void *);
 #ifdef __cplusplus
 } // extern "C"
