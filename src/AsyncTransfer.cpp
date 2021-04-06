@@ -56,19 +56,21 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
            {
              //VEO_TRACE("[request #%d] reply ACK (cmd=%d)...", id, m->c.cmd);
              uint64_t result = 0;
+	     int status = VEO_COMMAND_OK;
              if (prev != VEO_REQUEST_ID_INVALID) {
                auto rc = this->_peekResult(prev, &result);
                if (rc != VEO_COMMAND_OK) {
                  VEO_ERROR("request #%ld in chain has unexpected status %d",
                            prev, rc);
                  // TODO: handle this
+		 status = rc;
                }
              }
              if (m->c.cmd == URPC_CMD_EXCEPTION) {
                cmd->setResult(-URPC_CMD_SENDBUFF, VEO_COMMAND_EXCEPTION);
                return (int)-URPC_CMD_SENDBUFF;
              }
-             cmd->setResult(result, VEO_COMMAND_OK);
+             cmd->setResult(result, status);
              return 0;
            };
 
@@ -142,15 +144,17 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
              }
              memcpy((void *)dst, buff, buffsz);
              uint64_t result = 0;
+             int status = VEO_COMMAND_OK;
              if (prev != VEO_REQUEST_ID_INVALID) {
                auto rc = this->_peekResult(prev, &result);
                if (rc != VEO_COMMAND_OK) {
                  VEO_ERROR("request #%ld in chain has unexpected status %d",
                            prev, rc);
                  // TODO: handle this
+                 status = rc;
                }
              }
-             cmd->setResult(result, VEO_COMMAND_OK);
+             cmd->setResult(result, status);
              return 0;
            };
 
@@ -176,6 +180,25 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
   VEO_TRACE("asyncReadMem enter...");
   if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
+
+  if (size == 0) {
+    auto id = this->issueRequestID();
+    auto f = [id] (Command *cmd)
+             {
+               VEO_TRACE("[request #%d] start...", id);
+               cmd->setResult(0, VEO_COMMAND_OK);
+               return 0;
+             };
+    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    {
+      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      if(this->comq.pushRequest(std::move(req)))
+        return VEO_REQUEST_ID_INVALID;
+    }
+    this->progress(2);
+    VEO_TRACE("asyncWriteMem leave...\n");
+    return id;
+  }
 
   const char* env_p = std::getenv("VEO_RECVFRAG");
   const char* cut_p = std::getenv("VEO_RECVCUT");
@@ -233,6 +256,25 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
   VEO_TRACE("src=%p dst=%p size=%lu", src, (void *)dst, size);
   if(!this->is_alive())
     return VEO_REQUEST_ID_INVALID;
+
+  if (size == 0) {
+    auto id = this->issueRequestID();
+    auto f = [id] (Command *cmd)
+             {
+               VEO_TRACE("[request #%d] start...", id);
+               cmd->setResult(0, VEO_COMMAND_OK);
+               return 0;
+             };
+    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    {
+      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      if(this->comq.pushRequest(std::move(req)))
+        return VEO_REQUEST_ID_INVALID;
+    }
+    this->progress(2);
+    VEO_TRACE("asyncWriteMem leave...\n");
+    return id;
+  }
 
   const char* env_p = std::getenv("VEO_SENDFRAG");
   const char* cut_p = std::getenv("VEO_SENDCUT");
