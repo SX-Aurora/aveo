@@ -78,7 +78,7 @@ uint64_t hello()
 }
 ~~~
 
-Save the above code as [libvehello.c](examples_2VE_2libvehello_8c-example.html).
+Save the above code as libvehello.c.
 
 A function on VE called via VEO needs to return a 64-bit unsigned integer.
 A function on VE called via VEO can have arguments as mentioned later.
@@ -127,7 +127,7 @@ int main()
   return 0;
 }
 ~~~
-Save the above code as [hello.c](examples_2VH_2hello_static_8c-example.html)
+Save the above code as hello.c.
 
 To call a VE function in a statically linked executable:
 1. Create a process on a VE node by veo_proc_create_static().
@@ -146,6 +146,7 @@ The example VH program to call a VE function in a dynamic library with VEO:
 #include <ve_offload.h>
 int main()
 {
+  /* Load "vehello" on VE node 0 */
   struct veo_proc_handle *proc = veo_proc_create(0);
   uint64_t handle = veo_load_library(proc, "./libvehello.so");
   struct veo_thr_ctxt *ctx = veo_context_open(proc);
@@ -160,8 +161,6 @@ int main()
   return 0;
 }
 ~~~
-Save the above code as [hello.c](examples_2VH_2hello_8c-example.html)
-
 To call a VE function in a dynamic library with VEO:
 1. Create a process on a VE node by veo_proc_create().
  Specify VE node number to create a VE process.
@@ -296,7 +295,7 @@ INTEGER FUNCTION FUNC1(x, y)
   FUNC1 = x + y
 END FUNCTION FUNC1
 ~~~
-Save the above code as [libvefortran.f90](examples_2VE_2libvefortran_8f90-example.html).
+Save the above code as libvefortran.f90.
 
 ###Compile VE Code (Fortran)
 
@@ -343,7 +342,7 @@ int main()
   return 0;
 }
 ~~~
-Save the above code as [fortran.c](examples_2VH_2fortan_8c-example.html).
+Save the above code as fortran.c.
 
 If you want to pass arguments to VE Fortran function, please use veo_args_set_stack() to pass arguments as stack arguments.
 However if you want to pass arguments to arguments with VALUE attribute in Fortran function, please pass arguments by value in the same way as VE C function.
@@ -399,7 +398,7 @@ int omp_hello(void)
 }
 
 ~~~
-Save the above code in [libomphello.c](examples_2VE_2libomphello_8c-example.html).
+Save the above code in libomphello.c
 
 The following shows the example written in Fortran.
 
@@ -418,7 +417,7 @@ INTEGER FUNCTION OMP_HELLO()
 !$OMP END PARALLEL
 END FUNCTION OMP_HELLO
 ~~~
-Save the above code in [libompfortran.f90](examples_2VE_2libompfortran_8f90-example.html).
+Save the above code in libompfortran.f90.
 
 ###How to build VE code
 To use OpenMP parallelization, specify -fopenmp at compilation and linking.
@@ -435,33 +434,6 @@ To build a shared library, execute as follows:
 /opt/nec/ve/bin/ncc -fpic -shared -o libomphello.so libomphello.c -fopenmp
 ~~~
 To build code written in Fortran, change the compiler to nfort.
-
-##How to run a MPI program which calls VEO API
-
-Execute a MPI program which calls VEO API as follows.
-
-~~~
-mpiexec -vh -veo ./a.out
-~~~
-
-Please see MPI document "NEC MPI User's Guide" for mpiexec and MPI API details.
-
-In order to transfer data on VE memory using MPI API, it is necessary to allocate VE memory using veo_alloc_hmem().
-
-### Examples(MPI+VEO)
-
-The example MPI program which calls VEO API.
- - [mpi-veo.c](examples_2VH_2mpi-veo_8c-example.html)
- - [libmpive.c](examples_2VE_2libmpive_8c-example.html)
-
-You can compile and run it with following commands.
-~~~
-$ source /opt/nec/ve/mpi/2.15.0/bin/necmpivars.sh
-$ mpincc -vh mpi-veo.c -o mpi-veo -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64 \
-  -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
-$ mpincc -fpic -shared libmpive.c -lveohmem -o libmpive.so
-$ VE_OMP_NUM_THREADS=1 mpirun -vh -veo -np 4 ./mpi-veo
-~~~
 
 ##How to get ftrace.out
 
@@ -531,13 +503,3 @@ The log is output as standard output.
 ~~~
 export VEO_LOG_DEBUG=1
 ~~~
-
-@example examples/VH/hello.c
-@example examples/VH/hello_static.c
-@example examples/VH/fortran.c
-@example examples/VH/mpi-veo.c
-@example examples/VE/libvehello.c
-@example examples/VE/libvefortran.f90
-@example examples/VE/libompfortran.f90
-@example examples/VE/libomphello.c
-@example examples/VE/libmpive.c

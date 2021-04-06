@@ -8,7 +8,6 @@
  *
  * This document describes public APIs for VEO.
  * The page "Modules" shows a list of VEO API functions.
- * The page "Examples" shows a list of all example.
  *
  * @author Erich Focht
  *
@@ -491,7 +490,7 @@ int veo_write_mem(veo_proc_handle *h, uint64_t dst, const void *src,
  * @param size size in byte
  * @return zero upon success; negative upon failure.
  */
-int veo_hmemcpy(void *dst, const void *src, size_t size)
+int veo_hmemcpy(void *dst, void *src, size_t size)
 {
   try
   {
