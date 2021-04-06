@@ -24,7 +24,7 @@
  * @return one when addr was allocated by veo_alloc_hmem();
  *         zero when addr was not allocated by veo_alloc_hmem().
  */
-int veo_is_ve_addr(void *addr)
+int veo_is_ve_addr(const void *addr)
 {
   return IS_VE(addr) ? 1 : 0;
 }
