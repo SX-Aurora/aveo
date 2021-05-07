@@ -103,7 +103,7 @@ private:
     return true;
   }
 
-  uint64_t simpleCallAsync(uint64_t, CallArgs &);
+  uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>);
   uint64_t doCallAsync(uint64_t, CallArgs &);
 
   /**
@@ -172,7 +172,7 @@ private:
                  cmd->setResult(0, VEO_COMMAND_OK);
                else if (m->c.cmd != URPC_CMD_RES_STK) {
                  uint64_t result;
-                 int rv = unpack_call_result(m, nullptr, payload, plen, &result);
+                 int rv = unpack_call_result(m, nullptr, payload, plen, &result, nullptr);
                  if (rv < 0) {
                    cmd->setResult(result, VEO_COMMAND_EXCEPTION);
                    this->state = VEO_STATE_EXIT;

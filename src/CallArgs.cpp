@@ -333,7 +333,10 @@ void CallArgs::setup(uint64_t sp)
   VEO_ASSERT(this->stack_size == img.size());
   auto buf = new char[this->stack_size];
   memcpy(buf, img.c_str(), this->stack_size);
-  this->stack_buf.reset(buf);
+  //this->stack_buf.reset(buf);
+  if (this->stack_buf != nullptr)
+    deleteBuffer();
+  this->stack_buf = buf;
 }
 
 // Create a copyout function
