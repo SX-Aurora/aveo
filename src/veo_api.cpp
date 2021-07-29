@@ -117,6 +117,16 @@ const char *veo_version_string()
  * number assigned by the job scheduler. If venode is -1, the first VE
  * node of the VE nodes assigned by the job scheduler is used.
  *
+ * VE supports normal mode and NUMA mode (Partitioning mode).
+ * Under NUMA mode, if a user specifies the same VE node to this 
+ * function and creates multiple VE processes, the processes will be 
+ * created alternately on NUMA nodes.
+ *
+ * A user can control VE program execution using environment variables 
+ * such as VE_LD_LIBRARY_PATH ,VE_OMP_NUM_THREADS and VE_NUMA_OPT.
+ * These environmet variables are also available when a user calls 
+ * this function.
+ *
  * @param venode VE node number
  * @param veobin VE alternative veorun binary path
  * @return pointer to VEO process handle upon success
@@ -216,6 +226,16 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
  * logical VE node number. It will be translated into physical VE node
  * number assigned by the job scheduler. If venode is -1, the first VE
  * node of the VE nodes assigned by the job scheduler is used.
+ *
+ * VE supports normal mode and NUMA mode (Partitioning mode).
+ * Under NUMA mode, if a user specifies the same VE node to this 
+ * function and creates multiple VE processes, the processes will be 
+ * created alternately on NUMA nodes.
+ *
+ * A user can control VE program execution using environment variables 
+ * such as VE_LD_LIBRARY_PATH ,VE_OMP_NUM_THREADS and VE_NUMA_OPT.
+ * These environmet variables are also available when a user calls 
+ * this function.
  *
  * @param venode VE node number
  * @return pointer to VEO process handle upon success
