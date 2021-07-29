@@ -532,6 +532,36 @@ The log is output as standard output.
 export VEO_LOG_DEBUG=1
 ~~~
 
+##How to debug VEO programs
+AVEO(2.8.2 or later) supports the environment variable to debug VE processes.
+###VH side debugging
+When you want to debug a VH process, execute the following command.
+~~~
+gdb --args ./veo_program arg1 arg2
+~~~
+###VE side debugging
+When you want to debug a single VE process, set the environment variable as below.
+~~~
+export VEO_DEBUG=console
+~~~
+Then, execute your program.
+Whenever a VE process starts, a VE debugger gdb is shown in your console.
+Type "run" to continue, or set breakpoints, etc. 
+
+This works under the premise that you don’t need to interact with the host side program (e.g. it requires no input).
+
+If you spawn multiple VE processes with the environment variable VEO_DEBUG=console set, it leads to undefined behaivior.
+
+When X Window System is available and you want to debug multiple VE processes, set the environment variable as below.
+~~~
+export VEO_DEBUG=xterm
+~~~
+Then, execute your program.
+Whenever multiple VE processes start, xterm windows will open up and show VE debugger prompts.
+Type "run" to continue in each of these windows.
+
+This works under the premise that the environmet DISPLAY is set up properly.
+
 ##Environment variables to optimize data transfer
 AVEO(2.7.5 or later) supports the environment variables to optimize the performance of data transfer.
 
