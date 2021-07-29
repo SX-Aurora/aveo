@@ -47,7 +47,8 @@ install: install-ve install-vh
 install-ve: all-ve
 	mkdir -p $(PREF)$(VEDEST)/lib/ $(PREF)$(dir $(VEORUN_BIN))/ $(PREF)$(DEST)/libexec/ $(PREF)$(VEDEST)/bin/ $(PREF)$(VEDEST)/include
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib $(VELIBS)
-	( cd $(PREF)$(VEDEST)/lib; ln -sf libaveoVE.so.1.0.0 libaveoVE.so; ln -sf libaveoVE.so.1.0.0 libaveoVE.so.1)
+	( cd $(PREF)$(VEDEST)/lib; ln -sf libaveoVE.so.1.0.0 libaveoVE.so; ln -sf libaveoVE.so.1.0.0 libaveoVE.so.1; \
+	ln -sf libveohmem.so.1.0.0 libveohmem.so;ln -sf libveohmem.so.1.0.0 libveohmem.so.1;)
 	/usr/bin/install -t $(PREF)$(VEDEST)/lib -m 0644 $(VEARCS)
 	/usr/bin/cp -P $(BLIBEX)/* $(PREF)$(dir $(VEORUN_BIN))
 	ln -sf $(DEST)/libexec/mk_veorun_static $(PREF)$(VEDEST)/bin/mk_veorun_static
