@@ -32,6 +32,9 @@
 
 #define VEO_REQUEST_ID_INVALID (~0UL)
 
+#define CMD_VEGDB "/opt/nec/ve/bin/gdb"
+#define CMD_XTERM "/usr/bin/xterm"
+
 #include <stdint.h>
 #include <stddef.h>
 #include "veo_hmem.h"

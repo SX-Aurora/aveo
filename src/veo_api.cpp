@@ -132,7 +132,7 @@ const char *veo_version_string()
  * @return pointer to VEO process handle upon success
  * @retval NULL VE process creation failed.
  */
-veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
+veo_proc_handle *veo_proc_create_static(int venode, char *tmp_veobin)
 {
   if (venode < -1) {
     VEO_ERROR("venode(%d) is an invalid value.", venode);
@@ -196,7 +196,31 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
       }
     }
 
-    auto rv = new veo::ProcHandle(venode, veobin);
+    // 4 is the total number of spaces and the \0
+    size_t veobin_size = strlen(tmp_veobin) + strlen(CMD_VEGDB)
+                         + strlen(CMD_XTERM) + strlen("-e") + 4;
+    std::unique_ptr<char[]> veobin(new char[veobin_size]());
+    // veobin = <path to aveorun>
+    // if VEO_DEBUG is invalid value or not set, VEO program runs in the default.
+    strcpy(veobin.get(), tmp_veobin);
+    const char *veo_debug_mode = getenv("VEO_DEBUG");
+    if (veo_debug_mode != nullptr) {
+      VEO_DEBUG("VEO_DEBUG=%s", veo_debug_mode);
+      std::stringstream ss;
+      if (strcmp(veo_debug_mode, "console") == 0) {
+        ss << CMD_VEGDB << " " << tmp_veobin;
+        // veobin = <path to VE gdb> <path to aveorun>
+        ss.get(veobin.get(), strlen(ss.str().c_str())+1);
+      } else if (strcmp(veo_debug_mode, "xterm") == 0) {
+        ss << CMD_XTERM << " -e " << CMD_VEGDB << " " << tmp_veobin;
+        // veobin = <path to xterm> -e <path to VE gdb> <path to aveorun>
+        ss.get(veobin.get(), strlen(ss.str().c_str())+1);
+      } else {
+        VEO_ERROR("VEO_DEBUG(%s) is invalid.", veo_debug_mode);
+      }
+    }
+    VEO_DEBUG("veobin = %s", veobin.get());
+    auto rv = new veo::ProcHandle(venode, veobin.get());
     return rv->toCHandle();
 
   } catch (std::invalid_argument &e) {
