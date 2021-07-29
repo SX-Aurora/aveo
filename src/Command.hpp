@@ -55,6 +55,7 @@ public:
   explicit Command(uint64_t id): msgid(id) {}
   Command() = delete;
   Command(const Command &) = delete;
+  virtual ~Command() {}
   virtual int operator()() = 0;
   virtual int operator()(urpc_mb_t *m, void *payload, size_t plen) = 0;
   void setURPCReq(int64_t req, int s) { this->urpc_req = req; this->status = s; }
