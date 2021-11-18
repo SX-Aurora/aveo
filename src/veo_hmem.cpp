@@ -1,11 +1,26 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "veo_hmem.h"
-#include "veo_hmem_macros.h"
-
 /**
+ * @file veo_hmem_macros.h
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ *
+ * VEO heterogeneous memory implementation.
+ * 
+ * Copyright (c) 2018-2021 NEC Corporation
+ *
+ *
  * \defgroup veohmemapi VEO HMEM API
  *
  * VE heterogeneous memory API functions.
@@ -24,6 +39,13 @@
  * @return one when addr was allocated by veo_alloc_hmem();
  *         zero when addr was not allocated by veo_alloc_hmem().
  */
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "veo_hmem.h"
+#include "veo_hmem_macros.h"
+
 int veo_is_ve_addr(const void *addr)
 {
   return IS_VE(addr) ? 1 : 0;
