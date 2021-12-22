@@ -49,6 +49,7 @@ namespace std {
 namespace veo {
 
   int _getProcIdentifier(ProcHandle *);
+  int _getProcIdentifierNolock(ProcHandle *);
 
 /**
  * @brief VEO process handle
@@ -58,6 +59,7 @@ private:
   std::unordered_map<std::pair<uint64_t, std::string>, uint64_t> sym_name;
   std::mutex sym_mtx;
   std::mutex main_mutex;		//!< acquire when opening a new context
+  std::mutex ctx_mutex;                 //!< acquire when referencing opened contexts
   urpc_peer_t *up;			//!< ve-urpc peer pointer
   uint64_t ve_sp;       		//!< stack pointer on VE side
   Context *mctx;			//!< context also used for sync proc ops
@@ -90,6 +92,7 @@ public:
   Context *mainContext() { return this->mctx; };
   Context *openContext(size_t stack_sz = VEO_DEFAULT_STACKSIZE);
   void delContext(Context *);
+  void delContextNolock(Context *);
 
   veo_proc_handle *toCHandle() {
     return reinterpret_cast<veo_proc_handle *>(this);

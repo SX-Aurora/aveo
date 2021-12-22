@@ -72,6 +72,23 @@ int _getProcIdentifier(ProcHandle *proc)
   return idx;
 }
   
+/**
+ * @brief Get VE process identifier for a proc with nolock
+ * @return VE process identifier upon success; negative upon failure.
+ */
+int _getProcIdentifierNolock(ProcHandle *proc)
+{
+  // Get element number of this pointer included in veo::__procs.
+  std::vector<ProcHandle *>::iterator itr;
+  itr = std::find(veo::__procs->begin(), veo::__procs->end(), proc);
+  if (itr == veo::__procs->end()) {
+    VEO_ERROR("Search failed.");
+    return -1;
+  }
+  const int idx = std::distance(veo::__procs->begin(), itr);
+  VEO_TRACE("proc %p identifier = %d", (void *)proc, idx);
+  return idx;
+}
   
 /**
  * @brief constructor
@@ -164,6 +181,7 @@ int ProcHandle::numProcs()
  */
 ProcHandle *ProcHandle::getProcHandle(int proc_ident)
 {
+  std::lock_guard<std::mutex> lock(veo::__procs_mtx);
   return veo::__procs->at(proc_ident);
 }
 
@@ -177,8 +195,9 @@ ProcHandle *ProcHandle::getProcHandle(int proc_ident)
 int ProcHandle::exitProc()
 {
   int rc;
-  //std::lock_guard<std::mutex> lock2(ProcHandle::__procs_mtx);
-  std::lock_guard<std::mutex> lock2(this->mctx->submit_mtx);
+  std::lock_guard<std::mutex> procslock(__procs_mtx);
+  std::lock_guard<std::mutex> ctxlock(ctx_mutex);
+  std::lock_guard<std::mutex> submitlock(this->mctx->submit_mtx);
   VEO_TRACE("proc %p", (void *)this);
   this->mctx->_synchronize_nolock();
   //
@@ -187,7 +206,7 @@ int ProcHandle::exitProc()
   for (auto c = this->ctx.begin(); c != this->ctx.end();) {
     auto ctx = (*c).get();
     if (ctx != this->mctx)
-      this->delContext(ctx);
+      this->delContextNolock(ctx);
     else
       c++;
   }
@@ -203,7 +222,7 @@ int ProcHandle::exitProc()
       VEO_DEBUG("erasing proc %lx", this);
       //veo::__procs->erase(p);
       // replace this obj pointer to nullptr
-      veo::__procs->at(getProcIdentifier()) = nullptr;
+      veo::__procs->at(_getProcIdentifierNolock(this)) = nullptr;
       break;
     }
   }
@@ -417,6 +436,7 @@ int ProcHandle::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
  */
 int ProcHandle::numContexts()
 {
+  std::lock_guard<std::mutex> lock(ctx_mutex);
   return this->ctx.size();
 }
 
@@ -429,6 +449,7 @@ int ProcHandle::numContexts()
  */
 Context *ProcHandle::getContext(int idx)
 {
+  std::lock_guard<std::mutex> lock(ctx_mutex);
   return this->ctx.at(idx).get();
 }
 
@@ -439,6 +460,24 @@ Context *ProcHandle::getContext(int idx)
  * 
  */
 void ProcHandle::delContext(Context *ctx)
+{
+  std::lock_guard<std::mutex> lock(ctx_mutex);
+  for (auto it = this->ctx.begin(); it != this->ctx.end(); it++) {
+    if ((*it).get() == ctx) {
+      (*it).get()->close();
+      this->ctx.erase(it);
+      break;
+    }
+  }
+}
+
+/**
+ * @brief Remove context from the ctx vector with nolock
+ *
+ * The context is kept in a smart pointer, therefore it will be deleted implicitly.
+ *
+ */
+void ProcHandle::delContextNolock(Context *ctx)
 {
   for (auto it = this->ctx.begin(); it != this->ctx.end(); it++) {
     if ((*it).get() == ctx) {
@@ -458,7 +497,8 @@ void ProcHandle::delContext(Context *ctx)
  */
 Context *ProcHandle::openContext(size_t stack_sz)
 {
-  std::lock_guard<std::mutex> lock(this->mctx->submit_mtx);
+  std::lock_guard<std::mutex> ctxlock(ctx_mutex);
+  std::lock_guard<std::mutex> submitlock(this->mctx->submit_mtx);
   this->mctx->_synchronize_nolock();
 
   if (this->ctx.empty()) {
