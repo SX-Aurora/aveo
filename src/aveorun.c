@@ -173,9 +173,5 @@ int main()
 
   ve_handler_loop((void *)&arg);
 
-  for (int i = 0; i < __num_ve_peers; i++) {
-    void *ret;
-    pthread_join(__handler_loop_pthreads[i], &ret);
-  }
   return 0;
 }
