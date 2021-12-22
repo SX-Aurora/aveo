@@ -37,3 +37,5 @@ The default values of tuning parameters have been changed from v2.7.5 to improve
 $ export VEO_SENDCUT=524288
 $ export VEO_RECVCUT=524288
 ~~~
+
+If you use FTRACE to get performance information, please do not unload shared library built with -ftrace. 

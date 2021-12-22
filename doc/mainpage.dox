@@ -24,6 +24,7 @@
  *      Dec. 2021,
  * @n   This revision covers veoffload-aveo-2.10.0 or later.
  * @n   Enable traceback when exception occurred by VEO programs.
+ * @n   Added a restriction of FTRACE.
  * @par
  *      Rev.8,
  *      Jul. 2021,
