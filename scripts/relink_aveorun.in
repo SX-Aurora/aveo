@@ -41,6 +41,9 @@ while [ $# -gt 0 ]; do
     '-v')
       VERBOSE=-v
       ;;
+    '-traceback'*)
+      default_CFLAGS="${default_CFLAGS} ${option}"
+      ;;
     '-fopenmp')
       default_LDFLAGS="${default_LDFLAGS} ${option} $VELIBDIR/liburpcVE_omp.a"
       is_openmp=1

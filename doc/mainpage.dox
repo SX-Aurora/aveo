@@ -20,11 +20,16 @@
  *      Date,
  *      Updates/Remarks
  * @par
- *	Rev.8,
- *	Jul. 2021,
- * @n	This revision covers veoffload-aveo-2.8.2 or later.
- * @n	Added descriptions of debugging VEO programs.
- * @n	Added restrictions of environment variables that can not control VE program execution for VEO.
+ *      Rev.9,
+ *      Dec. 2021,
+ * @n   This revision covers veoffload-aveo-2.10.0 or later.
+ * @n   Enable traceback when exception occurred by VEO programs.
+ * @par
+ *      Rev.8,
+ *      Jul. 2021,
+ * @n   This revision covers veoffload-aveo-2.8.2 or later.
+ * @n   Added descriptions of debugging VEO programs.
+ * @n   Added restrictions of environment variables that can not control VE program execution for VEO.
  * @par
  *      Rev.7,
  *      May 2021,

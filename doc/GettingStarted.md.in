@@ -532,6 +532,54 @@ The log is output as standard output.
 export VEO_LOG_DEBUG=1
 ~~~
 
+## Using Traceback Information for VEO
+You can use traceback information on VE program.
+
+### Compile VE Code with -traceback option
+To build an executable with the functions statically linked, execute as follows:
+~~~
+$ /opt/nec/ve/bin/ncc -c -o libvehello.o libvehello.c -traceback=verbose
+$ /opt/nec/ve/bin/mk_veorun_static -o vehello libvehello.o -traceback=verbose
+~~~
+To build a shared library with the functions for dynamic loading, execute as follows:
+~~~
+$ /opt/nec/ve/bin/ncc -fpic -shared -o libvehello.so libvehello.c -traceback=verbose
+~~~
+ - -traceback[=verbose] :
+  Specifies to generate extra information in the object file and to link run-time library
+  due to provide traceback information when a fatal error occurs and the environment
+  variable VE_TRACEBACK is set at run-time.
+  When verbose is specified, generates filename and line number information in addition
+  to the above due to provide these information in traceback output.
+
+### Run a program with VEO with the environment variable
+Execute the compiled VEO program.
+Set the environment variable VE_TRACEBACK=VERBOSE to output these information at run-time.
+In example, the exception of "Divide by zero" occurred in line 5 of libvehello.c.
+
+~~~
+$ VE_TRACEBACK=VERBOSE VE_FPE_ENABLE=DIV ./hello
+Hello, world
+[VE] ERROR: sigactionHandler() Interrupt signal 8 received
+Runtime Error: Divide by zero at 0x600008001160
+[ 0] 0x600008001160 hello            libvehello.c:5
+[ 1] 0x600fffdffff8 ?                ?:?
+[ 2] 0x600000036718 ?                ?:?
+[ 3] 0x60000002a710 ?                ?:?
+[ 4] 0x600000029c48 ?                ?:?
+[ 5] 0x600c046407a8 ?                ?:?
+[ 6] 0x600000006000 ?                ?:?
+[VH] [TID 3599] ERROR: unpack_call_result() VE exception 8
+
+[VH] [TID 3599] ERROR: _progress_nolock() Internal error on executing a command(-4)
+~~~
+ - VE_TRACEBACK :
+  This variable is used to control to output traceback information when a fatal error
+  occurs at runtime.
+  When running the program which is compiled and linked with -traceback=verbose and
+  the value of this variable is "VERBOSE", filename and line number is output in
+  traceback information.
+
 ##How to debug VEO programs
 AVEO(2.8.2 or later) supports the environment variable to debug VE processes.
 ###VH side debugging
@@ -548,7 +596,7 @@ Then, execute your program.
 Whenever a VE process starts, a VE debugger gdb is shown in your console.
 Type "run" to continue, or set breakpoints, etc. 
 
-This works under the premise that you don’t need to interact with the host side program (e.g. it requires no input).
+This works under the premise that you don't need to interact with the host side program (e.g. it requires no input).
 
 If you spawn multiple VE processes with the environment variable VEO_DEBUG=console set, it leads to undefined behaivior.
 
