@@ -25,7 +25,7 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 11
+#define VEO_API_VERSION 12
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
@@ -78,6 +78,7 @@ struct veo_proc_handle *veo_proc_create(int);
 struct veo_proc_handle *veo_proc_create_static(int, char *);
 int veo_proc_destroy(struct veo_proc_handle *);
 int veo_proc_identifier(struct veo_proc_handle *);
+void *veo_set_proc_identifier(void *addr, int proc_ident);
 uint64_t veo_load_library(struct veo_proc_handle *, const char *);
 int veo_unload_library(struct veo_proc_handle *, const uint64_t);
 uint64_t veo_get_sym(struct veo_proc_handle *, uint64_t, const char *);

@@ -280,6 +280,23 @@ int veo_proc_identifier(veo_proc_handle *proc)
 }
 
 /**
+ * @brief set a veo_proc_handle's identifier to VEMVA
+ * @param addr [in] VEMVA address
+ * @param proc_ident [in] process identifier
+ * @retval HMEM addr upon success; 0 upon failure.
+ */
+void *veo_set_proc_identifier(void *addr, int proc_ident)
+{
+    if (proc_ident < 0 || proc_ident >= VEO_MAX_HMEM_PROCS) {
+      VEO_ERROR("proc_ident is invalid(%d)", proc_ident);
+      return (void *)0;
+    }
+    void *hmem = (void *)SET_VE_FLAG(addr);
+    hmem = (void *)SET_PROC_IDENT(hmem, proc_ident);
+    return hmem;
+}
+
+/**
  * @brief load a VE library
  * @param proc VEO process handle
  * @param libname a library file name to load

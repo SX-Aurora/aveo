@@ -56,6 +56,7 @@ VERSION_1 {
     veo_is_ve_addr;
     veo_get_hmem_addr;
     veo_proc_identifier;
+    veo_set_proc_identifier;
   local:
     *;
 };
