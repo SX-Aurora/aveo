@@ -66,6 +66,7 @@ make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 
 %files
 %{_libexecdir}/aveorun
+%{_libexecdir}/aveorun-ftrace
 %{_velibdir}/libaveoVE.so.1
 %{_velibdir}/libaveoVE.so.1.0.0
 %{_velibdir}/libveohmem.so.1

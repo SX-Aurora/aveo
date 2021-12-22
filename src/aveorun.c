@@ -42,7 +42,7 @@ void signalHandler( int signum ) {
   VEO_ERROR("Interrupt signal %d received", signum);
 
   // try to print info about stack trace
-  unsigned long frame = __builtin_frame_address(0);
+  unsigned long frame = (unsigned long)__builtin_frame_address(0);
   if (frame) {
     __builtin_traceback((unsigned long *)frame);
     void *f = __builtin_return_address(0);
