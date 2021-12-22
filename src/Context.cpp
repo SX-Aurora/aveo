@@ -211,9 +211,13 @@ void Context::synchronize()
 void Context::_synchronize_nolock()
 {
   //VEO_TRACE("start");
+  this->prog_mtx.lock();
   while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
+    this->prog_mtx.unlock();
     this->progress(10000000);
+    this->prog_mtx.lock();
   }
+  this->prog_mtx.unlock();
   //VEO_TRACE("end");
 }
 
