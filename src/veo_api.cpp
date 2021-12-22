@@ -185,19 +185,16 @@ veo_proc_handle *veo_proc_create_static(int venode, char *tmp_veobin)
     std::unique_ptr<char[]> veobin(new char[veobin_size]());
     // veobin = <path to aveorun>
     // if VEO_DEBUG is invalid value or not set, VEO program runs in the default.
-    strcpy(veobin.get(), tmp_veobin);
+    snprintf(veobin.get(), veobin_size, "%s", tmp_veobin);
     const char *veo_debug_mode = getenv("VEO_DEBUG");
     if (veo_debug_mode != nullptr) {
       VEO_DEBUG("VEO_DEBUG=%s", veo_debug_mode);
-      std::stringstream ss;
       if (strcmp(veo_debug_mode, "console") == 0) {
-        ss << CMD_VEGDB << " " << tmp_veobin;
         // veobin = <path to VE gdb> <path to aveorun>
-        ss.get(veobin.get(), strlen(ss.str().c_str())+1);
+        snprintf(veobin.get(), veobin_size, "%s %s", CMD_VEGDB, tmp_veobin);
       } else if (strcmp(veo_debug_mode, "xterm") == 0) {
-        ss << CMD_XTERM << " -e " << CMD_VEGDB << " " << tmp_veobin;
         // veobin = <path to xterm> -e <path to VE gdb> <path to aveorun>
-        ss.get(veobin.get(), strlen(ss.str().c_str())+1);
+        snprintf(veobin.get(), veobin_size, "%s -e %s %s", CMD_XTERM, CMD_VEGDB, tmp_veobin);
       } else {
         VEO_ERROR("VEO_DEBUG(%s) is invalid.", veo_debug_mode);
       }
