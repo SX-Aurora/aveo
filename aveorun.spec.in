@@ -45,8 +45,9 @@ This package includes header files of VE offloading Framework
 %define _veincludedir %{_subprefix}/include
 %define __strip /opt/nec/ve/bin/nstrip
 %define _unpackaged_files_terminate_build 0
+
 %if 0%{?rhel} == 8
-%global __debug_install_post /opt/nec/ve/libexec/find-debuginfo.sh -o debugsourcefiles.list %{nil}
+%global __debug_install_post /opt/nec/ve/libexec/find-debuginfo.sh --unique-debug-suffix "-%{VERSION}-%{RELEASE}.%{_arch}" -S debugsourcefiles.list %{_builddir}/%{buildsubdir} %{nil}
 %else
 %global __debug_install_post /opt/nec/ve/libexec/find-debuginfo.sh %{nil}
 %endif
