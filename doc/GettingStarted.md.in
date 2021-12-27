@@ -113,7 +113,7 @@ int main()
 {
   /* Load "vehello" on VE node 0 */
   struct veo_proc_handle *proc = veo_proc_create_static(0, "./vehello");
-  uint64_t handle = NULL;/* find a function in the executable */
+  uint64_t handle = 0UL;/* find a function in the executable */
 
   struct veo_thr_ctxt *ctx = veo_context_open(proc);
 
@@ -441,7 +441,7 @@ To build code written in Fortran, change the compiler to nfort.
 Execute a MPI program which calls VEO API as follows.
 
 ~~~
-mpiexec -vh -veo ./a.out
+mpiexec -veo ./a.out
 ~~~
 
 Please see MPI document "NEC MPI User's Guide" for mpiexec and MPI API details.
@@ -460,7 +460,7 @@ $ source /opt/nec/ve/mpi/2.15.0/bin/necmpivars.sh
 $ mpincc -vh mpi-veo.c -o mpi-veo -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64 \
   -Wl,-rpath=/opt/nec/ve/veos/lib64 -lveo
 $ mpincc -fpic -shared libmpive.c -lveohmem -o libmpive.so
-$ VE_OMP_NUM_THREADS=1 mpirun -vh -veo -np 4 ./mpi-veo
+$ VE_OMP_NUM_THREADS=1 mpirun -veo -np 4 ./mpi-veo
 ~~~
 
 ##How to get ftrace.out
@@ -531,6 +531,84 @@ The log is output as standard output.
 ~~~
 export VEO_LOG_DEBUG=1
 ~~~
+
+## Using Traceback Information for VEO
+You can use traceback information on VE program.
+
+### Compile VE Code with -traceback option
+To build an executable with the functions statically linked, execute as follows:
+~~~
+$ /opt/nec/ve/bin/ncc -c -o libvehello.o libvehello.c -traceback=verbose
+$ /opt/nec/ve/bin/mk_veorun_static -o vehello libvehello.o -traceback=verbose
+~~~
+To build a shared library with the functions for dynamic loading, execute as follows:
+~~~
+$ /opt/nec/ve/bin/ncc -fpic -shared -o libvehello.so libvehello.c -traceback=verbose
+~~~
+ - -traceback[=verbose] :
+  Specifies to generate extra information in the object file and to link run-time library
+  due to provide traceback information when a fatal error occurs and the environment
+  variable VE_TRACEBACK is set at run-time.
+  When verbose is specified, generates filename and line number information in addition
+  to the above due to provide these information in traceback output.
+
+### Run a program with VEO with the environment variable
+Execute the compiled VEO program.
+Set the environment variable VE_TRACEBACK=VERBOSE to output these information at run-time.
+In example, the exception of "Divide by zero" occurred in line 5 of libvehello.c.
+
+~~~
+$ VE_TRACEBACK=VERBOSE VE_FPE_ENABLE=DIV ./hello
+Hello, world
+[VE] ERROR: sigactionHandler() Interrupt signal 8 received
+Runtime Error: Divide by zero at 0x600008001160
+[ 0] 0x600008001160 hello            libvehello.c:5
+[ 1] 0x600fffdffff8 ?                ?:?
+[ 2] 0x600000036718 ?                ?:?
+[ 3] 0x60000002a710 ?                ?:?
+[ 4] 0x600000029c48 ?                ?:?
+[ 5] 0x600c046407a8 ?                ?:?
+[ 6] 0x600000006000 ?                ?:?
+[VH] [TID 3599] ERROR: unpack_call_result() VE exception 8
+
+[VH] [TID 3599] ERROR: _progress_nolock() Internal error on executing a command(-4)
+~~~
+ - VE_TRACEBACK :
+  This variable is used to control to output traceback information when a fatal error
+  occurs at runtime.
+  When running the program which is compiled and linked with -traceback=verbose and
+  the value of this variable is "VERBOSE", filename and line number is output in
+  traceback information.
+
+##How to debug VEO programs
+AVEO(2.8.2 or later) supports the environment variable to debug VE processes.
+###VH side debugging
+When you want to debug a VH process, execute the following command.
+~~~
+gdb --args ./veo_program arg1 arg2
+~~~
+###VE side debugging
+When you want to debug a single VE process, set the environment variable as below.
+~~~
+export VEO_DEBUG=console
+~~~
+Then, execute your program.
+Whenever a VE process starts, a VE debugger gdb is shown in your console.
+Type "run" to continue, or set breakpoints, etc. 
+
+This works under the premise that you don't need to interact with the host side program (e.g. it requires no input).
+
+If you spawn multiple VE processes with the environment variable VEO_DEBUG=console set, it leads to undefined behaivior.
+
+When X Window System is available and you want to debug multiple VE processes, set the environment variable as below.
+~~~
+export VEO_DEBUG=xterm
+~~~
+Then, execute your program.
+Whenever multiple VE processes start, xterm windows will open up and show VE debugger prompts.
+Type "run" to continue in each of these windows.
+
+This works under the premise that the environmet DISPLAY is set up properly.
 
 ##Environment variables to optimize data transfer
 AVEO(2.7.5 or later) supports the environment variables to optimize the performance of data transfer.

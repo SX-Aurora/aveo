@@ -1,20 +1,3 @@
-/**
- * @mainpage Introduction
- *
- * VE offloading is a framework to provide accelerator-style programming
- * on Vector Engine (VE).
- * Using VEO, a programmer can execute code on VE and can control the
- * execution from VH main program.
- *
- * This document describes public APIs for VEO.
- * The page "Modules" shows a list of VEO API functions.
- * The page "Examples" shows a list of all example.
- *
- * @author Erich Focht
- *
- * @author NEC Corporation
- * @copyright 2017-2021. Licensed under the terms of LGPL v2.1.
- */
 #include "ve_offload.h"
 
 #include <cstdio>
@@ -117,12 +100,22 @@ const char *veo_version_string()
  * number assigned by the job scheduler. If venode is -1, the first VE
  * node of the VE nodes assigned by the job scheduler is used.
  *
+ * VE supports normal mode and NUMA mode (Partitioning mode).
+ * Under NUMA mode, if a user specifies the same VE node to this 
+ * function and creates multiple VE processes, the processes will be 
+ * created alternately on NUMA nodes.
+ *
+ * A user can control VE program execution using environment variables 
+ * such as VE_LD_LIBRARY_PATH ,VE_OMP_NUM_THREADS and VE_NUMA_OPT.
+ * These environmet variables are also available when a user calls 
+ * this function.
+ *
  * @param venode VE node number
- * @param veobin VE alternative veorun binary path
+ * @param tmp_veobin VE alternative veorun binary path
  * @return pointer to VEO process handle upon success
  * @retval NULL VE process creation failed.
  */
-veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
+veo_proc_handle *veo_proc_create_static(int venode, char *tmp_veobin)
 {
   if (venode < -1) {
     VEO_ERROR("venode(%d) is an invalid value.", venode);
@@ -186,7 +179,28 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
       }
     }
 
-    auto rv = new veo::ProcHandle(venode, veobin);
+    // 4 is the total number of spaces and the \0
+    size_t veobin_size = strlen(tmp_veobin) + strlen(CMD_VEGDB)
+                         + strlen(CMD_XTERM) + strlen("-e") + 4;
+    std::unique_ptr<char[]> veobin(new char[veobin_size]());
+    // veobin = <path to aveorun>
+    // if VEO_DEBUG is invalid value or not set, VEO program runs in the default.
+    snprintf(veobin.get(), veobin_size, "%s", tmp_veobin);
+    const char *veo_debug_mode = getenv("VEO_DEBUG");
+    if (veo_debug_mode != nullptr) {
+      VEO_DEBUG("VEO_DEBUG=%s", veo_debug_mode);
+      if (strcmp(veo_debug_mode, "console") == 0) {
+        // veobin = <path to VE gdb> <path to aveorun>
+        snprintf(veobin.get(), veobin_size, "%s %s", CMD_VEGDB, tmp_veobin);
+      } else if (strcmp(veo_debug_mode, "xterm") == 0) {
+        // veobin = <path to xterm> -e <path to VE gdb> <path to aveorun>
+        snprintf(veobin.get(), veobin_size, "%s -e %s %s", CMD_XTERM, CMD_VEGDB, tmp_veobin);
+      } else {
+        VEO_ERROR("VEO_DEBUG(%s) is invalid.", veo_debug_mode);
+      }
+    }
+    VEO_DEBUG("veobin = %s", veobin.get());
+    auto rv = new veo::ProcHandle(venode, veobin.get());
     return rv->toCHandle();
 
   } catch (std::invalid_argument &e) {
@@ -216,6 +230,16 @@ veo_proc_handle *veo_proc_create_static(int venode, char *veobin)
  * logical VE node number. It will be translated into physical VE node
  * number assigned by the job scheduler. If venode is -1, the first VE
  * node of the VE nodes assigned by the job scheduler is used.
+ *
+ * VE supports normal mode and NUMA mode (Partitioning mode).
+ * Under NUMA mode, if a user specifies the same VE node to this 
+ * function and creates multiple VE processes, the processes will be 
+ * created alternately on NUMA nodes.
+ *
+ * A user can control VE program execution using environment variables 
+ * such as VE_LD_LIBRARY_PATH ,VE_OMP_NUM_THREADS and VE_NUMA_OPT.
+ * These environmet variables are also available when a user calls 
+ * this function.
  *
  * @param venode VE node number
  * @return pointer to VEO process handle upon success
@@ -250,6 +274,23 @@ int veo_proc_destroy(veo_proc_handle *proc)
 int veo_proc_identifier(veo_proc_handle *proc)
 {
   return veo::_getProcIdentifier(ProcHandleFromC(proc));
+}
+
+/**
+ * @brief set a veo_proc_handle's identifier to VEMVA
+ * @param addr [in] VEMVA address
+ * @param proc_ident [in] process identifier
+ * @retval HMEM addr upon success; 0 upon failure.
+ */
+void *veo_set_proc_identifier(void *addr, int proc_ident)
+{
+    if (proc_ident < 0 || proc_ident >= VEO_MAX_HMEM_PROCS) {
+      VEO_ERROR("proc_ident is invalid(%d)", proc_ident);
+      return (void *)0;
+    }
+    void *hmem = (void *)SET_VE_FLAG(addr);
+    hmem = (void *)SET_PROC_IDENT(hmem, proc_ident);
+    return hmem;
 }
 
 /**

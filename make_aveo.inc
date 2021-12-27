@@ -19,14 +19,19 @@ VEDEST?=$(DEST)
 
 INCL = -I$(BUILD)/include -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
 NINCL = -I$(BUILD)/include -I$(VEDEST)/include -I. -I$(URPC_INST_DIR)/include
+ifndef NOCPP17
 GPPFLAGS = -std=c++17 -pthread $(OPT) $(DEBUG) $(INCL)
+else
+GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL) -DNOCPP17
+endif
 GCCFLAGS = -std=c11 -pthread  $(OPT) $(DEBUG) $(INCL)
 NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
 NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
 NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL)
 LDFLAGS = \
-  -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64 $(DEBUG) \
-  -Wl,-rpath,$(URPC_INST_DIR)/lib64 -L$(URPC_INST_DIR)/lib64
+  -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64 \
+  -Wl,-rpath,$(URPC_INST_DIR)/lib64 -L$(URPC_INST_DIR)/lib64 \
+  -Wl,--build-id=sha1 $(DEBUG)
 NLDFLAGS = -Wl,-rpath,$(VEDEST)/lib -L$(BVELIB) -L$(PREF)$(VEDEST)/lib -Wl,--build-id=sha1 $(DEBUG)
 
 # build directory substructure

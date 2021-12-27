@@ -61,7 +61,8 @@ struct SendArgs {
   size_t stack_size;
   bool copyin;
   bool copyout;
-  std::unique_ptr<char[]> stack_buf;
+  //std::unique_ptr<char[]> stack_buf;
+  char *stack_buf;
 
   SendArgs(uint64_t stack_top_, size_t stack_size_, bool copyin_,
            bool copyout_)
@@ -83,18 +84,27 @@ class CallArgs {
 public:
   uint64_t stack_top;
   size_t stack_size;
-  std::unique_ptr<char[]> stack_buf;
+  //std::unique_ptr<char[]> stack_buf;
+  char *stack_buf;
 
   bool copied_in;// necessary to copy stack image to VE
   bool copied_out;// necessary to copy stack image out from VE
 
-  CallArgs(): arguments(0) {}
+  CallArgs(): arguments(0), stack_top(0), stack_size(0), stack_buf(0) {}
   CallArgs(std::initializer_list<int64_t> args) {
     for (auto a: args)
       this->push_(a);
   }
-  ~CallArgs() = default;
+  //~CallArgs() = default;
+  ~CallArgs() {
+    delete[] stack_buf;
+  }
   CallArgs(const CallArgs &) = delete;
+
+  void deleteBuffer() {
+    delete[] stack_buf;
+    stack_buf = nullptr;
+  }
 
   /**
    * @brief clear all arguments

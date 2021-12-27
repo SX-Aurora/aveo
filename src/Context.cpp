@@ -211,9 +211,13 @@ void Context::synchronize()
 void Context::_synchronize_nolock()
 {
   //VEO_TRACE("start");
+  this->prog_mtx.lock();
   while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
+    this->prog_mtx.unlock();
     this->progress(10000000);
+    this->prog_mtx.lock();
   }
+  this->prog_mtx.unlock();
   //VEO_TRACE("end");
 }
 
@@ -240,7 +244,7 @@ void Context::getStackPointer(uint64_t *sp)
     VEO_ERROR("timeout waiting for RESULT req=%ld", req);
     throw VEOException("Failed to get the VE SP.");
   }
-  int rc = unpack_call_result(&m, nullptr, payload, plen, sp);
+  int rc = unpack_call_result(&m, nullptr, payload, plen, sp, nullptr);
   urpc_slot_done(this->up->recv.tq, REQ2SLOT(req), &m);
 }
 
@@ -281,7 +285,8 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
  * @note the size of args need to be less than or equal to MAX_ARGS_STACK_SIZE
  * @note The caller must invoke args.setup()
  */
-uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
+uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uint64_t stack_top, size_t stack_size,
+                                  bool copyin, bool copyout, void *stack, void *stack_, std::function<void(void*)> copyout_func)
 {
   VEO_TRACE("VE function %lx", addr);
   if ( addr == 0 || !this->is_alive())
@@ -289,24 +294,16 @@ uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
   
   auto id = this->issueRequestID();
 
-  auto regs = args.getRegVal();
-  auto stack_top = args.stack_top;
-  auto stack_size = args.stack_size;
-  bool copyin = args.copied_in;
-  bool copyout = args.copied_out;
-  std::unique_ptr<char[]> stack = std::move(args.stack_buf);
-  auto copyout_func = args.copyout();
-
   //
   // submit function, called when cmd is issued to URPC
   //
   auto f = [regs, stack_top, stack_size, copyin, copyout,
-            stackp = (void *)stack.get(), this, addr, id] (Command *cmd)
+            stack, this, addr, id] (Command *cmd)
            {
              VEO_TRACE("[request #%d] start...", id);
              int64_t req = send_call_nolock(this->up, this->ve_sp, addr, regs,
                                             stack_top, stack_size,
-                                            copyin, copyout, stackp);
+                                            copyin, copyout, stack);
              VEO_TRACE("[request #%d] VE-URPC req ID = %ld", id, req);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
@@ -321,12 +318,14 @@ uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
   //
   // result function, called when response has arrived from URPC
   //
-  auto u = [copyout_func, this, id] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
+  auto u = [copyout_func, this, id, stack, stack_] (Command *cmd, urpc_mb_t *m, void *payload, size_t plen)
            {
              VEO_TRACE("[request #%d] reply sendbuff received (cmd=%d)...", id, m->c.cmd);
              uint64_t result;
-             int rv = unpack_call_result(m, copyout_func, payload, plen, &result);
+             int rv = unpack_call_result(m, copyout_func, payload, plen, &result, stack_);
              VEO_TRACE("[request #%d] unpacked", id);
+             if (!stack_)
+               delete[] (char *)stack;
              if (rv < 0) {
                cmd->setResult(result, VEO_COMMAND_EXCEPTION);
                this->state = VEO_STATE_EXIT;
@@ -357,7 +356,7 @@ uint64_t Context::simpleCallAsync(uint64_t addr, CallArgs &args)
 uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
 {
   // alive check was done before
-  if ( addr == 0)
+  if (addr == 0)
     return VEO_REQUEST_ID_INVALID;
 
   if ((this->ve_sp & 0xFFFFFFFFFC000000) !=
@@ -371,34 +370,52 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
     reg_args_num = NUM_ARGS_ON_REGISTER;
   size_t reg_args_sz = reg_args_num * sizeof(uint64_t);
 
-  if (!(args.copied_in || args.copied_out) ||
+  // Copy CallArgs member variables
+  auto regs = args.getRegVal();
+  auto stack_top = args.stack_top;
+  auto stack_size = args.stack_size;
+  bool copyin = args.copied_in;
+  bool copyout = args.copied_out;
+  char *stack = args.stack_buf;
+  args.stack_buf = nullptr;
+  auto copyout_func = args.copyout();
+
+  if (!(copyin || copyout) ||
       (args.stack_size <= MAX_ARGS_STACK_SIZE - reg_args_sz)) {
     VEO_TRACE("callAsync simple case");
-    return this->simpleCallAsync(addr, args);
+    VEO_TRACE("VE function %lx", addr);
+    // alive check and addr check was done before.
+    // stack is freed by the result function of simpleCallAsync().
+    return this->simpleCallAsync(addr, regs, stack_top, stack_size,
+                                 copyin, copyout, stack, nullptr, copyout_func);
   }
 
   //VEO_TRACE("callAsync large arguments");
-
   auto id = this->issueRequestID();
-  auto f = [this, addr, &args, reg_args_sz] (Command *cmd)
+  // stack is freed by this lambda function
+  auto f = [this, addr, reg_args_sz, regs, stack_top, stack_size,
+            copyin, copyout, stack, copyout_func] (Command *cmd)
            {
-             uint64_t extra_stk = (uint64_t)args.stack_top
+             uint64_t extra_stk = (uint64_t)stack_top
                + MAX_ARGS_STACK_SIZE - reg_args_sz;
-             void *extra_buf = (char *)args.stack_buf.get()
+             void *extra_buf = (char *)stack
                + MAX_ARGS_STACK_SIZE - reg_args_sz;
-             uint64_t extra_size = (uint64_t)args.stack_size
+             uint64_t extra_size = (uint64_t)stack_size
                - MAX_ARGS_STACK_SIZE + reg_args_sz;
              int rv;
-             if (args.copied_in) {
+             if (copyin) {
                rv = this->writeMem(extra_stk, extra_buf, extra_size);
                if (rv != 0) {
                  VEO_ERROR("Writing memory failed! Aborting.");
+                 delete[] stack;
                  return -1;
                }
              }
-             auto req = this->simpleCallAsync(addr, args);
+             auto req = this->simpleCallAsync(addr, regs, stack_top, stack_size,
+                                              copyin, copyout, stack, stack, nullptr);
              if (req == VEO_REQUEST_ID_INVALID) {
                VEO_ERROR("failed! Aborting.");
+               delete[] stack;
                return -1;
              }
              int status = 0;
@@ -406,18 +423,22 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
              status = this->callWaitResult(req, &result);
 
              if (status != 0) {
+               delete[] stack;
                return status;
              }
 
-             if (args.copied_out) {
+             if (copyout) {
                rv = this->readMem(extra_buf, extra_stk, extra_size);
                if (rv != 0) {
                  VEO_ERROR("Reading memory failed! Aborting.");
+                 delete[] stack;
                  return -1;
                }
+               copyout_func(stack);
              }
              cmd->setResult(result, status);
-             args.copyout();
+             delete[] stack;
+
              return status;
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
@@ -428,7 +449,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
   }
   this->progress(3);
   //VEO_TRACE("callAsync leave...\n");
-
+  
   return id;
 }
 

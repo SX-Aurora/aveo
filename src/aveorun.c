@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 
 #define __USE_GNU
 #include <dlfcn.h>
@@ -35,36 +36,73 @@
 
 urpc_peer_t *main_up;
 
-void signalHandler( int signum ) {
-  Dl_info di;
-  
-  //VEO_ERROR("Interrupt signal %s received", strsignal(signum));
+static struct {
+  int signum;
+  sig_t handler;
+  int sigaction;
+} signal_tbl[] = {
+  {SIGABRT, SIG_DFL, 0},
+  {SIGFPE,  SIG_DFL, 0},
+  {SIGILL,  SIG_DFL, 0},
+  {SIGSEGV, SIG_DFL, 0},
+  {SIGBUS,  SIG_DFL, 0},
+  {0,       SIG_DFL, 0}  // termination
+};
+
+static void sigactionHandler(int signum, siginfo_t *sig_info, void *ucontext) {
+  int idx;
+  union {
+    sig_t handler;
+    void (*sigaction)(int, siginfo_t *, void *);
+  } handle;
+  int sigaction=0;
+
   VEO_ERROR("Interrupt signal %d received", signum);
 
   // try to print info about stack trace
-  unsigned long frame = __builtin_frame_address(0);
-  if (frame) {
-    __builtin_traceback((unsigned long *)frame);
-    void *f = __builtin_return_address(0);
-    if (f) {
-      if (dladdr(f, &di)) {
-        printf("%p -> %s\n", f, di.dli_sname);
-      } else {
-        printf("%p\n", f);
+  handle.handler = SIG_DFL;
+  for (idx=0 ; signal_tbl[idx].signum != 0 ; idx++) {
+    if (signum == signal_tbl[idx].signum) {
+      if(signal_tbl[idx].handler != SIG_DFL) {
+        handle.handler = signal_tbl[idx].handler;
+        sigaction = signal_tbl[idx].sigaction;
       }
-      void *f = __builtin_return_address(1);
+      break;
+    }
+  }
+  if (handle.handler != SIG_DFL) {
+    if (sigaction) {
+      (*(handle.sigaction))(signum, sig_info, ucontext);
+    } else {
+      (*(handle.handler))(signum);
+    }
+  } else {
+    // processes as before
+    Dl_info di;
+    unsigned long frame = (unsigned long)__builtin_frame_address(0);
+    if (frame) {
+      __builtin_traceback((unsigned long *)frame);
+      void *f = __builtin_return_address(0);
       if (f) {
         if (dladdr(f, &di)) {
           printf("%p -> %s\n", f, di.dli_sname);
         } else {
           printf("%p\n", f);
         }
-        void *f = __builtin_return_address(2);
+        void *f = __builtin_return_address(1);
         if (f) {
           if (dladdr(f, &di)) {
             printf("%p -> %s\n", f, di.dli_sname);
           } else {
             printf("%p\n", f);
+          }
+          void *f = __builtin_return_address(2);
+          if (f) {
+            if (dladdr(f, &di)) {
+              printf("%p -> %s\n", f, di.dli_sname);
+            } else {
+              printf("%p\n", f);
+            }
           }
         }
       }
@@ -74,7 +112,7 @@ void signalHandler( int signum ) {
   // mark this side as "in exception". "this side" is the sender side
   urpc_set_receiver_flags(&main_up->recv, urpc_get_receiver_flags(&main_up->recv) | URPC_FLAG_EXCEPTION);
   ve_urpc_fini(main_up);
-  exit(signum);  
+  exit(signum);
 }
 
 
@@ -83,17 +121,48 @@ int main()
   int err = 0;
   int core = -1;
   long ts = get_time_us();
+  int idx;
+  struct sigaction act;
 
-  signal(SIGABRT, signalHandler);
-  signal(SIGFPE, signalHandler);
-  signal(SIGILL, signalHandler);
-  signal(SIGSEGV, signalHandler);
-  signal(SIGBUS, signalHandler);
+  for (idx=0 ; signal_tbl[idx].signum != 0 ; idx++) {
+    err = sigaction(signal_tbl[idx].signum, NULL, &act);
+    if (err != 0) {
+      perror("sigaction");
+      return 1;
+    }
+    if (act.sa_handler == SIG_DFL || act.sa_handler == SIG_IGN || act.sa_handler == SIG_ERR) {
+      err = sigemptyset(&(act.sa_mask));
+      if (err != 0) {
+        perror("sigemptyset");
+        return 1;
+      }
+      err = sigaddset(&(act.sa_mask), signal_tbl[idx].signum);
+      if (err != 0) {
+        perror("sigaddset");
+        return 1;
+      }
+      act.sa_flags = SA_SIGINFO | SA_RESTART;
+      act.sa_restorer = NULL;
+    } else {
+      // act.sa_handler and act.sa_sigaction is defined by union.
+      // Old handler is saved using act.sa_handler to make code easy.
+      signal_tbl[idx].handler = act.sa_handler;
+    }
+    act.sa_sigaction = &sigactionHandler;
+    if (act.sa_flags & SA_SIGINFO) {
+      signal_tbl[idx].sigaction = 1;
+    }
+    err = sigaction(signal_tbl[idx].signum, &act, NULL);
+    if (err != 0) {
+      perror("sigaction");
+      return 1;
+    }
+  }
 
   main_up = ve_urpc_init(0);
   if (main_up == NULL)
     return 1;
-  
+
   char *e;
   e = getenv("URPC_VE_CORE");
   if (e)
@@ -104,9 +173,5 @@ int main()
 
   ve_handler_loop((void *)&arg);
 
-  for (int i = 0; i < __num_ve_peers; i++) {
-    void *ret;
-    pthread_join(__handler_loop_pthreads[i], &ret);
-  }
   return 0;
 }

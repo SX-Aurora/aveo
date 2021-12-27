@@ -102,7 +102,7 @@ namespace veo {
 
   
   int unpack_call_result(urpc_mb_t *m, std::function<void(void *)> copyout,
-                         void *payload, size_t plen, uint64_t *result)
+                         void *payload, size_t plen, uint64_t *result, void *stack)
   {
     int rc = -1;
 
@@ -118,6 +118,10 @@ namespace veo {
       rc = urpc_unpack_payload(payload, plen, (char *)"LP", (int64_t *)result,
                                &stack_buf, &stack_size);
       if (rc == 0) {
+        if (stack != nullptr) {
+          memcpy(stack, stack_buf, stack_size);
+          return rc;
+        }
         copyout(stack_buf);
       }
     } else if (m->c.cmd == URPC_CMD_EXCEPTION) {

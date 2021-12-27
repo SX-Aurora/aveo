@@ -101,7 +101,7 @@ public:
   }
 
   size_t sizeOnStack() const { return 0;}
-  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){ return 0; } // nothing
 };
 
 template<> class ArgType<double>: public ArgBase {
@@ -127,7 +127,7 @@ public:
     set_value(stack, pos, this->u_.i64_);
   }
   size_t sizeOnStack() const { return 0;}
-  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){ return 0; } // nothing
 };
 
 template<> class ArgType<float>: public ArgBase {
@@ -154,7 +154,7 @@ public:
   }
 
   size_t sizeOnStack() const { return 0;}
-  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){} // nothing
+  std::function<void(void *)> copyoutFromStackImage(uint64_t sp){ return 0; } // nothing
 };
 
 class ArgOnStack: public ArgBase {
@@ -216,7 +216,7 @@ public:
     VEO_TRACE("copyoutFromStackImage buff=%p len=%ld vemva=%lx stack_top=%lx", (void*)buff, len, vemva, stack_top);
     auto f = [stack_top, buff, len, vemva](void *stack_payload) {
                VEO_DEBUG("copy out to VH: offset %#lx -> %p, size = %d", vemva - stack_top, buff, len);
-               std::memcpy(buff, stack_payload + (vemva - stack_top), len);
+               std::memcpy(buff, (void *)((uint64_t)stack_payload + vemva - stack_top), len);
              };
     return f;
   }
@@ -333,7 +333,10 @@ void CallArgs::setup(uint64_t sp)
   VEO_ASSERT(this->stack_size == img.size());
   auto buf = new char[this->stack_size];
   memcpy(buf, img.c_str(), this->stack_size);
-  this->stack_buf.reset(buf);
+  //this->stack_buf.reset(buf);
+  if (this->stack_buf != nullptr)
+    deleteBuffer();
+  this->stack_buf = buf;
 }
 
 // Create a copyout function

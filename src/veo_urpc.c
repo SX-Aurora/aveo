@@ -65,8 +65,10 @@ static int exit_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
 #else
   vh_urpc_peer_destroy(up);
 #endif
-  if (getpid() != gettid())
+  if (getpid() != gettid()) {
+    pthread_detach(pthread_self());
     pthread_exit(0);
+  }
   else
     exit(0);
   return 0;
