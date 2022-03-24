@@ -28,6 +28,10 @@ extern "C" {
 #endif
 int veo_is_ve_addr(const void *);
 void *veo_get_hmem_addr(void *);
+int veo_get_max_proc_identifier(void);
+int veo_get_proc_identifier_from_hmem(const void *);
+signed long syscall_wrapper(int, signed long, signed long, signed long,
+                signed long, signed long, signed long);
 #ifdef __cplusplus
 } // extern "C"
 #endif

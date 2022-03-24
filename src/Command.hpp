@@ -50,6 +50,7 @@ private:
   uint64_t retval;/*! returned value from the function on VE */
   int64_t urpc_req;/*! URPC request ID, assigned once in-flight */
   int status;
+  bool nowait=false;
 
 public:
   explicit Command(uint64_t id): msgid(id) {}
@@ -64,6 +65,8 @@ public:
   uint64_t getID() { return this->msgid; }
   int getStatus() { return this->status; }
   uint64_t getRetval() { return this->retval; }
+  bool getNowaitFlag() { return this->nowait; }
+  void setNowaitFlag(bool flg) { this->nowait = flg; }
   virtual bool isVH() = 0;
 };
 }

@@ -215,6 +215,23 @@ static int recvbuff_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   return 0;
 }
 
+static int memcpy_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
+                            void *payload, size_t plen)
+{
+  uint64_t dst = 0;
+  uint64_t buff = 0;
+  size_t buffsz = 0;
+
+  urpc_unpack_payload(payload, plen, (char *)"LLL", &dst, &buff, &buffsz);
+  VEO_DEBUG("dst=%p %lx src=%p %lx size=%lu", (void *)dst, dst, (void *)buff, buff, buffsz);
+
+  memcpy((void *)dst, (void *)buff, buffsz);
+
+  int64_t new_req = urpc_generic_send(up, URPC_CMD_ACK, (char *)"");
+  CHECK_REQ(new_req, req);
+  return 0;
+}
+
 void veo_urpc_register_handlers(urpc_peer_t *up)
 {
   int err;
@@ -236,6 +253,8 @@ void veo_urpc_register_handlers(urpc_peer_t *up)
   if ((err = urpc_register_handler(up, URPC_CMD_RECVBUFF, &recvbuff_handler)) < 0)
     VEO_ERROR("register_handler failed for cmd %d\n", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_SENDBUFF, &sendbuff_handler)) < 0)
+    VEO_ERROR("register_handler failed for cmd %d\n", 1);
+  if ((err = urpc_register_handler(up, URPC_CMD_MEMCPY, &memcpy_handler)) < 0)
     VEO_ERROR("register_handler failed for cmd %d\n", 1);
 }
 

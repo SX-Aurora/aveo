@@ -118,7 +118,11 @@ void Context::_progress_nolock(int ops)
       //
       auto rv = (*cmd)(&m, payload, plen);
       urpc_slot_done(tq, REQ2SLOT(req), &m);
-      this->comq.pushCompletion(std::move(cmd));
+
+      // If cmd is URPC_CMD_ACCS_PCIRCVSYC,
+      // it is flagged not to save the result to the completion queue.
+      if (!cmd->getNowaitFlag())
+        this->comq.pushCompletion(std::move(cmd));
       if (rv < 0) {
         this->state = VEO_STATE_EXIT;
         this->comq.cancelAll();

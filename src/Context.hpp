@@ -186,6 +186,12 @@ private:
 
     std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
     {
+      // Flagged to not store cmd results in completion queue.
+      if (urpc_cmd == URPC_CMD_ACS_PCIRCVSYC) {
+        cmd->setNowaitFlag(true);
+        std::lock_guard<std::mutex> reqlock(this->req_mtx);
+        auto ret = this->rem_reqid.erase(id);
+      }
       std::lock_guard<std::mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(cmd)))
         return VEO_REQUEST_ID_INVALID;

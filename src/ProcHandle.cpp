@@ -133,6 +133,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
   // first ctx gets core 0 (could be changed later)
   this->mctx->core = vecore;
   this->ve_number = venode;
+
   std::lock_guard<std::mutex> lock(veo::__procs_mtx);
   if (veo::__procs == nullptr) {
     veo::__procs = new std::vector<ProcHandle *>();
@@ -475,7 +476,7 @@ void ProcHandle::delContext(Context *ctx)
  * @brief Remove context from the ctx vector with nolock
  *
  * The context is kept in a smart pointer, therefore it will be deleted implicitly.
- *
+ * 
  */
 void ProcHandle::delContextNolock(Context *ctx)
 {
@@ -561,6 +562,88 @@ Context *ProcHandle::openContext(size_t stack_sz)
 
   new_ctx->state = VEO_STATE_RUNNING;
   return new_ctx;
+}
+
+void ProcHandle::accessRegister()
+{
+  std::lock_guard<std::mutex> ctxlock(ctx_mutex);
+  for (auto c = this->ctx.begin(); c != this->ctx.end(); c++) {
+    auto ctx = (*c).get();
+    auto req = ctx->genericAsyncReq(URPC_CMD_ACS_PCIRCVSYC, (char *)"");
+  }
+}
+
+uint64_t ProcHandle::loadVE2VELibrary(const char *libname)
+{
+  uint64_t handle = 0UL;
+  handle = getLibh_from_hashmap(libname);
+  if (handle != 0UL)
+    return handle;
+
+  handle = loadLibrary(libname);
+  this->setLibh_to_hashmap(libname, handle);
+
+  return handle;
+}
+
+uint64_t ProcHandle::getVEDMASyms(uint64_t libh, const char *sym)
+{
+  uint64_t symaddr = getSym_from_hashmap(libh, sym);
+  if (symaddr != 0UL) {
+    VEO_DEBUG("symaddr has already been acquired.");
+    return symaddr;
+  }
+
+  std::vector<std::string> vedmasym =
+        {"ve_dma_post", "ve_dma_poll", "ve_dma_post_wait"};
+  uint64_t target_symaddr = 0UL;
+  for(std::string symname: vedmasym) {
+    symaddr = getSym(libh, symname.c_str());
+    if (strcmp(symname.c_str(), sym) == 0)
+      target_symaddr = symaddr;
+    if (symaddr == 0UL) {
+      VEO_ERROR("getSym returns 0UL");
+      return symaddr;
+    }
+  }
+  return target_symaddr;
+}
+
+uint64_t ProcHandle::getLibh_from_hashmap(const char *libname)
+{
+  // check if it is loaded
+  lib_mtx.lock();
+  auto itr = ve2velibh.find(libname);
+  lib_mtx.unlock();
+  if (itr == ve2velibh.end())
+    return 0UL;
+  return itr->second;
+}
+
+uint64_t ProcHandle::getSym_from_hashmap(uint64_t libh, const char *sym)
+{
+  auto sym_pair = std::make_pair(libh, sym);
+  sym_mtx.lock();
+  auto itr = sym_name.find(sym_pair);
+  sym_mtx.unlock();
+  if (itr != sym_name.end())
+    return itr->second;
+
+  return 0UL;
+}
+
+void* ProcHandle::veMemcpy(void *dst, const void *src, size_t size)
+{
+  auto req = this->mctx->genericAsyncReq(URPC_CMD_MEMCPY, (char *)"LLL",
+                        (uint64_t *)dst, (uint64_t *)src, size);
+
+  uint64_t result = 0;
+  auto rv = this->mctx->callWaitResult(req, &result);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+    return (void *)-1;
+  }
+  return 0;
 }
 } // namespace veo
 

@@ -58,6 +58,7 @@ class ProcHandle {
 private:
   std::unordered_map<std::pair<uint64_t, std::string>, uint64_t> sym_name;
   std::mutex sym_mtx;
+  std::mutex lib_mtx;
   std::mutex main_mutex;		//!< acquire when opening a new context
   std::mutex ctx_mutex;                 //!< acquire when referencing opened contexts
   urpc_peer_t *up;			//!< ve-urpc peer pointer
@@ -65,6 +66,7 @@ private:
   Context *mctx;			//!< context also used for sync proc ops
   std::vector<std::unique_ptr<Context>> ctx;	//!< vector of opened contexts
   int ve_number;			//!< store the VE number
+  std::unordered_map<const char *, uint64_t> ve2velibh; //!< library handle for VE2VE communication
 
 public:
   ProcHandle(int, char *);
@@ -99,6 +101,18 @@ public:
   }
 
   int veNumber() { return this->ve_number; }
+  void accessRegister();
+  uint64_t loadVE2VELibrary(const char *);
+  uint64_t getVEDMASyms(uint64_t, const char*);
+  uint64_t getLibh_from_hashmap(const char *);
+  uint64_t getSym_from_hashmap(uint64_t , const char *);
+  void setLibh_to_hashmap(const char *libname, uint64_t libhandle) {
+    lib_mtx.lock();
+    this->ve2velibh[libname] = libhandle;
+    lib_mtx.unlock();
+ };
+  pid_t getPid(void) { return up->child_pid; };
+  void *veMemcpy(void *dst, const void *src, size_t size);
 };
 } // namespace veo
 #endif

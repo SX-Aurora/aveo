@@ -1,0 +1,35 @@
+/**
+ * @file veo_sysve.h
+ */
+#ifndef _VEO_SYSVE_H_
+#define _VEO_SYSVE_H_
+
+enum sysve_command {
+        VE_SYSVE_DUMMY = 0,
+        VE_SYSVE_VHCALL_INSTALL = 0x10,
+        VE_SYSVE_VHCALL_FIND,
+        VE_SYSVE_VHCALL_INVOKE,
+        VE_SYSVE_VHCALL_UNINSTALL,
+        VE_SYSVE_VHCALL_INVOKE_WITH_ARGS,
+        VE_SYSVE_VESHM_CTL = 0x20,
+        VE_SYSVE_CR_CTL,
+        VE_SYSVE_GET_PCISYNC = 0x30,
+        VE_SYSVE_GET_FIXED_VEHVA,
+        VE_SYSVE_SET_USER_REG,
+        VE_SYSVE_GET_VE_INFO,
+        VE_SYSVE_GET_VEOS_PID,
+        VE_SYSVE_GET_MNS,
+        VE_SYSVE_VEMVA_REGION,
+        VE_SYSVE_VHSHM_CTL = 0x40,
+        VE_SYSVE_MAP_DMADES = 0x50,
+        VE_SYSVE_UNMAP_DMADES,
+        VE_SYSVE_AIO_READ = 0x60,
+        VE_SYSVE_AIO_WRITE,
+        VE_SYSVE_AIO_WAIT,
+        VE_SYSVE_ACCELERATED_IO_INIT,
+        VE_SYSVE_ACCELERATED_IO_REGISTER_DMAATB,
+        VE_SYSVE_SYSTEM,
+        VE_SYSVE_SYSTEM2
+};
+
+#endif
