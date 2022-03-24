@@ -97,7 +97,7 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
 
   std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
   {
-    std::lock_guard<std::mutex> lock(this->submit_mtx);
+    std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
       return VEO_REQUEST_ID_INVALID;
   }
@@ -181,7 +181,7 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
 
   std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
   {
-    std::lock_guard<std::mutex> lock(this->submit_mtx);
+    std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
       return VEO_REQUEST_ID_INVALID;
   }
@@ -194,9 +194,10 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
  * @param[out] dst buffer to store data
  * @param src VEMVA to read
  * @param size size to transfer in byte
+ * @param sub This function is called as a sub-part of a request
  * @return request ID
  */
-uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
+uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
 {
   VEO_TRACE("asyncReadMem enter...");
   if(!this->is_alive())
@@ -212,11 +213,12 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
              };
     std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
     {
-      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    this->progress(2);
+    if (sub == false)
+      this->progress(2);
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -258,7 +260,8 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
     rsize -= psz;
     s += psz;
     d += psz;
-    this->progress(2);
+    if (sub == false)
+      this->progress(2);
   }
   return prev;
 }
@@ -269,10 +272,11 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
  * @param dst VEMVA destination address
  * @param src VH buffer source address
  * @param size size to transfer in byte
+ * @param sub This function is called as a sub-part of a request
  * @return request ID
  */
 uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
-                                      size_t size)
+				size_t size, bool sub)
 {
   VEO_TRACE("src=%p dst=%p size=%lu", src, (void *)dst, size);
   if(!this->is_alive())
@@ -288,11 +292,12 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
              };
     std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
     {
-      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    this->progress(2);
+    if (sub == false)
+      this->progress(2);
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -334,7 +339,8 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
     rsize -= psz;
     s += psz;
     d += psz;
-    this->progress(2);
+    if (sub == false)
+      this->progress(2);
   }
   return prev;
 }

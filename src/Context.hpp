@@ -64,7 +64,7 @@ private:
   urpc_peer_t *up;		//!< ve-urpc peer pointer, each ctx has one
   std::unordered_set<uint64_t> rem_reqid; // TODO: move this away from here!
   std::mutex req_mtx;   //!< protects rem_reqid
-  std::mutex submit_mtx;//!< for synchronous calls prohibit submission of new reqs
+  std::recursive_mutex submit_mtx;//!< for synchronous calls prohibit submission of new reqs
   std::recursive_mutex prog_mtx;	// ensure that progress is not called concurrently
 
   void _progress_nolock(int ops);
@@ -103,7 +103,7 @@ private:
     return true;
   }
 
-  uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>);
+  uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>, bool sub=false);
   uint64_t doCallAsync(uint64_t, CallArgs &);
 
   /**
@@ -192,7 +192,7 @@ private:
         std::lock_guard<std::mutex> reqlock(this->req_mtx);
         auto ret = this->rem_reqid.erase(id);
       }
-      std::lock_guard<std::mutex> lock(this->submit_mtx);
+      std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(cmd)))
         return VEO_REQUEST_ID_INVALID;
       VEO_TRACE("submitted [request #%lu]", id);
@@ -226,8 +226,8 @@ public:
   uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
   uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
 
-  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size);
-  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size);
+  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size, bool sub=false);
+  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size, bool sub=false);
   int readMem(void *dst, uint64_t src , size_t size);
   int writeMem(uint64_t dst, const void *src, size_t size);
 

@@ -202,7 +202,7 @@ void Context::progress(int ops)
 void Context::synchronize()
 {
   //VEO_TRACE("start");
-  std::lock_guard<std::mutex> lock(this->submit_mtx);
+  std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
   this->_synchronize_nolock();
   //VEO_TRACE("end");
 }
@@ -284,13 +284,21 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
  * @brief call a VE function asynchronously
  *
  * @param addr VEMVA of VE function to call
- * @param args arguments of the function
+ * @param regs
+ * @param stack_top
+ * @param stack_size
+ * @param copyin
+ * @param copyout
+ * @param stack
+ * @param stack_
+ * @param copyout_func
+ * @param sub This function is called as a sub-part of a request
  * @return request ID
  * @note the size of args need to be less than or equal to MAX_ARGS_STACK_SIZE
  * @note The caller must invoke args.setup()
  */
 uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uint64_t stack_top, size_t stack_size,
-                                  bool copyin, bool copyout, void *stack, void *stack_, std::function<void(void*)> copyout_func)
+                                  bool copyin, bool copyout, void *stack, void *stack_, std::function<void(void*)> copyout_func, bool sub)
 {
   VEO_TRACE("VE function %lx", addr);
   if ( addr == 0 || !this->is_alive())
@@ -341,11 +349,12 @@ uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uin
 
   std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
   {
-    std::lock_guard<std::mutex> lock(this->submit_mtx);
+    std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
       return VEO_REQUEST_ID_INVALID;
   }
-  this->progress(3);
+  if (sub == false)
+    this->progress(3);
   return id;
 }
 
@@ -395,59 +404,76 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
   }
 
   //VEO_TRACE("callAsync large arguments");
+  uint64_t extra_stk = (uint64_t)stack_top
+    + MAX_ARGS_STACK_SIZE - reg_args_sz;
+  void *extra_buf = (char *)stack
+    + MAX_ARGS_STACK_SIZE - reg_args_sz;
+  uint64_t extra_size = (uint64_t)stack_size
+    - MAX_ARGS_STACK_SIZE + reg_args_sz;
+
+  uint64_t writereq = VEO_REQUEST_ID_INVALID;
+  uint64_t callreq = VEO_REQUEST_ID_INVALID;
+  uint64_t readreq = VEO_REQUEST_ID_INVALID;
+
+  std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
+  if (copyin) {
+    writereq = this->asyncWriteMem(extra_stk, extra_buf, extra_size, true);
+    if (writereq == VEO_REQUEST_ID_INVALID) {
+      VEO_ERROR("Writing memory failed!.");
+    }
+  }
+
+  callreq = this->simpleCallAsync(addr, regs, stack_top, stack_size,
+				  copyin, copyout, stack, stack, nullptr, true);
+  if (callreq == VEO_REQUEST_ID_INVALID) {
+    VEO_ERROR("Calling a function failed!.");
+  }
+
+  if (copyout) {
+    readreq = this->asyncReadMem(extra_buf, extra_stk, extra_size, true);
+    if (readreq == VEO_REQUEST_ID_INVALID) {
+      VEO_ERROR("Reading memory failed!.");
+    }
+  }
+
   auto id = this->issueRequestID();
   // stack is freed by this lambda function
-  auto f = [this, addr, reg_args_sz, regs, stack_top, stack_size,
-            copyin, copyout, stack, copyout_func] (Command *cmd)
+  auto f = [this, writereq, callreq, readreq, stack, copyout, copyout_func] (Command *cmd)
            {
-             uint64_t extra_stk = (uint64_t)stack_top
-               + MAX_ARGS_STACK_SIZE - reg_args_sz;
-             void *extra_buf = (char *)stack
-               + MAX_ARGS_STACK_SIZE - reg_args_sz;
-             uint64_t extra_size = (uint64_t)stack_size
-               - MAX_ARGS_STACK_SIZE + reg_args_sz;
-             int rv;
-             if (copyin) {
-               rv = this->writeMem(extra_stk, extra_buf, extra_size);
-               if (rv != 0) {
-                 VEO_ERROR("Writing memory failed! Aborting.");
-                 delete[] stack;
-                 return -1;
-               }
-             }
-             auto req = this->simpleCallAsync(addr, regs, stack_top, stack_size,
-                                              copyin, copyout, stack, stack, nullptr);
-             if (req == VEO_REQUEST_ID_INVALID) {
-               VEO_ERROR("failed! Aborting.");
-               delete[] stack;
-               return -1;
-             }
-             int status = 0;
+             int writestat = VEO_COMMAND_OK;
+             int callstat = VEO_COMMAND_OK;
+             int readstat = VEO_COMMAND_OK;
              uint64_t result = 0;
-             status = this->callWaitResult(req, &result);
-
-             if (status != 0) {
-               delete[] stack;
-               return status;
-             }
-
-             if (copyout) {
-               rv = this->readMem(extra_buf, extra_stk, extra_size);
-               if (rv != 0) {
-                 VEO_ERROR("Reading memory failed! Aborting.");
-                 delete[] stack;
-                 return -1;
-               }
+             uint64_t dummy = 0;
+             if (writereq != VEO_REQUEST_ID_INVALID)
+               writestat = this->_peekResult(writereq, &dummy);
+             if (callreq != VEO_REQUEST_ID_INVALID)
+               callstat = this->_peekResult(callreq, &result);
+             if (readreq != VEO_REQUEST_ID_INVALID)
+               readstat = this->_peekResult(readreq, &dummy);
+             if (readstat == VEO_COMMAND_OK && copyout)
                copyout_func(stack);
-             }
-             cmd->setResult(result, status);
              delete[] stack;
 
-             return status;
+             if (writestat != VEO_COMMAND_OK) {
+               VEO_ERROR("status = %d. extra args transfer failed.(VH -> VE)", writestat);
+               cmd->setResult(result, writestat);
+               return 0;
+             }
+             if (callstat != VEO_COMMAND_OK) {
+               cmd->setResult(result, callstat);
+               return 0;
+             }
+             if (readstat != VEO_COMMAND_OK) {
+               VEO_ERROR("status = %d. extra args transfer failed.(VE -> VH)", readstat);
+               cmd->setResult(result, readstat);
+               return 0;
+             }
+             cmd->setResult(result, VEO_COMMAND_OK);
+             return 0;
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
   {
-    std::lock_guard<std::mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(req)))
       return VEO_REQUEST_ID_INVALID;
   }
@@ -514,7 +540,7 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
            };
   std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
   {
-    std::lock_guard<std::mutex> lock(this->submit_mtx);
+    std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     this->comq.pushRequest(std::move(req));
   }
   this->progress(2);
