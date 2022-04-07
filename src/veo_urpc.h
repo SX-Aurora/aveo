@@ -97,7 +97,9 @@ enum veo_urpc_cmd
    URPC_CMD_CALL_STKOUT   = 16, // call with stack "OUT" only
    URPC_CMD_CALL_STKINOUT = 17, // call with stack IN and OUT
    URPC_CMD_SLEEPING      = 18, // notify peer that we're going to sleep
-   URPC_CMD_NEWPEER       = 19  // create new remote peer (AKA context) inside same proc
+   URPC_CMD_NEWPEER       = 19, // create new remote peer (AKA context) inside same proc
+   URPC_CMD_ACS_PCIRCVSYC = 20, // access PCIRCVSYC register
+   URPC_CMD_MEMCPY        = 21  // copy memory
   };
 
 

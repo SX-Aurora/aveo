@@ -25,7 +25,7 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 12
+#define VEO_API_VERSION 13
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
@@ -37,6 +37,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include "veo_hmem.h"
 
 #ifdef __cplusplus
@@ -85,6 +87,8 @@ uint64_t veo_get_sym(struct veo_proc_handle *, uint64_t, const char *);
 int veo_alloc_mem(struct veo_proc_handle *, uint64_t *, const size_t);
 int veo_free_mem(struct veo_proc_handle *, uint64_t);
 int veo_read_mem(struct veo_proc_handle *, void *, uint64_t, size_t);
+struct veo_proc_handle *veo_get_proc_handle_from_hmem(const void *);
+pid_t veo_get_pid_from_hmem(const void *);
 int veo_write_mem(struct veo_proc_handle *, uint64_t, const void *, size_t);
 int veo_num_contexts(struct veo_proc_handle *);
 struct veo_thr_ctxt *veo_get_context(struct veo_proc_handle *, int);
@@ -138,6 +142,9 @@ int veo_alloc_hmem(struct veo_proc_handle *, void **, const size_t);
 int veo_free_hmem(void *);
 int veo_hmemcpy(void *, const void *, size_t);
 int veo_args_set_hmem(struct veo_args *, int, void *);
+
+int veo_get_venum_from_hmem(const void *);
+void veo_access_pcircvsyc_register(struct veo_proc_handle *);
 
 #ifdef __cplusplus
 } // extern "C"

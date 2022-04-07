@@ -242,6 +242,18 @@ static int call_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
   return 0;
 }
 
+static int access_pcircvsyc_register_handler(urpc_peer_t *up, urpc_mb_t *m, int64_t req,
+                        void *payload, size_t plen)
+{
+  // use LHM. addr is 0x1400
+  uint64_t addr = 0x1400;
+  uint64_t regval;
+  asm volatile("lhm.l %0,0(%1)":"=r"(regval):"r"(addr));
+  VEO_DEBUG("access PCIRCVSYC register");
+  urpc_generic_send(up, URPC_CMD_ACK, (char *)"");
+  return 0;
+}
+
 void veo_urpc_register_ve_handlers(urpc_peer_t *up)
 {
   int err;
@@ -255,6 +267,8 @@ void veo_urpc_register_ve_handlers(urpc_peer_t *up)
   if ((err = urpc_register_handler(up, URPC_CMD_CALL_STKOUT, &call_handler)) < 0)
     VEO_ERROR("failed cmd %d", 1);
   if ((err = urpc_register_handler(up, URPC_CMD_CALL_STKINOUT, &call_handler)) < 0)
+    VEO_ERROR("failed cmd %d", 1);
+  if ((err = urpc_register_handler(up, URPC_CMD_ACS_PCIRCVSYC, &access_pcircvsyc_register_handler)) < 0)
     VEO_ERROR("failed cmd %d", 1);
 }
 

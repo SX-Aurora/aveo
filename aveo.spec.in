@@ -58,4 +58,8 @@ make install-vh DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %files devel
 %{_includedir}/ve_offload.h
 %{_includedir}/veo_hmem.h
+%{_includedir}/veo_veshm.h
+%{_includedir}/veo_vhveshm.h
+%{_includedir}/veo_vedma.h
+%{_includedir}/veo_veshm_defs.h
 %{_libdir}/libveo.so

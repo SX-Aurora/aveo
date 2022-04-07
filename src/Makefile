@@ -9,19 +9,22 @@ BUILD ?= ../build
 
 include ../make_aveo.inc
 
+LIBVEIO = /opt/nec/ve/lib/libveio.so
+LIBVEOHMEM = $(abspath $(VEDEST)/lib/libveohmem.so)
 VEORUN_BIN ?= $(abspath $(DEST)/libexec/aveorun)
 VERSION = $(shell cat ../VERSION)
 
-DEFINES := -DVEORUN_BIN=\"$(VEORUN_BIN)\"
+DEFINES := -DVEORUN_BIN=\"$(VEORUN_BIN)\" -DLIBVEIO=\"$(LIBVEIO)\" -DLIBVEOHMEM=\"$(LIBVEOHMEM)\"
 GPPFLAGS := $(GPPFLAGS) $(DEFINES)
 
 VHLIB_OBJS := $(addprefix $(BVH)/,\
  ProcHandle.o Context.o AsyncTransfer.o Command.o CallArgs.o veo_api.o \
- veo_urpc.o veo_urpc_vh.o log.o veo_hmem.o)
+ veo_urpc.o veo_urpc_vh.o log.o veo_hmem.o veo_veshm.o veo_vhveshm.o \
+ veo_vedma.o)
 
 AVEORUN_OBJS := $(addprefix $(BVE)/,veo_urpc.o veo_urpc_ve.o log.o veo_hmem.o)
 HMEM_OBJS := $(addprefix $(BVE)/,veo_hmem.o)
-VELIB_OBJS := $(AVEORUN_OBJS) $(HMEM_OBJS)
+VELIB_OBJS := $(AVEORUN_OBJS) $(HMEM_OBJS) 
 
 LIBS = $(addprefix $(BLIB)/,libveo.so libveo.a libveo.so.1 libveo.so.1.0.0)
 ARCS = $(addprefix $(BLIB)/,libveo.a)
@@ -29,7 +32,8 @@ VELIBS = $(addprefix $(BVELIB)/,libaveoVE.so.1.0.0 libaveoVE.so libaveoVE.so.1 \
 	libveohmem.so.1.0.0 libveohmem.so libveohmem.so.1)
 VEARCS = $(addprefix $(BVELIB)/,libaveoVE.a)
 PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun mk_veorun_static gen_veorun_static_symtable)
-INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h veo_hmem.h)
+INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h veo_hmem.h \
+	veo_veshm.h veo_vhveshm.h veo_vedma.h veo_veshm_defs.h)
 VEINCLUDES := $(addprefix $(BVEINC)/,veo_hmem.h)
 
 ALL: all-ve all-vh
@@ -73,6 +77,9 @@ install-vh: all-vh
 %/aveorun.o: aveorun.c veo_urpc.h
 %/aveorun-ftrace.o: aveorun.c veo_urpc.h
 %/veo_hmem.o: veo_hmem.cpp veo_hmem.h veo_hmem_macros.h
+%/veo_veshm.o: veo_veshm.cpp veo_veshm.h veo_veshm_defs.h veo_sysve.h veo_veos_defs.h veo_api.hpp
+%/veo_vhveshm.o: veo_vhveshm.cpp veo_vhveshm.h veo_veshm_defs.h veo_sysve.h veo_veos_defs.h veo_vhshm_defs.h veo_api.hpp
+%/veo_vedma.o: veo_vedma.cpp veo_vedma.h veo_veshm_defs.h veo_sysve.h veo_veos_defs.h veo_api.hpp
 
 .SECONDEXPANSION:
 
@@ -124,12 +131,12 @@ $(BLIB)/libveo.a: $(VHLIB_OBJS) | $$(@D)/
 $(BLIBEX)/aveorun: $(BVE)/aveorun.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -v -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
-		-lveio
+		-lveio -pthread
 
 $(BLIBEX)/aveorun-ftrace: $(BVE)/aveorun-ftrace.o $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a | $$(@D)/
 	$(NFORT) $(NFORTFLAGS) -ftrace -cxxlib -fopenmp -o $@ $^ \
 		$(NLDFLAGS) $(BVELIB)/libaveoVE.a $(BVELIB)/liburpcVE_omp.a \
-		-lveio
+		-lveio -pthread
 
 $(BLIBEX)/relink_aveorun: ../scripts/relink_aveorun.in
 	sed -e "s,@libexecdir@,$(DEST)/libexec,g" -e "s,@velibdir@,$(VEDEST)/lib,g" \
