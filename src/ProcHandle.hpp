@@ -101,7 +101,7 @@ public:
   }
 
   int veNumber() { return this->ve_number; }
-  void accessRegister();
+  void accessPciRecvSyncRegister();
   uint64_t loadVE2VELibrary(const char *);
   uint64_t getVEDMASyms(uint64_t, const char*);
   uint64_t getLibh_from_hashmap(const char *);

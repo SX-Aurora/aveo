@@ -564,7 +564,7 @@ Context *ProcHandle::openContext(size_t stack_sz)
   return new_ctx;
 }
 
-void ProcHandle::accessRegister()
+void ProcHandle::accessPciRecvSyncRegister()
 {
   std::lock_guard<std::mutex> ctxlock(ctx_mutex);
   for (auto c = this->ctx.begin(); c != this->ctx.end(); c++) {

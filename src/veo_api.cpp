@@ -1231,12 +1231,15 @@ int veo_get_thr_ctxt_stacksize(veo_thr_ctxt_attr *tca, size_t *stack_sz)
 /**
  * @brief access PCIRCVSYC register to synchronize the transferred data
  *
+ * PCIRCVSYC register is PCI receiver-side synchronization register which is accessed 
+ * to wait the completion of inbound requests already received.
+ *
  * @param [in] h VEO process handle
  */
 void veo_access_pcircvsyc_register(veo_proc_handle *h)
 {
   try {
-    ProcHandleFromC(h)->accessRegister();
+    ProcHandleFromC(h)->accessPciRecvSyncRegister();
   } catch (VEOException &e) {
     return;
   }
