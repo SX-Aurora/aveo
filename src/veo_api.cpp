@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <cstring>
 #include <cstddef>
+#include <cstdarg>
+#include <map>
 
 #include "ProcHandle.hpp"
 #include "CallArgs.hpp"
@@ -51,6 +53,49 @@ int veo_api_version()
 const char *veo_version_string()
 {
   return AVEO_VERSION;
+}
+
+static std::map<void*, std::tuple<void (*)(void*, ...), void*>> static_hooks;
+
+/**
+ * @brief Register a hook function
+ *
+ * Certain VEO API functions can have specific hooks that are called after the
+ * API call did it's work properly. The arguments of the hook function (should
+ * be a "C" function) depend on the call and are passed as varargs. Therefore
+ * the arguments must be unpacked appropriately inside the hook function.
+ *
+ * Example:
+ * extern "C" void myhook(void *payload, ...)
+ * {
+ *    va_list args;
+ *    va_start(args, payload);
+ *    auto addr = va_arg(args, uint64_t);
+ *    auto size = va_arg(args, size_t);
+ *    va_end(args);
+ *    // do hook work
+ * }
+ *
+ *
+ * @param [in] func  pointer to function receiving the "hook"
+ * @param [in] hook  the hook function
+ * @param [in] payload  pointer to an opaque payload common to all hook calls
+ */
+void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload)
+{
+  static_hooks[func] = std::make_tuple(hook, payload);
+}
+
+/**
+ * @brief Unregister a hook function
+ *
+ * @param [in] func  pointer to function receiving the "hook"
+ */
+void veo_unregister_hook(void* func)
+{
+  auto it = static_hooks.find(func);
+  if (it != static_hooks.end())
+    static_hooks.erase(it);
 }
 
 /**
@@ -339,6 +384,11 @@ int veo_alloc_mem(veo_proc_handle *h, uint64_t *addr, const size_t size)
     *addr = ProcHandleFromC(h)->allocBuff(size);
     if (*addr == 0UL)
       return -1;
+    auto it = static_hooks.find((void *)&veo_alloc_mem);
+    if (it != static_hooks.end()) {
+      auto&& [hook, payload] = (*it).second;
+      hook(payload, h, addr, size);
+    }
   } catch (VEOException &e) {
     return -2;
   }
@@ -400,6 +450,11 @@ int veo_alloc_hmem(veo_proc_handle *h, void **addr, const size_t size)
       return proc_ident;
     *addr = (void *)SET_VE_FLAG(veaddr);
     *addr = (void *)SET_PROC_IDENT(*addr, proc_ident);
+    auto it = static_hooks.find((void *)&veo_alloc_hmem);
+    if (it != static_hooks.end()) {
+      auto&& [hook, payload] = (*it).second;
+      hook(payload, h, *addr, size);
+    }
   } catch (VEOException &e) {
     VEO_ERROR("failed to allocate memory : %s", e.what());
     return -1;
@@ -419,6 +474,11 @@ int veo_free_mem(veo_proc_handle *h, uint64_t addr)
 {
   try {
     ProcHandleFromC(h)->freeBuff(addr);
+    auto it = static_hooks.find((void *)&veo_free_mem);
+    if (it != static_hooks.end()) {
+      auto&& [hook, payload] = (*it).second;
+      hook(payload, h, addr);
+    }
   } catch (VEOException &e) {
     return -1;
   }
@@ -447,6 +507,11 @@ int veo_free_hmem(void *addr)
     veo::ProcHandle *p = veo::ProcHandle::getProcHandle(proc_ident);
     veo_proc_handle *h = p->toCHandle();
     ret = veo_free_mem(h, VIRT_ADDR_VE(addr));
+    auto it = static_hooks.find((void *)&veo_free_hmem);
+    if (it != static_hooks.end()) {
+      auto&& [hook, payload] = (*it).second;
+      hook(payload, h, addr);
+    }
   } catch (VEOException &e) {
     VEO_ERROR("failed to free memory : %s", e.what());
     return -1;

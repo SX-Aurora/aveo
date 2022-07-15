@@ -75,7 +75,8 @@ struct veo_proc_handle;
 struct veo_thr_ctxt;
 struct veo_thr_ctxt_attr;
 
-//struct veo_proc_handle *veo_proc_create(int);
+void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload);
+void veo_unregister_hook(void* func);
 struct veo_proc_handle *veo_proc_create(int);
 struct veo_proc_handle *veo_proc_create_static(int, char *);
 int veo_proc_destroy(struct veo_proc_handle *);
