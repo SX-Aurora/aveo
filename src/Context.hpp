@@ -106,6 +106,43 @@ private:
   uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>, bool sub=false);
   uint64_t doCallAsync(uint64_t, CallArgs &);
 
+  // handlers for commands
+  int _readMem(void *, uint64_t, size_t);
+  int _writeMem(uint64_t, const void *, size_t);
+  uint64_t _callOpenContext(ProcHandle *, uint64_t, CallArgs &);
+  void _delFromProc();
+  int _peekResult(uint64_t reqid, uint64_t *retp);
+
+public:
+  Context(ProcHandle *, urpc_peer_t *up, bool is_main);
+  Context(ProcHandle *);
+  ~Context() {}
+  Context(const Context &) = delete;//non-copyable
+  void getStackPointer(uint64_t *sp);
+  veo_context_state getState() { return this->state; }
+  int callSync(uint64_t addr, CallArgs &arg, uint64_t *result);
+  uint64_t callAsync(uint64_t, CallArgs &);
+  uint64_t callAsyncByName(uint64_t, const char *, CallArgs &);
+  uint64_t callVHAsync(uint64_t (*)(void *), void *);
+  int callWaitResult(uint64_t, uint64_t *);
+  int callPeekResult(uint64_t, uint64_t *);
+  void synchronize();
+
+  uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
+  uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
+
+  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size, bool sub=false);
+  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size, bool sub=false);
+  int readMem(void *dst, uint64_t src , size_t size);
+  int writeMem(uint64_t dst, const void *src, size_t size);
+
+  veo_thr_ctxt *toCHandle() {
+    return reinterpret_cast<veo_thr_ctxt *>(this);
+  }
+  bool isMain() { return this->is_main;}
+  int64_t _closeCommandHandler(uint64_t id);
+  int close();
+
   /**
    * @brief Generic Async Request
    *
@@ -200,43 +237,6 @@ private:
     this->progress(2);
     return id;
   }
-
-  // handlers for commands
-  int _readMem(void *, uint64_t, size_t);
-  int _writeMem(uint64_t, const void *, size_t);
-  uint64_t _callOpenContext(ProcHandle *, uint64_t, CallArgs &);
-  void _delFromProc();
-  int _peekResult(uint64_t reqid, uint64_t *retp);
-
-public:
-  Context(ProcHandle *, urpc_peer_t *up, bool is_main);
-  Context(ProcHandle *);
-  ~Context() {}
-  Context(const Context &) = delete;//non-copyable
-  void getStackPointer(uint64_t *sp);
-  veo_context_state getState() { return this->state; }
-  int callSync(uint64_t addr, CallArgs &arg, uint64_t *result);
-  uint64_t callAsync(uint64_t, CallArgs &);
-  uint64_t callAsyncByName(uint64_t, const char *, CallArgs &);
-  uint64_t callVHAsync(uint64_t (*)(void *), void *);
-  int callWaitResult(uint64_t, uint64_t *);
-  int callPeekResult(uint64_t, uint64_t *);
-  void synchronize();
-
-  uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
-  uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
-
-  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size, bool sub=false);
-  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size, bool sub=false);
-  int readMem(void *dst, uint64_t src , size_t size);
-  int writeMem(uint64_t dst, const void *src, size_t size);
-
-  veo_thr_ctxt *toCHandle() {
-    return reinterpret_cast<veo_thr_ctxt *>(this);
-  }
-  bool isMain() { return this->is_main;}
-  int64_t _closeCommandHandler(uint64_t id);
-  int close();
 
   ProcHandle *proc;
 

@@ -75,6 +75,11 @@ VERSION_1 {
     veo_get_pid_from_hmem;
     veo_get_venum_from_hmem;
     veo_get_proc_handle_from_hmem;
+    veo_register_hook;
+    veo_get_hook;
+    veo_unregister_hook;
+    veo_alloc_mem_async;
+    veo_free_mem_async;
   local:
     *;
 };

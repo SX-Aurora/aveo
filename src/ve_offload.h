@@ -1,5 +1,5 @@
-/* Copyright (C) 2017-2020 by NEC Corporation
- * Copyright (C) 2020 Erich Focht  
+/* Copyright (C) 2017-2022 by NEC Corporation
+ * Copyright (C) 2020-2022 Erich Focht  
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,7 +25,7 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 13
+#define VEO_API_VERSION 14
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
@@ -76,7 +76,9 @@ struct veo_thr_ctxt;
 struct veo_thr_ctxt_attr;
 
 void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload);
+void *veo_get_hook(void* func);
 void veo_unregister_hook(void* func);
+
 struct veo_proc_handle *veo_proc_create(int);
 struct veo_proc_handle *veo_proc_create_static(int, char *);
 int veo_proc_destroy(struct veo_proc_handle *);
@@ -119,12 +121,15 @@ int veo_call_sync(struct veo_proc_handle *h, uint64_t addr,
                   struct veo_args *ca, uint64_t *result);
 
 uint64_t veo_call_async(struct veo_thr_ctxt *, uint64_t, struct veo_args *);
-uint64_t veo_call_async_by_name(struct veo_thr_ctxt *, uint64_t, const char *, struct veo_args *);
+uint64_t veo_call_async_by_name(struct veo_thr_ctxt *, uint64_t, const char *,
+                                struct veo_args *);
 uint64_t veo_call_async_vh(struct veo_thr_ctxt *, uint64_t (*)(void *), void *);
 
 int veo_call_peek_result(struct veo_thr_ctxt *, uint64_t, uint64_t *);
 int veo_call_wait_result(struct veo_thr_ctxt *, uint64_t, uint64_t *);
 
+uint64_t veo_alloc_mem_async(struct veo_thr_ctxt *ctx, const size_t size);
+uint64_t veo_free_mem_async(struct veo_thr_ctxt *ctx, uint64_t addr);
 uint64_t veo_async_read_mem(struct veo_thr_ctxt *, void *, uint64_t, size_t);
 uint64_t veo_async_write_mem(struct veo_thr_ctxt *, uint64_t, const void *,
                              size_t);

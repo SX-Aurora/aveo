@@ -87,6 +87,21 @@ void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload)
 }
 
 /**
+ * @brief Retrieve the pointer to a hook function
+ *
+ * @param [in] func  pointer to function that has the "hook"
+ * @return pointer to hook function
+ * @return NULL if function or hook not found
+ */
+void *veo_get_hook(void* func)
+{
+  auto it = static_hooks.find(func);
+  if (it != static_hooks.end())
+    return (void *)std::get<0>((*it).second);
+  return NULL;
+}
+
+/**
  * @brief Unregister a hook function
  *
  * @param [in] func  pointer to function receiving the "hook"
@@ -1134,6 +1149,120 @@ int veo_call_wait_result(veo_thr_ctxt *ctx, uint64_t reqid, uint64_t *retp)
   } catch (VEOException &e) {
     return -1;
   }
+}
+
+using veo_alloc_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, size_t>;
+using veo_free_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, uint64_t>;
+
+/*
+ * Helper functions for async mem alloc.
+ *
+ * The helper is called as an async VH call. It retrieves the result address
+ * of the async call and calls the hook function (if any) for the async mem
+ * alloc. Returns the allocated memory address.
+ */
+static uint64_t _alloc_mem_async_hook(void* data_) {
+  auto data = (veo_alloc_mem_async_data*)data_;
+  auto [ctx, alloc_req, size] = *data;
+  delete data;
+
+  uint64_t addr = 0;
+  auto rv = ContextFromC(ctx)->callWaitResult(alloc_req, &addr);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+    return 0;
+  }
+  VEO_TRACE("returned addr 0x%lx", addr);
+
+  auto it = static_hooks.find((void *)&veo_alloc_mem_async);
+  if (it != static_hooks.end()) {
+    auto&& [hook, payload] = (*it).second;
+    hook(payload, ctx, addr, size);
+  }
+  return addr;
+}
+
+/**
+ * @brief Allocate a VE memory buffer asynchronously
+ *
+ * The buffer allocation is queued as a urpc alloc request which
+ * returns a request ID. This can be queried to retrieve the
+ * allocated address as result of the request.
+ *
+ * @param [in]  ctx VEO thread context
+ * @param [in]  size size in bytes
+ * @return request ID
+ * @retval VEO_REQUEST_ID_INVALID request failed.
+ */
+uint64_t veo_alloc_mem_async(veo_thr_ctxt *ctx, const size_t size)
+{
+  uint64_t req;
+  try {
+    req = ContextFromC(ctx)->genericAsyncReq(URPC_CMD_ALLOC,
+                                             (char *)"L", size);
+  } catch (VEOException &e) {
+    return VEO_REQUEST_ID_INVALID;
+  }
+  if (static_hooks.count((void *)&veo_alloc_mem_async) > 0) {
+    return veo_call_async_vh(ctx, _alloc_mem_async_hook,
+                             new veo_alloc_mem_async_data(ctx, req, size));
+  }
+  return req;
+}
+
+/*
+ * Helper functions for async mem free.
+ *
+ * The helper is called as an async VH call. It waits for the finishing of
+ * the async VE call and calls the hook function (if any) for the async mem
+ * free.
+ */
+static uint64_t _free_mem_async_hook(void* data_) {
+  auto data = (veo_free_mem_async_data*)data_;
+  auto [ctx, free_req, addr] = *data;
+  delete data;
+
+  uint64_t dummy = 0;
+  auto rv = ContextFromC(ctx)->callWaitResult(free_req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+    return -1;
+  }
+  auto it = static_hooks.find((void *)&veo_free_mem_async);
+  if (it != static_hooks.end()) {
+    auto&& [hook, payload] = (*it).second;
+    hook(payload, ctx, addr);
+  }
+  return 0;
+}
+
+/**
+ * @brief Free a VE memory buffer asynchronously
+ *
+ * The buffer de-allocation is queued as a urpc request which
+ * returns a request ID. This can be queried to retrieve the
+ * allocated address as result of the request.
+ * If the 
+ *
+ * @param [in]  ctx VEO thread context
+ * @param [in]  size size in bytes
+ * @return request ID
+ * @retval VEO_REQUEST_ID_INVALID request failed.
+ */
+uint64_t veo_free_mem_async(veo_thr_ctxt *ctx, uint64_t addr)
+{
+  uint64_t req;
+  try {
+    req = ContextFromC(ctx)->genericAsyncReq(URPC_CMD_FREE,
+                                             (char *)"L", addr);
+  } catch (VEOException &e) {
+    return VEO_REQUEST_ID_INVALID;
+  }
+  if (static_hooks.count((void *)&veo_free_mem_async) > 0) {
+    return veo_call_async_vh(ctx, _free_mem_async_hook,
+                             new veo_free_mem_async_data(ctx, req, addr));
+  }
+  return req;
 }
 
 /**
