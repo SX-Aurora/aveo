@@ -108,9 +108,7 @@ void *veo_get_hook(void* func)
  */
 void veo_unregister_hook(void* func)
 {
-  auto it = static_hooks.find(func);
-  if (it != static_hooks.end())
-    static_hooks.erase(it);
+  static_hooks.erase(func);
 }
 
 /**
