@@ -24,6 +24,6 @@
 #ifndef _VEO_VE_H_
 #define _VEO_VE_H_
 
-int veo_previous_result(uint64_t *result);
+int veo_prev_req_result(uint64_t *result);
 
 #endif _VEO_VE_H_
