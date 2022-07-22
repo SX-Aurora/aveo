@@ -66,7 +66,7 @@ $(BB)/%: %.cpp  | $$(@D)/
 	$(GPP) $(GPPFLAGS) -fpic $(LDFLAGS) -o $@ $< -lveo
 
 $(BB)/%.so: $(BVE)/%.o  | $$(@D)/
-	$(NCC) $(NCCFLAGS) -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace -lveohmem
+	$(NCC) $(NCCFLAGS) -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace -lveohmem -laveoVE
 
 $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace

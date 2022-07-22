@@ -29,6 +29,7 @@
 #include "log.h"
 
 __thread int __veo_finish;
+__thread urpc_peer_t *thr_up;
 const char *AVEO_VERSION = AVEO_VERSION_STRING;	// the version comes as a #define
 
 typedef struct {const char *n; void *v;} static_sym_t;

@@ -1,16 +1,23 @@
 #include <stdio.h>
 #include <stdint.h>
 
+int veo_previous_result(uint64_t *result);
+
 uint64_t
 init( int *p, int n )
 {
-    printf("VE init %d at p=%p\n", n, p);
-    fflush(stdout);
+  printf("VE init %d at p=%p\n", n, p);
+  fflush(stdout);
 
-    for (int i = 0; i < n; i++ )
-      p[i] = i;
+  uint64_t prevres = 0;
+  int rc;
+  rc = veo_previous_result(&prevres);
+  printf("VE prevres returned %lu %p rc=%d\n", prevres, (void *)prevres, rc);
+  fflush(stdout);
 
-    return (uint64_t)p;
+  for (int i = 0; i < n; i++ )
+    p[i] = i;
+  return (uint64_t)p;
 }
 
 uint64_t

@@ -30,6 +30,7 @@
 extern __thread int __veo_finish;
 pthread_t __handler_loop_pthreads[MAX_VE_CORES];
 int __num_ve_peers = 0;
+extern __thread urpc_peer_t *thr_up;
 
 //
 // VE side main handler loop
@@ -39,6 +40,7 @@ void *ve_handler_loop(void *arg)
   ve_handler_loop_arg_t *a = (ve_handler_loop_arg_t *)arg;
 
   urpc_peer_t *up = a->up;
+  thr_up = up;
   VEO_DEBUG("pid=%d core=%d", getpid(), a->core);
   int rc = ve_urpc_init_dma(up, a->core);
 
@@ -53,6 +55,27 @@ void *ve_handler_loop(void *arg)
   }
   ve_urpc_fini(up);
   return NULL;
+}
+
+//
+// VE side helper functions, callable from offloaded kernels
+//
+/*
+ * Retrieve the last (i.e. previous) request's result.
+ *
+ * @param result pointer to result value
+ * @return 0 if all went well
+ * @return -1 if unpacking the payload ran out of space
+ */
+int veo_previous_result(uint64_t *result)
+{
+  urpc_comm_t *uc = &(thr_up->send);
+  transfer_queue_t *tq = uc->tq;
+  void *payload;
+  size_t plen;
+
+  ve_prev_sent_payload(thr_up, &payload, &plen);
+  return urpc_unpack_payload(payload, plen, (char *)"L", result);
 }
 
 //
