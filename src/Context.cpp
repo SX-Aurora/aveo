@@ -43,8 +43,45 @@
 
 namespace veo {
 
+/**
+ * @brief progress thread.
+ *
+ * progress() execute asynchronously.
+ */
+void *progress_main(void *arg)
+{
+  Context* ctx = (Context*)arg;
+
+  do {
+    // Stay thread until new request comes.
+    ctx->waitProgress();
+
+    // Call progress() until request queues and inflight queues are empty.
+    ctx->progressExec();
+    if (ctx->getState() == VEO_STATE_EXIT)
+      break;
+
+  } while ( !(ctx->isProcessTerminate()) );
+
+  pthread_exit(0);
+}
+
+/**
+ * @brief dummy function for synchronization.
+ *
+ * It synchronizes by registering this on context and waiting for this completed.
+ */
+unsigned long synchronize_func(void *arg)
+{
+  return 0;
+}
+
 Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
-  proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0) {}
+  proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0)
+{
+  progress_thread = (pthread_t)-1;
+  progress_terminate = false;
+}
 
 /**
  * @brief close this context
@@ -57,6 +94,8 @@ Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
 int Context::close()
 {
   VEO_TRACE("ctx=%p", this);
+  // Progress thread terminates.
+  this->progressTerminate();
   if (!this->is_alive())
     return 0;
   this->state = VEO_STATE_EXIT;
@@ -87,7 +126,7 @@ int Context::close()
  *
  *
  */
-void Context::_progress_nolock(int ops)
+void Context::_progress_nolock()
 {
   urpc_comm_t *uc = &this->up->recv;
   transfer_queue_t *tq = uc->tq;
@@ -168,63 +207,77 @@ void Context::_progress_nolock(int ops)
         }
       }
     }
-  } while((recvd + sent > 0) && (recvd + sent < ops));
+  } while(recvd + sent > 0);
   //VEO_TRACE("end");
 }
 
 /**
- * @brief Progress function for asynchronous calls
+ * @brief progress thread initializes.
  *
- * @param ops number of operations. zero: as many as possible
- *
- * Check if any URPC request has finished.
- * If yes, pop a cmd from inflight queue, receive its result.
- * Push a new command, if any.
- * Repeat.
+ * Progress thread creates and starts.
  */
-void Context::progress(int ops)
+bool Context::progressInit()
 {
-  //VEO_TRACE("start");
-  //std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
-  if (this->prog_mtx.try_lock()) {
-    _progress_nolock(ops);
-    this->prog_mtx.unlock();
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, progress_main, (void*)this) != 0) {
+    return false;
   }
-  //VEO_TRACE("end");
+  this->progress_thread = thread;
+  return true;
+}
+
+/**
+ * @brief progress thread terminates.
+ *
+ * Wait until progress thread termination.
+ */
+void Context::progressTerminate()
+{
+  if (this->progress_thread != (pthread_t)-1) {
+    { // set terminate flag.
+      std::lock_guard<std::mutex> lock(this->pgs_mtx);
+      this->progress_terminate = true;
+    }
+
+    // Add dummy function into request queue for awake thread.
+    this->callVHAsync(&synchronize_func, (void*)0);
+
+    // Wait until thread termination.
+    void* ret;
+    pthread_join(this->progress_thread, &ret);
+    this->progress_thread = (pthread_t)-1;
+  }
+}
+
+/**
+ * @brief wait command queues.
+ *
+ * Wait while request queue and inflight queues are empty.
+ */
+void Context::waitProgress()
+{
+  if (this->comq.emptyInFlight()) {
+    this->comq.waitRequest();
+  }
 }
 
 /**
  * @brief Synchronize this context.
  *
  * Block other threads from submitting requests to this context,
- * call progress() until request queue and inflight queues are empty.
+ * Call progress() until request queue and inflight queues are empty.
  */
 void Context::synchronize()
 {
   //VEO_TRACE("start");
-  std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
-  this->_synchronize_nolock();
+  uint64_t req_id = this->callVHAsync(&synchronize_func, (void*)0);
+  if (req_id != 0) {
+    uint64_t ret;
+    this->callWaitResult(req_id, &ret);
+  }
   //VEO_TRACE("end");
 }
   
-/**
- * @brief The actual synchronize work function
- *
- * This function should only be called with the main_mutex locked!
- */
-void Context::_synchronize_nolock()
-{
-  //VEO_TRACE("start");
-  this->prog_mtx.lock();
-  while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
-    this->prog_mtx.unlock();
-    this->progress(10000000);
-    this->prog_mtx.lock();
-  }
-  this->prog_mtx.unlock();
-  //VEO_TRACE("end");
-}
-
 /**
  * @brief Retrieve the stack pointer of a context thread on VE
  *
@@ -353,8 +406,6 @@ uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uin
     if(this->comq.pushRequest(std::move(cmd)))
       return VEO_REQUEST_ID_INVALID;
   }
-  if (sub == false)
-    this->progress(3);
   return id;
 }
 
@@ -477,7 +528,6 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
     if(this->comq.pushRequest(std::move(req)))
       return VEO_REQUEST_ID_INVALID;
   }
-  this->progress(3);
   //VEO_TRACE("callAsync leave...\n");
   
   return id;
@@ -543,7 +593,6 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     this->comq.pushRequest(std::move(req));
   }
-  this->progress(2);
   return id;
 }
 
@@ -576,7 +625,6 @@ int Context::_peekResult(uint64_t reqid, uint64_t *retp)
  */
 int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
-  this->progress(3);
   return this->_peekResult(reqid, retp);
 }
 
@@ -593,31 +641,19 @@ int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 int Context::callWaitResult(uint64_t reqid, uint64_t *retp)
 {
   VEO_TRACE("req %lu", reqid);
-#if 1
-  //
-  // polling here because we need to call the progress function!
-  //
-  int rv;
-  do {
-    rv = this->callPeekResult(reqid, retp);
-  } while (rv == VEO_COMMAND_UNFINISHED);
-  return rv;
-#else
-  req_mtx.lock();
-  auto itr = rem_reqid.find(reqid);
-  if( itr == rem_reqid.end() ) {
-    req_mtx.unlock();
-    return VEO_COMMAND_ERROR;
+  {
+    std::lock_guard<std::mutex> lock(this->req_mtx);
+    auto itr = rem_reqid.find(reqid);
+    if( itr == rem_reqid.end() ) {
+      return VEO_COMMAND_ERROR;
+    }
+    if (!rem_reqid.erase(reqid)) {
+      return VEO_COMMAND_ERROR;
+    }
   }
-  if (!rem_reqid.erase(reqid)) {
-    req_mtx.unlock();
-    return VEO_COMMAND_ERROR;
-  }
-  req_mtx.unlock();
   auto c = this->comq.waitCompletion(reqid);
   *retp = c->getRetval();
   return c->getStatus();
-#endif
 }
 
 /**

@@ -125,6 +125,11 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
 
   this->mctx = new Context(this, this->up, true);
 
+  // Progress thread creates and starts.
+  if (this->mctx->progressInit() != true) {
+    throw VEOException("ProcHandle: failed to initialize progress thread.");
+  }
+
   this->mctx->getStackPointer(&this->ve_sp);
   VEO_DEBUG("proc stack pointer: %p", (void *)this->ve_sp);
 
@@ -198,9 +203,7 @@ int ProcHandle::exitProc()
   int rc;
   std::lock_guard<std::mutex> procslock(__procs_mtx);
   std::lock_guard<std::mutex> ctxlock(ctx_mutex);
-  std::lock_guard<std::recursive_mutex> submitlock(this->mctx->submit_mtx);
   VEO_TRACE("proc %p", (void *)this);
-  this->mctx->_synchronize_nolock();
   //
   // delete all open contexts except the main one
   //
@@ -499,8 +502,8 @@ void ProcHandle::delContextNolock(Context *ctx)
 Context *ProcHandle::openContext(size_t stack_sz)
 {
   std::lock_guard<std::mutex> ctxlock(ctx_mutex);
-  std::lock_guard<std::recursive_mutex> submitlock(this->mctx->submit_mtx);
-  this->mctx->_synchronize_nolock();
+  std::lock_guard<std::recursive_mutex> lock(this->mctx->submit_mtx);
+  this->mctx->synchronize();
 
   if (this->ctx.empty()) {
     this->ctx.push_back(std::unique_ptr<Context>(this->mctx));
@@ -554,6 +557,10 @@ Context *ProcHandle::openContext(size_t stack_sz)
   }
 
   auto new_ctx = new Context(this, new_up, false);
+  // Progress thread creates and starts.
+  if (new_ctx->progressInit() != true) {
+    throw VEOException("ProcHandle: failed to initialize progress thread.");
+  }
   new_ctx->core = core;
   this->ctx.push_back(std::unique_ptr<Context>(new_ctx));
 

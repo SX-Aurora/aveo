@@ -22,6 +22,7 @@
  * Copyright (c) 2018-2021 NEC Corporation
  * Copyright (c) 2020-2021 Erich Focht
  */
+#include <time.h>
 #include "Command.hpp"
 
 namespace veo {
@@ -113,6 +114,24 @@ CmdPtr BlockingQueue::popNoWait() {
     return nullptr;
 }
 
+void BlockingQueue::noPopWait() {
+#if 1
+  clock_t start = clock();
+  clock_t maxwait = CLOCKS_PER_SEC / 10;
+  while (clock() - start < maxwait) {
+    {
+      //std::unique_lock<std::mutex> lock(this->mtx);
+      if (!this->queue.empty())
+        return;
+    }
+  }
+#endif
+  std::unique_lock<std::mutex> lock(this->mtx);
+  if (this->queue.empty()) {
+   this->cond.wait(lock);
+  }
+}
+
 /**
  * @brief push a command to request queue
  * @param req a pointer to a command to be pushed (sent)
@@ -142,6 +161,11 @@ std::unique_ptr<Command> CommQueue::tryPopRequest()
   return this->request.popNoWait();
 }
 
+void CommQueue::waitRequest()
+{
+  this->request.noPopWait();
+}
+
 void CommQueue::pushInFlight(std::unique_ptr<Command> cmd)
 {
   auto req = cmd.get()->getURPCReq();
@@ -163,10 +187,10 @@ std::unique_ptr<Command> CommQueue::peekCompletion(uint64_t msgid)
   return this->completion.tryFind(msgid);
 }
 
-//std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
-//{
-//  return this->completion.wait(msgid);
-//}
+std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
+{
+  return this->completion.wait(msgid);
+}
 
 void CommQueue::cancelAll()
 {

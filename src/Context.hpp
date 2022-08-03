@@ -65,11 +65,11 @@ private:
   std::unordered_set<uint64_t> rem_reqid; // TODO: move this away from here!
   std::mutex req_mtx;   //!< protects rem_reqid
   std::recursive_mutex submit_mtx;//!< for synchronous calls prohibit submission of new reqs
-  std::recursive_mutex prog_mtx;	// ensure that progress is not called concurrently
 
-  void _progress_nolock(int ops);
-  void progress(int ops);
-  void _synchronize_nolock();
+  void _progress_nolock();
+  pthread_t progress_thread;
+  bool progress_terminate;
+  std::mutex pgs_mtx;   //!< protects progress_terminate
   /**
    * @brief Issue a new request ID
    * @return a request ID, 64 bit integer, to identify a command
@@ -127,6 +127,15 @@ public:
   int callWaitResult(uint64_t, uint64_t *);
   int callPeekResult(uint64_t, uint64_t *);
   void synchronize();
+
+  bool progressInit();
+  void progressTerminate();
+  void progressExec() { this->_progress_nolock(); }
+  bool isProcessTerminate() {
+    std::lock_guard<std::mutex> lock(this->pgs_mtx);
+    return  this->progress_terminate;
+  };
+  void waitProgress();
 
   uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
   uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
@@ -234,7 +243,6 @@ public:
         return VEO_REQUEST_ID_INVALID;
       VEO_TRACE("submitted [request #%lu]", id);
     }
-    this->progress(2);
     return id;
   }
 
