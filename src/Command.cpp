@@ -111,7 +111,7 @@ CmdPtr BlockingQueue::popNoWait() {
     return nullptr;
 }
 
-void BlockingQueue::noPopWait() {
+void BlockingQueue::waitIfEmpty() {
   std::unique_lock<std::mutex> lock(this->mtx);
   if (this->queue.empty()) {
     this->cond.wait(lock);
@@ -150,7 +150,7 @@ CmdPtr CommQueue::tryPopRequest()
 
 void CommQueue::waitRequest()
 {
-  this->request.noPopWait();
+  this->request.waitIfEmpty();
 }
 
 void CommQueue::pushInFlight(CmdPtr cmd)

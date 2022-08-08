@@ -108,7 +108,7 @@ public:
   CmdPtr tryFind(uint64_t);
   CmdPtr wait(uint64_t);
   CmdPtr popNoWait();
-  void noPopWait();
+  void waitIfEmpty();
   void setStatus(QueueStatus s) { this->queue_state.store(s); }
   QueueStatus getStatus() { return this->queue_state.load(); }
   bool empty() {
