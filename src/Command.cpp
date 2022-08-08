@@ -25,7 +25,6 @@
 #include "Command.hpp"
 
 namespace veo {
-typedef std::unique_ptr<Command> CmdPtr;
 
 /**
  * @brief push a command to queue
@@ -125,7 +124,7 @@ void BlockingQueue::noPopWait() {
  * @param req a pointer to a command to be pushed (sent)
  * @return zero upon pushing a request; one upon not pushing a request
  */
-int CommQueue::pushRequest(std::unique_ptr<Command> req)
+int CommQueue::pushRequest(CmdPtr req)
 {
   if( this->request.getStatus() == VEO_QUEUE_READY ){
     this->request.push(std::move(req));
@@ -134,17 +133,17 @@ int CommQueue::pushRequest(std::unique_ptr<Command> req)
   return 1;
 }
 
-void CommQueue::pushRequestFront(std::unique_ptr<Command> req)
+void CommQueue::pushRequestFront(CmdPtr req)
 {
   this->request.push_front(std::move(req));
 }
 
-std::unique_ptr<Command> CommQueue::popRequest()
+CmdPtr CommQueue::popRequest()
 {
   return this->request.pop();
 }
 
-std::unique_ptr<Command> CommQueue::tryPopRequest()
+CmdPtr CommQueue::tryPopRequest()
 {
   return this->request.popNoWait();
 }
@@ -154,28 +153,28 @@ void CommQueue::waitRequest()
   this->request.noPopWait();
 }
 
-void CommQueue::pushInFlight(std::unique_ptr<Command> cmd)
+void CommQueue::pushInFlight(CmdPtr cmd)
 {
   auto req = cmd.get()->getURPCReq();
   this->inflight.insert(req, std::move(cmd));
 }
 
-std::unique_ptr<Command> CommQueue::popInFlight(int64_t id)
+CmdPtr CommQueue::popInFlight(int64_t id)
 {
   return this->inflight.tryFind(id);
 }
 
-void CommQueue::pushCompletion(std::unique_ptr<Command> req)
+void CommQueue::pushCompletion(CmdPtr req)
 {
   this->completion.insert(std::move(req));
 }
 
-std::unique_ptr<Command> CommQueue::peekCompletion(uint64_t msgid)
+CmdPtr CommQueue::peekCompletion(uint64_t msgid)
 {
   return this->completion.tryFind(msgid);
 }
 
-std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
+CmdPtr CommQueue::waitCompletion(uint64_t msgid)
 {
   return this->completion.wait(msgid);
 }

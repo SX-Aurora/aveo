@@ -69,6 +69,8 @@ public:
   void setNowaitFlag(bool flg) { this->nowait = flg; }
   virtual bool isVH() = 0;
 };
+
+typedef std::unique_ptr<Command> CmdPtr;
 }
 
 //namespace std {
@@ -94,18 +96,18 @@ class BlockingQueue {
 private:
   std::mutex mtx;
   std::condition_variable cond;
-  std::deque<std::unique_ptr<Command> > queue;
-  std::unique_ptr<Command> tryFindNoLock(uint64_t);
+  std::deque<CmdPtr > queue;
+  CmdPtr tryFindNoLock(uint64_t);
   std::atomic<QueueStatus> queue_state;
 
 public:
   BlockingQueue() : queue_state(VEO_QUEUE_READY) {}
-  void push(std::unique_ptr<Command>);
-  void push_front(std::unique_ptr<Command>);
-  std::unique_ptr<Command> pop();
-  std::unique_ptr<Command> tryFind(uint64_t);
-  std::unique_ptr<Command> wait(uint64_t);
-  std::unique_ptr<Command> popNoWait();
+  void push(CmdPtr);
+  void push_front(CmdPtr);
+  CmdPtr pop();
+  CmdPtr tryFind(uint64_t);
+  CmdPtr wait(uint64_t);
+  CmdPtr popNoWait();
   void noPopWait();
   void setStatus(QueueStatus s) { this->queue_state.store(s); }
   QueueStatus getStatus() { return this->queue_state.load(); }
@@ -131,31 +133,31 @@ class BlockingMap {
 private:
   std::mutex mtx;
   std::condition_variable cond;
-  std::unordered_map<uint64_t, std::unique_ptr<Command>> map;
+  std::unordered_map<uint64_t, CmdPtr> map;
 
 public:
   BlockingMap() {}
-  void insert(std::unique_ptr<Command> cmd) {
+  void insert(CmdPtr cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     auto id = cmd->getID();
     this->map.insert(std::make_pair(id, std::move(cmd)));
     this->cond.notify_all();
   };
-  void insert(uint64_t id, std::unique_ptr<Command> cmd) {
+  void insert(uint64_t id, CmdPtr cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     this->map.insert(std::make_pair(id, std::move(cmd)));
     this->cond.notify_all();
   };
-  void insert(int64_t id, std::unique_ptr<Command> cmd) {
+  void insert(int64_t id, CmdPtr cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     this->map.insert(std::make_pair((uint64_t)id, std::move(cmd)));
     this->cond.notify_all();
   };
-  std::unique_ptr<Command> tryFind(uint64_t id) {
+  CmdPtr tryFind(uint64_t id) {
     std::lock_guard<std::mutex> lock(this->mtx);
     return this->tryFindNoWait(id);
   };
-  std::unique_ptr<Command> tryFindNoWait(uint64_t id) {
+  CmdPtr tryFindNoWait(uint64_t id) {
     auto got = this->map.find(id);
     if (got == this->map.end())
       return nullptr;
@@ -163,10 +165,10 @@ public:
     this->map.erase(id);
     return rv;
   };
-  std::unique_ptr<Command> tryFind(int64_t id) {
+  CmdPtr tryFind(int64_t id) {
     return this->tryFind((uint64_t)id);
   };
-  std::unique_ptr<Command> wait(uint64_t id) {
+  CmdPtr wait(uint64_t id) {
     for (;;) {
       std::unique_lock<std::mutex> lock(this->mtx);
       auto rv = this->tryFindNoWait(id);
@@ -175,7 +177,7 @@ public:
       this->cond.wait(lock);
     }
   };
-  std::unique_ptr<Command> popNoWait() {
+  CmdPtr popNoWait() {
     std::lock_guard<std::mutex> lock(this->mtx);
     if (!this->map.empty()) {
       auto it = map.begin();
@@ -209,18 +211,18 @@ private:
 public:
   CommQueue() {};
 
-  int pushRequest(std::unique_ptr<Command>);
-  void pushRequestFront(std::unique_ptr<Command>);
-  std::unique_ptr<Command> popRequest();
-  std::unique_ptr<Command> tryPopRequest();
+  int pushRequest(CmdPtr);
+  void pushRequestFront(CmdPtr);
+  CmdPtr popRequest();
+  CmdPtr tryPopRequest();
   void waitRequest();
   bool emptyRequest() { return this->request.empty(); }
-  void pushInFlight(std::unique_ptr<Command>);
+  void pushInFlight(CmdPtr);
   bool emptyInFlight() { return this->inflight.empty(); }
-  std::unique_ptr<Command> popInFlight(int64_t);
-  void pushCompletion(std::unique_ptr<Command>);
-  std::unique_ptr<Command> waitCompletion(uint64_t msgid);
-  std::unique_ptr<Command> peekCompletion(uint64_t msgid);
+  CmdPtr popInFlight(int64_t);
+  void pushCompletion(CmdPtr);
+  CmdPtr waitCompletion(uint64_t msgid);
+  CmdPtr peekCompletion(uint64_t msgid);
   void cancelAll();
   void setRequestStatus(QueueStatus s){ this->request.setStatus(s); }
   void notifyAll() { this->request.notify(); }

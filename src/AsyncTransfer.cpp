@@ -95,7 +95,7 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
@@ -181,7 +181,7 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
@@ -213,7 +213,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
                cmd->setResult(0, VEO_COMMAND_OK);
                return 0;
              };
-    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    CmdPtr req(new internal::CommandImpl(id, f));
     {
       std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))
@@ -295,7 +295,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
                cmd->setResult(0, VEO_COMMAND_OK);
                return 0;
              };
-    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    CmdPtr req(new internal::CommandImpl(id, f));
     {
       std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))

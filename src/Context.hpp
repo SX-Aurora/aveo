@@ -231,7 +231,7 @@ public:
                return 0;
              };
 
-    std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+    CmdPtr cmd(new internal::CommandImpl(id, f, u));
     {
       // Flagged to not store cmd results in completion queue.
       if (urpc_cmd == URPC_CMD_ACS_PCIRCVSYC) {

@@ -428,7 +428,7 @@ uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uin
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
@@ -555,7 +555,7 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
              cmd->setResult(result, VEO_COMMAND_OK);
              return 0;
            };
-  std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+  CmdPtr req(new internal::CommandImpl(id, f));
   {
     if(this->comq.pushRequest(std::move(req)))
       return VEO_REQUEST_ID_INVALID;
@@ -623,7 +623,7 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
              VEO_TRACE("[request #%lu] done", id);
              return 0;
            };
-  std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+  CmdPtr req(new internal::CommandImpl(id, f));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     this->comq.pushRequest(std::move(req));
