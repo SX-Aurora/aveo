@@ -34,7 +34,6 @@ typedef std::unique_ptr<Command> CmdPtr;
 void BlockingQueue::push(CmdPtr cmd) {
   std::lock_guard<std::mutex> lock(this->mtx);
   this->queue.push_back(std::move(cmd));
-  this->cond.notify_all();
 }
 
 /**
@@ -113,6 +112,14 @@ CmdPtr BlockingQueue::popNoWait() {
     return nullptr;
 }
 
+void BlockingQueue::noPopWait() {
+  std::unique_lock<std::mutex> lock(this->mtx);
+  if (this->queue.empty()) {
+    this->cond.wait(lock);
+  }
+  return;
+}
+
 /**
  * @brief push a command to request queue
  * @param req a pointer to a command to be pushed (sent)
@@ -142,6 +149,11 @@ std::unique_ptr<Command> CommQueue::tryPopRequest()
   return this->request.popNoWait();
 }
 
+void CommQueue::waitRequest()
+{
+  this->request.noPopWait();
+}
+
 void CommQueue::pushInFlight(std::unique_ptr<Command> cmd)
 {
   auto req = cmd.get()->getURPCReq();
@@ -163,10 +175,10 @@ std::unique_ptr<Command> CommQueue::peekCompletion(uint64_t msgid)
   return this->completion.tryFind(msgid);
 }
 
-//std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
-//{
-//  return this->completion.wait(msgid);
-//}
+std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
+{
+  return this->completion.wait(msgid);
+}
 
 void CommQueue::cancelAll()
 {
@@ -185,4 +197,15 @@ void CommQueue::cancelAll()
     this->completion.insert(std::move(command));
   }
 }
+
+int CommQueue::getRequestSize()
+{
+  return this->request.size();
+}
+
+int CommQueue::getInFlightSize()
+{
+  return this->inflight.size();
+}
+
 } // namespace veo

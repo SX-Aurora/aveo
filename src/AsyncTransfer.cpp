@@ -157,10 +157,12 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
                VEO_ERROR("mismatch: dst=%lx sent_dst=%lx", (uint64_t)dst, sent_dst);
                printf("debug with : gdb -p %d\n", getpid());
                sleep(60);
+               cmd->setResult(-URPC_CMD_RECVBUFF, VEO_COMMAND_EXCEPTION);
                return -1;
              }
              if (size != buffsz) {
                VEO_ERROR("mismatch: size=%lu sent_size=%lu", size, buffsz);
+               cmd->setResult(-URPC_CMD_RECVBUFF, VEO_COMMAND_EXCEPTION);
                return -1;
              }
              memcpy((void *)dst, buff, buffsz);
@@ -217,8 +219,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    if (sub == false)
-      this->progress(2);
+    this->comq.notifyAll();
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -247,7 +248,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
   char *s = (char *)src;
   char *d = (char *)dst;
   uint64_t prev = VEO_REQUEST_ID_INVALID;
-
+  bool flg = false;
   while (rsize > 0) {
     psz = rsize <= maxfrag ? rsize : maxfrag;
     auto req = recvBuffAsync((void *)d, (uint64_t)s, psz, prev);
@@ -260,8 +261,12 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
     rsize -= psz;
     s += psz;
     d += psz;
-    if (sub == false)
-      this->progress(2);
+    if (this->comq.getInFlightSize() == 0 && flg == false) {
+      this->progress();
+      flg = true;
+    }
+    if (this->comq.getRequestSize() > 1)
+      this->comq.notifyAll();
   }
   return prev;
 }
@@ -296,8 +301,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    if (sub == false)
-      this->progress(2);
+    this->comq.notifyAll();
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -306,7 +310,7 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
   const char* cut_p = std::getenv("VEO_SENDCUT");
   size_t maxfrag = PART_SENDFRAG;
   size_t cutsz = 2 * 1024 * 1024;
-
+  bool flg = false;
   if (env_p)
     maxfrag = atoi(env_p);
   if (cut_p)
@@ -339,8 +343,12 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
     rsize -= psz;
     s += psz;
     d += psz;
-    if (sub == false)
-      this->progress(2);
+    if (this->comq.getInFlightSize() == 0 && flg == false) {
+      this->progress();
+      flg = true;
+    }
+    if (this->comq.getRequestSize() > 1)
+      this->comq.notifyAll();
   }
   return prev;
 }

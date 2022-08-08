@@ -106,9 +106,22 @@ public:
   std::unique_ptr<Command> tryFind(uint64_t);
   std::unique_ptr<Command> wait(uint64_t);
   std::unique_ptr<Command> popNoWait();
+  void noPopWait();
   void setStatus(QueueStatus s) { this->queue_state.store(s); }
   QueueStatus getStatus() { return this->queue_state.load(); }
-  bool empty() { return this->queue.empty(); }
+  bool empty() {
+    std::unique_lock<std::mutex> lock(this->mtx);
+    return this->queue.empty();
+  };
+  void notify() {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    this->cond.notify_all();
+  };
+  int size() {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    return queue.size();
+  };
+  
 };
 
 /**
@@ -117,7 +130,7 @@ public:
 class BlockingMap {
 private:
   std::mutex mtx;
-  std::condition_variable cond; // Note: not needed any more, since we busy wait, maybe later
+  std::condition_variable cond;
   std::unordered_map<uint64_t, std::unique_ptr<Command>> map;
 
 public:
@@ -126,17 +139,23 @@ public:
     std::lock_guard<std::mutex> lock(this->mtx);
     auto id = cmd->getID();
     this->map.insert(std::make_pair(id, std::move(cmd)));
+    this->cond.notify_all();
   };
   void insert(uint64_t id, std::unique_ptr<Command> cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     this->map.insert(std::make_pair(id, std::move(cmd)));
+    this->cond.notify_all();
   };
   void insert(int64_t id, std::unique_ptr<Command> cmd) {
     std::lock_guard<std::mutex> lock(this->mtx);
     this->map.insert(std::make_pair((uint64_t)id, std::move(cmd)));
+    this->cond.notify_all();
   };
   std::unique_ptr<Command> tryFind(uint64_t id) {
     std::lock_guard<std::mutex> lock(this->mtx);
+    return this->tryFindNoWait(id);
+  };
+  std::unique_ptr<Command> tryFindNoWait(uint64_t id) {
     auto got = this->map.find(id);
     if (got == this->map.end())
       return nullptr;
@@ -146,6 +165,15 @@ public:
   };
   std::unique_ptr<Command> tryFind(int64_t id) {
     return this->tryFind((uint64_t)id);
+  };
+  std::unique_ptr<Command> wait(uint64_t id) {
+    for (;;) {
+      std::unique_lock<std::mutex> lock(this->mtx);
+      auto rv = this->tryFindNoWait(id);
+      if (rv != nullptr)
+        return rv;
+      this->cond.wait(lock);
+    }
   };
   std::unique_ptr<Command> popNoWait() {
     std::lock_guard<std::mutex> lock(this->mtx);
@@ -159,7 +187,14 @@ public:
     return nullptr;
   };
   
-  bool empty() { return this->map.empty(); }
+  bool empty() {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    return this->map.empty();
+  };
+  int size() {
+    std::lock_guard<std::mutex> lock(this->mtx);
+    return map.size();
+  };
 };
 
 /**
@@ -178,15 +213,19 @@ public:
   void pushRequestFront(std::unique_ptr<Command>);
   std::unique_ptr<Command> popRequest();
   std::unique_ptr<Command> tryPopRequest();
+  void waitRequest();
   bool emptyRequest() { return this->request.empty(); }
   void pushInFlight(std::unique_ptr<Command>);
   bool emptyInFlight() { return this->inflight.empty(); }
   std::unique_ptr<Command> popInFlight(int64_t);
   void pushCompletion(std::unique_ptr<Command>);
-  //std::unique_ptr<Command> waitCompletion(uint64_t msgid);
+  std::unique_ptr<Command> waitCompletion(uint64_t msgid);
   std::unique_ptr<Command> peekCompletion(uint64_t msgid);
   void cancelAll();
   void setRequestStatus(QueueStatus s){ this->request.setStatus(s); }
+  void notifyAll() { this->request.notify(); }
+  int getRequestSize();
+  int getInFlightSize();
 };
 } // namespace veo
 #endif
