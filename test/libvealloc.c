@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-int veo_previous_result(uint64_t *result);
+int veo_prev_req_result(uint64_t *result);
 
 uint64_t
 init( int *p, int n )

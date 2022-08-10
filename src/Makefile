@@ -34,7 +34,7 @@ VEARCS = $(addprefix $(BVELIB)/,libaveoVE.a)
 PROGS = $(addprefix $(BLIBEX)/,aveorun aveorun-ftrace relink_aveorun mk_veorun_static gen_veorun_static_symtable)
 INCLUDES := $(addprefix $(BINC)/,ve_offload.h veo_time.h veo_hmem.h \
 	veo_veshm.h veo_vhveshm.h veo_vedma.h veo_veshm_defs.h)
-VEINCLUDES := $(addprefix $(BVEINC)/,veo_hmem.h)
+VEINCLUDES := $(addprefix $(BVEINC)/,veo_hmem.h veo_ve.h)
 
 ALL: all-ve all-vh
 
