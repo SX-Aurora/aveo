@@ -121,6 +121,8 @@ public:
   Context(const Context &) = delete;//non-copyable
   void getStackPointer(uint64_t *sp);
   veo_context_state getState() { return this->state; }
+  void reqBlockBegin() { submit_mtx.lock(); }
+  void reqBlockEnd() { submit_mtx.unlock(); }
   int callSync(uint64_t addr, CallArgs &arg, uint64_t *result);
   uint64_t callAsync(uint64_t, CallArgs &);
   uint64_t callAsyncByName(uint64_t, const char *, CallArgs &);

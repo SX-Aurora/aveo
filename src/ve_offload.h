@@ -133,6 +133,8 @@ uint64_t veo_free_mem_async(struct veo_thr_ctxt *ctx, uint64_t addr);
 uint64_t veo_async_read_mem(struct veo_thr_ctxt *, void *, uint64_t, size_t);
 uint64_t veo_async_write_mem(struct veo_thr_ctxt *, uint64_t, const void *,
                              size_t);
+void veo_req_block_begin(struct veo_thr_ctxt *ctx);
+void veo_req_block_end(struct veo_thr_ctxt *ctx);
 
 struct veo_thr_ctxt *veo_context_open_with_attr(
 			struct veo_proc_handle *, struct veo_thr_ctxt_attr *);

@@ -38,3 +38,10 @@ uint64_t prevres()
   return prevres;
 }
 
+uint64_t prevres_quiet()
+{
+  uint64_t prevres = 0;
+  int rc = veo_prev_req_result(&prevres);
+  return prevres;
+}
+
