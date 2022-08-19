@@ -1342,6 +1342,31 @@ uint64_t veo_call_async_vh(veo_thr_ctxt *ctx, uint64_t (*func)(void *), void *ar
 }
 
 /**
+ * @brief Start a request block, allowing only requests from the current thread.
+ *
+ * The call will block if another thread has locked the submit mutex, i.e. has
+ * started a request block on the same context.
+ *
+ * @param [in] ctx VEO context.
+ */
+void veo_req_block_begin(veo_thr_ctxt *ctx)
+{
+  ContextFromC(ctx)->reqBlockBegin();
+}
+
+/**
+ * @brief End a request block that allowed only requests from the current thread.
+ *
+ * The call will unlock the previously locked the submit mutex.
+ *
+ * @param [in] ctx VEO context.
+ */
+void veo_req_block_end(veo_thr_ctxt *ctx)
+{
+  ContextFromC(ctx)->reqBlockEnd();
+}
+
+/**
  * @brief allocate and initialize VEO thread context attributes object
  *        (veo_thr_ctxt_attr).
  *
