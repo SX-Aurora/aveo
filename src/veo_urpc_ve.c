@@ -64,19 +64,22 @@ void *ve_handler_loop(void *arg)
 /*
  * Retrieve the last (i.e. previous) request's result.
  *
+ * @param offs offset from previous result, =0 means previous result
  * @param result pointer for storing result value
  * @return 0 if all went well
  * @return -1 if unpacking the payload ran out of space
  */
-int veo_prev_req_result(uint64_t *result)
+int veo_prev_req_result(int offs, uint64_t *result)
 {
   urpc_comm_t *uc = &(__thr_up->send);
   transfer_queue_t *tq = uc->tq;
   void *payload;
   size_t plen;
 
-  ve_prev_sent_payload(__thr_up, &payload, &plen);
-  return urpc_unpack_payload(payload, plen, (char *)"L", result);
+  ve_prev_sent_payload(__thr_up, offs, &payload, &plen);
+  int rc = urpc_unpack_payload(payload, plen, (char *)"L", result);
+  VEO_DEBUG("veo_prev_req_result: %lu %p", *result, *result);
+  return rc;
 }
 
 //
