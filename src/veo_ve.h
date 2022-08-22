@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-int veo_prev_req_result(uint64_t *result);
+int veo_prev_req_result(int offs, uint64_t *result);
 
 #if __cplusplus
 }

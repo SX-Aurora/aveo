@@ -19,6 +19,9 @@ main()
 	}
         printf("veo_alloc_mem() has allocated a buffer at %p\n", vebuf);
 
+        // since we're using veo_call_async_by_name() the first call to it hides
+        // an implicit veo_get_sym() call! So we need veo_prev_req_result offs=1.
+        veo_args_set_i32(argp, 0, 1);
 	uint64_t id = veo_call_async_by_name(ctx, handle, "prevres", argp);
 	uint64_t rc;
 	if (veo_call_wait_result(ctx, id, &rc) != 0)

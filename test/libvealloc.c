@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <veo_ve.h>
 
-int veo_prev_req_result(uint64_t *result);
 
 uint64_t
 init( int *p, int n )
@@ -28,20 +28,25 @@ check( int *p, int n )
   return i < n ? ~0 : 0;
 }
 
-uint64_t prevres()
+uint64_t prevres(int offs)
 {
   uint64_t prevres = 0;
   int rc;
-  rc = veo_prev_req_result(&prevres);
+  rc = veo_prev_req_result(offs, &prevres);
   printf("VE prevres returned %lu %p rc=%d\n", prevres, (void *)prevres, rc);
   fflush(stdout);
   return prevres;
 }
 
-uint64_t prevres_quiet()
+uint64_t prevres_quiet(int offs)
 {
   uint64_t prevres = 0;
-  int rc = veo_prev_req_result(&prevres);
+  int rc = veo_prev_req_result(offs, &prevres);
   return prevres;
 }
 
+uint64_t return_arg(uint64_t a)
+{
+  uint64_t b = a;
+  return b;
+}
