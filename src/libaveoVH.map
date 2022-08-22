@@ -31,6 +31,8 @@ VERSION_1 {
     veo_call_result;
     veo_call_peek_result;
     veo_call_wait_result;
+    veo_req_block_begin;
+    veo_req_block_end;
     veo_alloc_mem;
     veo_free_mem;
     veo_alloc_hmem;
