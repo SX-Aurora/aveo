@@ -28,6 +28,14 @@
 #error Inclusion of veo_ve.h only makes sense in VE device code! You are including it in host code.
 #endif
 
+#if __cplusplus
+extern "C" {
+#endif
+
 int veo_prev_req_result(uint64_t *result);
 
-#endif _VEO_VE_H_
+#if __cplusplus
+}
+#endif
+ 
+#endif //_VEO_VE_H_
