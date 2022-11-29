@@ -66,6 +66,7 @@ private:
   std::mutex req_mtx;   //!< protects rem_reqid
   std::recursive_mutex submit_mtx;//!< for synchronous calls prohibit submission of new reqs
   std::recursive_mutex prog_mtx;	// ensure that progress is not called concurrently
+  uint64_t count;
 
   void _progress_nolock(int ops);
   void progress(int ops);
@@ -241,7 +242,6 @@ public:
   }
 
   ProcHandle *proc;
-
 };
 
 /* 128MB, default stacksize of VE thread */

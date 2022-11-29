@@ -67,6 +67,7 @@ private:
   std::vector<std::unique_ptr<Context>> ctx;	//!< vector of opened contexts
   int ve_number;			//!< store the VE number
   std::unordered_map<const char *, uint64_t> ve2velibh; //!< library handle for VE2VE communication
+  bool proc_survival;
 
 public:
   ProcHandle(int, char *);
@@ -113,6 +114,8 @@ public:
  };
   pid_t getPid(void) { return up->child_pid; };
   void *veMemcpy(void *dst, const void *src, size_t size);
+  bool getProcSurvival(void) { return this->proc_survival; };
+  void setProcSurvival(bool flg) { this->proc_survival = flg; };
 };
 } // namespace veo
 #endif

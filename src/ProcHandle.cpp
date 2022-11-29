@@ -96,7 +96,7 @@ int _getProcIdentifierNolock(ProcHandle *proc)
  * @param venode VE node ID for running child peer
  * @param binname VE executable
  */
-ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
+ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1), proc_survival(false)
 {
   // create vh side peer
   this->up = vh_urpc_peer_create();
@@ -122,6 +122,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
     vh_urpc_peer_destroy(this->up);
     throw VEOException("ProcHandle: VE process does not become ready.");
   }
+  this->proc_survival = true;
 
   this->mctx = new Context(this, this->up, true);
 
