@@ -26,6 +26,7 @@ int veo_dma_poll(struct veo_proc_handle *, ve_dma_handle_t *);
 int veo_dma_post_wait(struct veo_proc_handle *, uint64_t, uint64_t, int);
 uint64_t veo_register_mem_to_dmaatb(void *, size_t);
 int veo_unregister_mem_from_dmaatb(struct veo_proc_handle *, uint64_t);
+void veo_access_pcircvsyc_register(struct veo_proc_handle *);
 #ifdef __cplusplus
 } // extern "C"
 #endif

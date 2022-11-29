@@ -84,3 +84,4 @@ make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %{_libexecdir}/mk_veorun_static
 %{_libexecdir}/relink_aveorun
 %{_veincludedir}/veo_hmem.h
+%{_veincludedir}/veo_ve.h

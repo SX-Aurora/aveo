@@ -15,6 +15,7 @@
 #include "CallArgs.hpp"
 #include "VEOException.hpp"
 #include "veo_hmem.h"
+#include "veo_vedma.h"
 #include "veo_hmem_macros.h"
 #include "veo_api.hpp"
 
@@ -26,6 +27,19 @@ using veo::api::CallArgsFromC;
 using veo::api::ThreadContextAttrFromC;
 using veo::api::veo_args_set_;
 using veo::VEOException;
+
+using veo_alloc_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, size_t>;
+using veo_free_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, uint64_t>;
+
+static std::map<void*, std::tuple<void (*)(void*, ...), void*>> static_hooks;
+static void (* alloc_hook)(void *, size_t);
+static void (* free_hook)(uint64_t);
+static void _alloc_hmem_hook(void *, ...);
+static void _free_hmem_hook(void *, ...);
+static void _alloc_hmem_async_hook(void *, ...);
+static void _free_hmem_async_hook(void *, ...);
+static uint64_t _alloc_mem_async_hook(void*);
+static uint64_t _free_mem_async_hook(void*);
 
 // implementation of VEO API functions
 /**
@@ -53,62 +67,6 @@ int veo_api_version()
 const char *veo_version_string()
 {
   return AVEO_VERSION;
-}
-
-static std::map<void*, std::tuple<void (*)(void*, ...), void*>> static_hooks;
-
-/**
- * @brief Register a hook function
- *
- * Certain VEO API functions can have specific hooks that are called after the
- * API call did it's work properly. The arguments of the hook function (should
- * be a "C" function) depend on the call and are passed as varargs. Therefore
- * the arguments must be unpacked appropriately inside the hook function.
- *
- * Example:
- * extern "C" void myhook(void *payload, ...)
- * {
- *    va_list args;
- *    va_start(args, payload);
- *    auto addr = va_arg(args, uint64_t);
- *    auto size = va_arg(args, size_t);
- *    va_end(args);
- *    // do hook work
- * }
- *
- *
- * @param [in] func  pointer to function receiving the "hook"
- * @param [in] hook  the hook function
- * @param [in] payload  pointer to an opaque payload common to all hook calls
- */
-void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload)
-{
-  static_hooks[func] = std::make_tuple(hook, payload);
-}
-
-/**
- * @brief Retrieve the pointer to a hook function
- *
- * @param [in] func  pointer to function that has the "hook"
- * @return pointer to hook function
- * @return NULL if function or hook not found
- */
-void *veo_get_hook(void* func)
-{
-  auto it = static_hooks.find(func);
-  if (it != static_hooks.end())
-    return (void *)std::get<0>((*it).second);
-  return NULL;
-}
-
-/**
- * @brief Unregister a hook function
- *
- * @param [in] func  pointer to function receiving the "hook"
- */
-void veo_unregister_hook(void* func)
-{
-  static_hooks.erase(func);
 }
 
 /**
@@ -303,30 +261,6 @@ int veo_proc_identifier(veo_proc_handle *proc)
 }
 
 /**
- * @brief set a veo_proc_handle's identifier to VEMVA
- *
- * @note This API is a low-level API and is intended to be called
- *       by upper layer software. This API is not intended to be 
- *       called by a user program.
- *
- * @param addr [in] VEMVA address
- * @param proc_ident [in] process identifier
- * @retval HMEM addr upon success; 0 upon failure.
- * This API is not intended to be called by a user program.
-
- */
-void *veo_set_proc_identifier(void *addr, int proc_ident)
-{
-    if (proc_ident < 0 || proc_ident >= VEO_MAX_HMEM_PROCS) {
-      VEO_ERROR("proc_ident is invalid(%d)", proc_ident);
-      return (void *)0;
-    }
-    void *hmem = (void *)SET_VE_FLAG(addr);
-    hmem = (void *)SET_PROC_IDENT(hmem, proc_ident);
-    return hmem;
-}
-
-/**
  * @brief load a VE library
  * @param [in] proc VEO process handle
  * @param [in] libname a library file name to load
@@ -399,7 +333,12 @@ int veo_alloc_mem(veo_proc_handle *h, uint64_t *addr, const size_t size)
       return -1;
     auto it = static_hooks.find((void *)&veo_alloc_mem);
     if (it != static_hooks.end()) {
+#ifndef NOCPP17
       auto&& [hook, payload] = (*it).second;
+#else
+      auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+      auto&& payload = (void *)std::get<1>((*it).second);
+#endif
       hook(payload, h, addr, size);
     }
   } catch (VEOException &e) {
@@ -465,7 +404,12 @@ int veo_alloc_hmem(veo_proc_handle *h, void **addr, const size_t size)
     *addr = (void *)SET_PROC_IDENT(*addr, proc_ident);
     auto it = static_hooks.find((void *)&veo_alloc_hmem);
     if (it != static_hooks.end()) {
+#ifndef NOCPP17
       auto&& [hook, payload] = (*it).second;
+#else
+      auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+      auto&& payload = (void *)std::get<1>((*it).second);
+#endif
       hook(payload, h, *addr, size);
     }
   } catch (VEOException &e) {
@@ -489,7 +433,12 @@ int veo_free_mem(veo_proc_handle *h, uint64_t addr)
     ProcHandleFromC(h)->freeBuff(addr);
     auto it = static_hooks.find((void *)&veo_free_mem);
     if (it != static_hooks.end()) {
+#ifndef NOCPP17
       auto&& [hook, payload] = (*it).second;
+#else
+      auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+      auto&& payload = (void *)std::get<1>((*it).second);
+#endif
       hook(payload, h, addr);
     }
   } catch (VEOException &e) {
@@ -522,7 +471,12 @@ int veo_free_hmem(void *addr)
     ret = veo_free_mem(h, VIRT_ADDR_VE(addr));
     auto it = static_hooks.find((void *)&veo_free_hmem);
     if (it != static_hooks.end()) {
+#ifndef NOCPP17
       auto&& [hook, payload] = (*it).second;
+#else
+      auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+      auto&& payload = (void *)std::get<1>((*it).second);
+#endif
       hook(payload, h, addr);
     }
   } catch (VEOException &e) {
@@ -548,63 +502,6 @@ int veo_read_mem(veo_proc_handle *h, void *dst, uint64_t src, size_t size)
   } catch (VEOException &e) {
     return -1;
   }
-}
-
-/**
- * @brief Get veo_proc_handle from HMEM addr
- *
- * @note This API is a low-level API and is intended to be called
- *       by upper layer software. This API is not intended to be 
- *       called by a user program.
- *
- * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
- * @return VEO process handle upon success; nullptr upon faiulre.
- */
-veo_proc_handle *veo_get_proc_handle_from_hmem(const void *addr) {
-  if(IS_VE(addr) == (uint64_t)0) {
-    return (veo_proc_handle*)NULL;
-  } else {
-    int proc_ident = GET_PROC_IDENT(addr);
-    veo::ProcHandle *p = veo::ProcHandle::getProcHandle(proc_ident);
-    return p->toCHandle();
-  }
-}
-
-/**
- * @brief Get the node number where the process exists from HMEM
- *
- * @note This API is a low-level API and is intended to be called
- *       by upper layer software. This API is not intended to be 
- *       called by a user program.
- *
- * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
- * @return VE node number upon success; negative upon failure.
- */
-int veo_get_venum_from_hmem(const void *addr) {
-  if (IS_VE(addr) == (uint64_t)0) {
-    return -1;
-  }
-  veo_proc_handle *h = veo_get_proc_handle_from_hmem(addr);
-  return ProcHandleFromC(h)->veNumber();
-}
-
-/**
- * @brief Get the PID of the VE process from HMEM
- *
- * @note This API is a low-level API and is intended to be called
- *       by upper layer software. This API is not intended to be 
- *       called by a user program.
- *
- * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
- * @return PID upon success; negative upon failure.
- */
-pid_t veo_get_pid_from_hmem(const void *addr){
-  pid_t pid = (pid_t)(-1);
-  if(IS_VE(addr) != (uint64_t)0) {
-    veo_proc_handle *h = veo_get_proc_handle_from_hmem(addr);
-    pid = ProcHandleFromC(h)->getPid();
-  }
-  return pid;
 }
 
 /**
@@ -1149,37 +1046,6 @@ int veo_call_wait_result(veo_thr_ctxt *ctx, uint64_t reqid, uint64_t *retp)
   }
 }
 
-using veo_alloc_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, size_t>;
-using veo_free_mem_async_data = std::tuple<veo_thr_ctxt*, uint64_t, uint64_t>;
-
-/*
- * Helper functions for async mem alloc.
- *
- * The helper is called as an async VH call. It retrieves the result address
- * of the async call and calls the hook function (if any) for the async mem
- * alloc. Returns the allocated memory address.
- */
-static uint64_t _alloc_mem_async_hook(void* data_) {
-  auto data = (veo_alloc_mem_async_data*)data_;
-  auto [ctx, alloc_req, size] = *data;
-  delete data;
-
-  uint64_t addr = 0;
-  auto rv = ContextFromC(ctx)->callWaitResult(alloc_req, &addr);
-  if (rv != VEO_COMMAND_OK) {
-    VEO_ERROR("rv=%d", rv);
-    return 0;
-  }
-  VEO_TRACE("returned addr 0x%lx", addr);
-
-  auto it = static_hooks.find((void *)&veo_alloc_mem_async);
-  if (it != static_hooks.end()) {
-    auto&& [hook, payload] = (*it).second;
-    hook(payload, ctx, addr, size);
-  }
-  return addr;
-}
-
 /**
  * @brief Allocate a VE memory buffer asynchronously
  *
@@ -1206,32 +1072,6 @@ uint64_t veo_alloc_mem_async(veo_thr_ctxt *ctx, const size_t size)
                              new veo_alloc_mem_async_data(ctx, req, size));
   }
   return req;
-}
-
-/*
- * Helper functions for async mem free.
- *
- * The helper is called as an async VH call. It waits for the finishing of
- * the async VE call and calls the hook function (if any) for the async mem
- * free.
- */
-static uint64_t _free_mem_async_hook(void* data_) {
-  auto data = (veo_free_mem_async_data*)data_;
-  auto [ctx, free_req, addr] = *data;
-  delete data;
-
-  uint64_t dummy = 0;
-  auto rv = ContextFromC(ctx)->callWaitResult(free_req, &dummy);
-  if (rv != VEO_COMMAND_OK) {
-    VEO_ERROR("rv=%d", rv);
-    return -1;
-  }
-  auto it = static_hooks.find((void *)&veo_free_mem_async);
-  if (it != static_hooks.end()) {
-    auto&& [hook, payload] = (*it).second;
-    hook(payload, ctx, addr);
-  }
-  return 0;
 }
 
 /**
@@ -1342,31 +1182,6 @@ uint64_t veo_call_async_vh(veo_thr_ctxt *ctx, uint64_t (*func)(void *), void *ar
 }
 
 /**
- * @brief Start a request block, allowing only requests from the current thread.
- *
- * The call will block if another thread has locked the submit mutex, i.e. has
- * started a request block on the same context.
- *
- * @param [in] ctx VEO context.
- */
-void veo_req_block_begin(veo_thr_ctxt *ctx)
-{
-  ContextFromC(ctx)->reqBlockBegin();
-}
-
-/**
- * @brief End a request block that allowed only requests from the current thread.
- *
- * The call will unlock the previously locked the submit mutex.
- *
- * @param [in] ctx VEO context.
- */
-void veo_req_block_end(veo_thr_ctxt *ctx)
-{
-  ContextFromC(ctx)->reqBlockEnd();
-}
-
-/**
  * @brief allocate and initialize VEO thread context attributes object
  *        (veo_thr_ctxt_attr).
  *
@@ -1444,12 +1259,201 @@ int veo_get_thr_ctxt_stacksize(veo_thr_ctxt_attr *tca, size_t *stack_sz)
   *stack_sz = ThreadContextAttrFromC(tca)->getStacksize();
   return 0;
 }
+//@}
+
+// implementation of VEO API functions (low-level)
+/**
+ * \defgroup low-levelveoapi VEO API (low-level)
+ *
+ * Low-level VE Offloading API functions.
+ * To use low-level VEO API functions, include "ve_offload.h" header.
+ */
+//@{
+
+/**
+ * @brief Register a hook function
+ *
+ * Certain VEO API functions can have specific hooks that are called after the
+ * API call did it's work properly. The arguments of the hook function (should
+ * be a "C" function) depend on the call and are passed as varargs. Therefore
+ * the arguments must be unpacked appropriately inside the hook function.
+ *
+ * Example:
+ * extern "C" void myhook(void *payload, ...)
+ * {
+ *    va_list args;
+ *    va_start(args, payload);
+ *    auto addr = va_arg(args, uint64_t);
+ *    auto size = va_arg(args, size_t);
+ *    va_end(args);
+ *    // do hook work
+ * }
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] func  pointer to function receiving the "hook"
+ * @param [in] hook  the hook function
+ * @param [in] payload  pointer to an opaque payload common to all hook calls
+ */
+void veo_register_hook(void* func, void (*hook)(void*, ...), void* payload)
+{
+  static_hooks[func] = std::make_tuple(hook, payload);
+}
+
+/**
+ * @brief Retrieve the pointer to a hook function
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] func  pointer to function that has the "hook"
+ * @return pointer to hook function
+ * @return NULL if function or hook not found
+ */
+void *veo_get_hook(void* func)
+{
+  auto it = static_hooks.find(func);
+  if (it != static_hooks.end())
+    return (void *)std::get<0>((*it).second);
+  return NULL;
+}
+
+/**
+ * @brief Unregister a hook function
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] func  pointer to function receiving the "hook"
+ */
+void veo_unregister_hook(void* func)
+{
+  static_hooks.erase(func);
+}
+
+/*
+ * Helper functions for async mem alloc.
+ *
+ * The helper is called as an async VH call. It retrieves the result address
+ * of the async call and calls the hook function (if any) for the async mem
+ * alloc. Returns the allocated memory address.
+ */
+static uint64_t _alloc_mem_async_hook(void* data_) {
+  auto data = (veo_alloc_mem_async_data*)data_;
+#ifndef NOCPP17
+  auto [ctx, alloc_req, size] = *data;
+#else
+  auto ctx = (veo_thr_ctxt *)std::get<0>(*data);
+  auto alloc_req = (uint64_t)std::get<1>(*data);
+  auto size = (size_t)std::get<2>(*data);
+#endif
+  delete data;
+
+  uint64_t addr = 0;
+  auto rv = ContextFromC(ctx)->callWaitResult(alloc_req, &addr);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+    return 0;
+  }
+  VEO_TRACE("returned addr 0x%lx", addr);
+
+  auto it = static_hooks.find((void *)&veo_alloc_mem_async);
+  if (it != static_hooks.end()) {
+#ifndef NOCPP17
+    auto&& [hook, payload] = (*it).second;
+#else
+      auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+      auto&& payload = (void *)std::get<1>((*it).second);
+#endif
+    hook(payload, ctx, addr, size);
+  }
+  return addr;
+}
+
+
+/*
+ * Helper functions for async mem free.
+ *
+ * The helper is called as an async VH call. It waits for the finishing of
+ * the async VE call and calls the hook function (if any) for the async mem
+ * free.
+ */
+static uint64_t _free_mem_async_hook(void* data_) {
+  auto data = (veo_free_mem_async_data*)data_;
+#ifndef NOCPP17
+  auto [ctx, free_req, addr] = *data;
+#else
+  auto ctx = (veo_thr_ctxt *)std::get<0>(*data);
+  auto free_req = (uint64_t)std::get<1>(*data);
+  auto addr = (uint64_t)std::get<2>(*data);
+#endif
+  delete data;
+
+  uint64_t dummy = 0;
+  auto rv = ContextFromC(ctx)->callWaitResult(free_req, &dummy);
+  if (rv != VEO_COMMAND_OK) {
+    VEO_ERROR("rv=%d", rv);
+    return -1;
+  }
+  auto it = static_hooks.find((void *)&veo_free_mem_async);
+  if (it != static_hooks.end()) {
+#ifndef NOCPP17
+    auto&& [hook, payload] = (*it).second;
+#else
+    auto&& hook = (void (*)(void*, ...))(std::get<0>((*it).second));
+    auto&& payload = (void *)std::get<1>((*it).second);
+#endif
+    hook(payload, ctx, addr);
+  }
+  return 0;
+}
+
+/**
+ * @brief Start a request block, allowing only requests from the current thread.
+ *
+ * The call will block if another thread has locked the submit mutex, i.e. has
+ * started a request block on the same context.
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] ctx VEO context.
+ */
+void veo_req_block_begin(veo_thr_ctxt *ctx)
+{
+  ContextFromC(ctx)->reqBlockBegin();
+}
+
+/**
+ * @brief End a request block that allowed only requests from the current thread.
+ *
+ * The call will unlock the previously locked the submit mutex.
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] ctx VEO context.
+ */
+void veo_req_block_end(veo_thr_ctxt *ctx)
+{
+  ContextFromC(ctx)->reqBlockEnd();
+}
 
 /**
  * @brief access PCIRCVSYC register to synchronize the transferred data
  *
  * PCIRCVSYC register is PCI receiver-side synchronization register which is accessed 
  * to wait the completion of inbound requests already received.
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
  *
  * @param [in] h VEO process handle
  */
@@ -1461,6 +1465,199 @@ void veo_access_pcircvsyc_register(veo_proc_handle *h)
     return;
   }
   return;
+}
+
+/**
+ * @brief Register hook functions to set HMEM addr.
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in]  alloc pointer to function that allocates memory and takes HMEM addr as an argument.
+ * @param [in]  free  pointer to function that frees memory and takes HMEM addr as an argument.
+ */
+void veo_register_hmem_hook_functions(void (*alloc)(void *, size_t), void (*free)(uint64_t))
+{
+  // save alloc function pointer to alloc_hook
+  alloc_hook = alloc;
+  // save free function pointer to free_hook
+  free_hook = free;
+
+  // register hook functions
+  veo_register_hook((void *)&veo_alloc_mem, &_alloc_hmem_hook, NULL);
+  veo_register_hook((void *)&veo_free_mem, &_free_hmem_hook, NULL);
+  veo_register_hook((void *)&veo_alloc_mem_async, &_alloc_hmem_async_hook, NULL);
+  veo_register_hook((void *)&veo_free_mem_async, &_free_hmem_async_hook, NULL);
+}
+
+/**
+ * @brief Unregister hook functions to set HMEM addr.
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ */
+void veo_unregister_hmem_hook_functions(void)
+{
+  // unregister hook functions
+  veo_unregister_hook((void *)&veo_alloc_mem);
+  veo_unregister_hook((void *)&veo_free_mem);
+  veo_unregister_hook((void *)&veo_alloc_mem_async);
+  veo_unregister_hook((void *)&veo_free_mem_async);
+}
+
+/**
+ * Helper functions for mem alloc to set HMEM addr.
+ */
+static void _alloc_hmem_hook(void *dummy, ...)
+{
+  va_list args;
+  va_start(args, dummy);
+  struct veo_proc_handle *proc = (struct veo_proc_handle *)va_arg(args, void *);
+  uint64_t *addr = va_arg(args, uint64_t *);
+  size_t size = va_arg(args, size_t);
+  va_end(args);
+
+  int proc_ident = veo_proc_identifier(proc);
+  void *hmem = veo_set_proc_identifier((void *)*addr, proc_ident);
+  alloc_hook(hmem, size);
+}
+
+/**
+ * Helper functions for mem free to set HMEM addr.
+ */
+static void _free_hmem_hook(void *dummy, ...)
+{
+  va_list args;
+  va_start(args, dummy);
+  struct veo_proc_handle *proc = (struct veo_proc_handle *)va_arg(args, void *);
+  uint64_t addr = va_arg(args, uint64_t);
+  va_end(args);
+
+  int proc_ident = veo_proc_identifier(proc);
+  addr = (uint64_t)veo_set_proc_identifier((void *)addr, proc_ident);
+  free_hook(addr);
+}
+
+/**
+ * Helper functions for async mem alloc to set HMEM addr.
+ */
+static void _alloc_hmem_async_hook(void *dummy, ...)
+{
+  va_list args;
+  va_start(args, dummy);
+  struct veo_thr_ctxt *ctx = (struct veo_thr_ctxt *)va_arg(args, void *);
+  uint64_t addr = va_arg(args, uint64_t);
+  size_t size = va_arg(args, size_t);
+  va_end(args);
+
+  auto c = ContextFromC(ctx);
+  veo::ProcHandle *p = c->proc;
+  veo_proc_handle *h = p->toCHandle();
+  int proc_ident = veo_proc_identifier(h);
+  void *hmem = veo_set_proc_identifier((void *)addr, proc_ident);
+  alloc_hook(hmem, size);
+}
+
+/**
+ * Helper functions for async mem free to set HMEM addr.
+ */
+static void _free_hmem_async_hook(void *dummy, ...)
+{
+  va_list args;
+  va_start(args, dummy);
+  struct veo_thr_ctxt *ctx = (struct veo_thr_ctxt *)va_arg(args, void *);
+  uint64_t addr = va_arg(args, uint64_t);
+  va_end(args);
+
+  auto c = ContextFromC(ctx);
+  veo::ProcHandle *p = c->proc;
+  veo_proc_handle *h = p->toCHandle();
+  int proc_ident = veo_proc_identifier(h);
+  addr = (uint64_t)veo_set_proc_identifier((void *)addr, proc_ident);
+  free_hook(addr);
+}
+
+/**
+ * @brief set a veo_proc_handle's identifier to VEMVA
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param addr [in] VEMVA address
+ * @param proc_ident [in] process identifier
+ * @retval HMEM addr upon success; 0 upon failure.
+ * This API is not intended to be called by a user program.
+
+ */
+void *veo_set_proc_identifier(void *addr, int proc_ident)
+{
+    if (proc_ident < 0 || proc_ident >= VEO_MAX_HMEM_PROCS) {
+      VEO_ERROR("proc_ident is invalid(%d)", proc_ident);
+      return (void *)0;
+    }
+    void *hmem = (void *)SET_VE_FLAG(addr);
+    hmem = (void *)SET_PROC_IDENT(hmem, proc_ident);
+    return hmem;
+}
+
+/**
+ * @brief Get veo_proc_handle from HMEM addr
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
+ * @return VEO process handle upon success; nullptr upon faiulre.
+ */
+veo_proc_handle *veo_get_proc_handle_from_hmem(const void *addr) {
+  if(IS_VE(addr) == (uint64_t)0) {
+    return (veo_proc_handle*)NULL;
+  } else {
+    int proc_ident = GET_PROC_IDENT(addr);
+    veo::ProcHandle *p = veo::ProcHandle::getProcHandle(proc_ident);
+    return p->toCHandle();
+  }
+}
+
+/**
+ * @brief Get the node number where the process exists from HMEM
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
+ * @return VE node number upon success; negative upon failure.
+ */
+int veo_get_venum_from_hmem(const void *addr) {
+  if (IS_VE(addr) == (uint64_t)0) {
+    return -1;
+  }
+  veo_proc_handle *h = veo_get_proc_handle_from_hmem(addr);
+  return ProcHandleFromC(h)->veNumber();
+}
+
+/**
+ * @brief Get the PID of the VE process from HMEM
+ *
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] addr a pointer to VEMVA address with the identifier (HMEM addr)
+ * @return PID upon success; negative upon failure.
+ */
+pid_t veo_get_pid_from_hmem(const void *addr){
+  pid_t pid = (pid_t)(-1);
+  if(IS_VE(addr) != (uint64_t)0) {
+    veo_proc_handle *h = veo_get_proc_handle_from_hmem(addr);
+    pid = ProcHandleFromC(h)->getPid();
+  }
+  return pid;
 }
 
 //@}
