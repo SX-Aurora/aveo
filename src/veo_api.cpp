@@ -1446,28 +1446,6 @@ void veo_req_block_end(veo_thr_ctxt *ctx)
 }
 
 /**
- * @brief access PCIRCVSYC register to synchronize the transferred data
- *
- * PCIRCVSYC register is PCI receiver-side synchronization register which is accessed 
- * to wait the completion of inbound requests already received.
- *
- * @note This API is a low-level API and is intended to be called
- *       by upper layer software. This API is not intended to be 
- *       called by a user program.
- *
- * @param [in] h VEO process handle
- */
-void veo_access_pcircvsyc_register(veo_proc_handle *h)
-{
-  try {
-    ProcHandleFromC(h)->accessPciRecvSyncRegister();
-  } catch (VEOException &e) {
-    return;
-  }
-  return;
-}
-
-/**
  * @brief Register hook functions to set HMEM addr.
  *
  * @note This API is a low-level API and is intended to be called

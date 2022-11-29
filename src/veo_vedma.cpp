@@ -230,4 +230,22 @@ int veo_unregister_mem_from_dmaatb(veo_proc_handle *h, uint64_t vehva) {
         int mode_flag = VE_MEM_LOCAL;
 	return veo_shared_mem_detach(h, (void *)vehva, mode_flag);
 }
+
+/**
+ * @brief access PCIRCVSYC register to synchronize the transferred data
+ *
+ * PCIRCVSYC register is PCI receiver-side synchronization register which is accessed
+ * to wait the completion of inbound requests already received.
+ *
+ * @param [in] h VEO process handle
+ */
+void veo_access_pcircvsyc_register(veo_proc_handle *h)
+{
+  try {
+    ProcHandleFromC(h)->accessPciRecvSyncRegister();
+  } catch (VEOException &e) {
+    return;
+  }
+  return;
+}
 //@}
