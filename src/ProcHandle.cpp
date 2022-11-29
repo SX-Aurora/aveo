@@ -252,6 +252,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   auto rv = this->mctx->callWaitResult(req, &handle);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    handle = 0;
   }
 
   VEO_TRACE("handle = %#lx", handle);
@@ -319,6 +320,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   auto rv = this->mctx->callWaitResult(req, &symaddr);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    symaddr = 0;
   }
 
   VEO_TRACE("symbol name = %s, addr = %#lx", symname, symaddr);
@@ -345,6 +347,7 @@ uint64_t ProcHandle::allocBuff(const size_t size)
   auto rv = this->mctx->callWaitResult(req, &addr);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    addr = 0;
   }
   VEO_TRACE("returned addr 0x%lx", addr);
   return addr;
