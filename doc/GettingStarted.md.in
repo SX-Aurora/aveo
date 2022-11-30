@@ -2,7 +2,7 @@
 VE Offloading framework (VEO) is a framework to provide accelerator-style
 programming on Vector Engine (VE).
 
-## Introduction
+@section intro Introduction
 SX-Aurora TSUBASA provides VE Offloading framework (VEO) for
 the accelerator programming model.
 The accelerator programming model executes parallelized and/or vectorized
@@ -19,7 +19,7 @@ installing the AVEO's packages and re-linking your program with AVEO
 without modification of makefiles.
 
 
-## Installation
+@section inst Installation
 
 ### Installing runtime package
 
@@ -57,14 +57,14 @@ Then, you can link your program with AVEO.
 If you want to link your program with the previous VEO implementation,
 please install its packages into another machine.
 
-## Hello World
+@section hello Hello World
 First, let's try a "Hello, World!" program on VE.
 
-### The Required Number of HugePages for VEO
-VEO requires HugePages for data transfer.
-The required number of HugePages 32 per VEO thread context.
+### The required number of huge pages for VEO
+VEO requires huge pages for data transfer.
+The required number of huge pages 32 per VEO thread context.
 
-### VE Code
+### VE code
 Code to run on VE is shown below. Standard C functions are available,
 hence, you can use printf(3).
 
@@ -83,7 +83,7 @@ Save the above code as [libvehello.c](examples_2VE_2libvehello_8c-example.html).
 A function on VE called via VEO needs to return a 64-bit unsigned integer.
 A function on VE called via VEO can have arguments as mentioned later.
 
-### Compile VE Code
+### Compile VE code
 VEO supports a function in an executable or in a shared library.
 
 To execute a function on VE using VEO, compile and link a source file
@@ -99,7 +99,7 @@ To build a shared library with the functions for dynamic loading, execute as fol
 $ /opt/nec/ve/bin/ncc -fpic -shared -o libvehello.so libvehello.c
 ~~~
 
-### VH Main Program
+### VH main program
 Main routine on VH side to run VE program is shown here.
 
 A program using VEO needs to include "ve_offload.h".
@@ -177,7 +177,7 @@ To call a VE function in a dynamic library with VEO:
  A request ID is returned.
 6. Wait for the completion and get the return value by veo_call_wait_result().
 
-### Compile VH Main Program
+### Compile VH main program
 Compile source code on VH side as shown below.
 
 ~~~
@@ -198,7 +198,7 @@ Hello, world
 
 VE code is executed on VE node 0, specified by `veo_proc_create_static()` or `veo_proc_create()`.
 
-## Various Arguments for a VE function
+@section args Various Arguments for a VE function
 You can pass one or more arguments to a function on VE.
 To specify arguments, VEO arguments object is used.
 A VEO argument object is created by veo_args_alloc().
@@ -209,7 +209,7 @@ necessary.
 
 VEO provides functions to set an argument in various types.
 
-### Basic Types
+### Basic types
 To pass an integer value, the following functions are used.
 
 ~~~c
@@ -243,7 +243,7 @@ uint64_t id = veo_call_async_by_name(ctx, handle, "func", args);
 
 In this case, func(1, 2.0) is called on VE.
 
-### Stack Arguments
+### Stack arguments
 Non basic typed arguments and arguments by reference are put on a stack.
 VEO supports an argument on a stack.
 
@@ -261,7 +261,7 @@ The third argument specifies the argument is for input and/or output.
  - VEO_INTENT_INOUT: the argument is for both input and output;
   data is copied into and out from a VE stack area.
 
-## Attributes for VEO context
+@section attr Attributes for VEO Context
 
 You can create a VEO context which has a specified attribute.
 
@@ -277,9 +277,9 @@ struct veo_thr_ctxt *ctx = veo_context_open_with_attr(proc, attr);
 
 In this case, VEO context which has a 256MB stack is created.
 
-##How to call the function written by Fortran
+@section fort Fortran Program
 
-###VE Code (Fortran)
+### VE code
 Code written by Fortran to run on VE is shown below.
 
 ~~~c
@@ -298,7 +298,7 @@ END FUNCTION FUNC1
 ~~~
 Save the above code as [libvefortran.f90](examples_2VE_2libvefortran_8f90-example.html).
 
-###Compile VE Code (Fortran)
+### Compile VE code
 
 To build an executable with the functions statically linked, execute as follows:
 ~~~
@@ -310,27 +310,28 @@ To build a shared library with the functions for dynamic loading, execute as fol
 $ /opt/nec/ve/bin/nfort -shared -fpic -o libvefortran.so libvefortran.f90
 ~~~
 
-### VH Main Program (Fortran)
+### VH main program
 Main routine on VH side to run VE program written by Fortran is shown here.
 
 The example VH program to call a VE Fortran function in a statically linked executable:
 ~~~c
 #include <ve_offload.h>
+#include <stdio.h>
 int main()
 {
   /* Load "vefortran" on VE node 0 */
   struct veo_proc_handle *proc = veo_proc_create_static(0, "./vefortran");
-  uint64_t handle = NULL;/* find a function in the executable */
+  uint64_t handle = 0UL;/* find a function in the executable */
   struct veo_thr_ctxt *ctx = veo_context_open(proc);
   struct veo_args *argp = veo_args_alloc();
   long x = 42;
   long y;
-  veo_args_set_stack(argp, VEO_INTENT_IN, 0, &x, sizeof(x));
-  veo_args_set_stack(argp, VEO_INTENT_OUT, 1, &y, sizeof(y));
+  veo_args_set_stack(argp, VEO_INTENT_IN, 0, (char *)&x, sizeof(x));
+  veo_args_set_stack(argp, VEO_INTENT_OUT, 1, (char *)&y, sizeof(y));
   uint64_t id = veo_call_async_by_name(ctx, handle, "sub1_", argp);
   uint64_t retval;
   veo_call_wait_result(ctx, id, &retval);
-  printf("SUB1 return %lu\n", retval);
+  printf("SUB1 outputs %lu\n", y);
   veo_args_clear(argp);
   veo_args_set_i64(argp, 0, 1);
   veo_args_set_i64(argp, 1, 2);
@@ -343,7 +344,7 @@ int main()
   return 0;
 }
 ~~~
-Save the above code as [fortran.c](examples_2VH_2fortan_8c-example.html).
+Save the above code as [fortran.c](examples_2VH_2fortran_8c-example.html).
 
 If you want to pass arguments to VE Fortran function, please use veo_args_set_stack() to pass arguments as stack arguments.
 However if you want to pass arguments to arguments with VALUE attribute in Fortran function, please pass arguments by value in the same way as VE C function.
@@ -355,7 +356,7 @@ Taking libvefortran.f90 and fortran.c as an example, pass "sub1_" as a argument 
 
 The method of compiling and running VH main program are same as C program.
 
-### Compile VH Main Program (Fortran)
+### Compile VH main program
 Compile source code on VH side as shown below.
 This is the same as the compilation method described above.
 
@@ -373,9 +374,9 @@ SUB1 return 43
 FUNC1 return 3
 ~~~
 
-##How to parallelize code using OpenMP
+@section omp Parallelized Program using OpenMP
 
-###VE code using OpenMP
+### VE code using OpenMP
 
 The following is an example of VE code using OpenMP written in C.
 
@@ -420,7 +421,7 @@ END FUNCTION OMP_HELLO
 ~~~
 Save the above code in [libompfortran.f90](examples_2VE_2libompfortran_8f90-example.html).
 
-###How to build VE code
+### How to build VE code
 To use OpenMP parallelization, specify -fopenmp at compilation and linking.
 
 Here is an example of building VE code written in C.
@@ -436,7 +437,7 @@ To build a shared library, execute as follows:
 ~~~
 To build code written in Fortran, change the compiler to nfort.
 
-##How to run a MPI program which calls VEO API
+@section mpi MPI program with VEO
 
 Execute a MPI program which calls VEO API as follows.
 
@@ -448,7 +449,7 @@ Please see MPI document "NEC MPI User's Guide" for mpiexec and MPI API details.
 
 In order to transfer data on VE memory using MPI API, it is necessary to allocate VE memory using veo_alloc_hmem().
 
-### Examples(MPI+VEO)
+### Examples
 
 The example MPI program which calls VEO API.
  - [mpi-veo.c](examples_2VH_2mpi-veo_8c-example.html)
@@ -463,12 +464,33 @@ $ mpincc -fpic -shared libmpive.c -lveohmem -o libmpive.so
 $ VE_OMP_NUM_THREADS=1 mpirun -veo -np 4 ./mpi-veo
 ~~~
 
-##How to get ftrace.out
+@section ftrace FTRACE Performance Information File
 
 To generate a ftrace.out, specify "-ftrace" option at compilation and linking VE code. A ftrace.out is generated on invocation of veo_proc_destroy() from VH main program.
+
 Here is an example of building VE code wiritten in C using or not using OpenMP.
 
-###How to build VE code not using OpenMP
+### How to get ftrace.out with a different file name for each VE process
+
+To generate ftrace.out with a different file name for each VE process, please install nec-veperf packages (later 2.3.0) and @PACKAGE@ and @PACKAGE@run (2.13.0 or later).
+
+AVEO (2.13.0 or later) sets the default performance information file name "ftrace.out" and the suffix for AVEO "veo" in the environment variable VE_FTRACE_OUT_NAME.
+
+When the VE process linked with the ftrace library is executed using AVEO, performance information file is as follows.
+ - without MPI
+~~~
+ftrace.out.veo.${VE_NODE_NUMBER}.$$
+~~~
+ - with MPI
+~~~
+ftrace.out.${MPIUNIVERSE}.${MPIRANK}.veo.${VE_NODE_NUMBER}.$$
+~~~
+
+${XXX} represents the value of the XXX environment variable.
+For example, ${MPIRANK} represents the value of MPIRANK environment variable.
+$$ represents VE process PID to which the ftrace library linked.
+
+### How to build VE code not using OpenMP
 
 To build a static-linked binary without OpenMP for ftrace, execute as follows:
 
@@ -485,7 +507,7 @@ $ /opt/nec/ve/bin/ncc -ftrace -shared -fpic -o libvehello.so libvehello.c -lveft
 To build code written in Fortran, change the compiler to nfort.
 
 
-###How to build VE code using OpenMP
+### How to build VE code using OpenMP
 
 To build a static-linked binary with OpenMP for ftrace, execute as follows:
 
@@ -502,7 +524,7 @@ $ /opt/nec/ve/bin/ncc -ftrace -shared -fpic -o libomphello.so libomphello.c -lve
 
 To build code written in Fortran, change the compiler to nfort.
 
-##Relinking veorun for newer compilers
+@section relink Relinking veorun for Newer Compilers
 
 Relinking veorun for newer compilers is requred to dynamically load shared library using OpenMP written in Fortran.
 
@@ -525,14 +547,14 @@ export VEORUN_BIN=$(pwd)/veorun
 And execute a VEO program.
 
 
-##How to get log
+@section log Debugging Log
 Set the environment variable VEO_LOG_DEBUG to some value and execute a VEO program.
 The log is output as standard output.
 ~~~
 export VEO_LOG_DEBUG=1
 ~~~
 
-## Using Traceback Information for VEO
+@section trace Traceback Information for VEO
 You can use traceback information on VE program.
 
 ### Compile VE Code with -traceback option
@@ -580,14 +602,14 @@ Runtime Error: Divide by zero at 0x600008001160
   the value of this variable is "VERBOSE", filename and line number is output in
   traceback information.
 
-##How to debug VEO programs
+@section debug Debugging VEO Programs
 AVEO(2.8.2 or later) supports the environment variable to debug VE processes.
-###VH side debugging
+### VH side debugging
 When you want to debug a VH process, execute the following command.
 ~~~
 gdb --args ./veo_program arg1 arg2
 ~~~
-###VE side debugging
+### VE side debugging
 When you want to debug a single VE process, set the environment variable as below.
 ~~~
 export VEO_DEBUG=console
@@ -610,7 +632,7 @@ Type "run" to continue in each of these windows.
 
 This works under the premise that the environmet DISPLAY is set up properly.
 
-##Environment variables to optimize data transfer
+@section env Environment Variables for VEO
 AVEO(2.7.5 or later) supports the environment variables to optimize the performance of data transfer.
 
 Environment variables | Brief | Default value

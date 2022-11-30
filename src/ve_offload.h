@@ -25,7 +25,7 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 14
+#define VEO_API_VERSION 15
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
@@ -152,8 +152,9 @@ int veo_hmemcpy(void *, const void *, size_t);
 int veo_args_set_hmem(struct veo_args *, int, void *);
 
 int veo_get_venum_from_hmem(const void *);
-void veo_access_pcircvsyc_register(struct veo_proc_handle *);
 
+void veo_register_hmem_hook_functions(void (*)(void *, size_t), void (*)(uint64_t));
+void veo_unregister_hmem_hook_functions();
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -82,6 +82,8 @@ VERSION_1 {
     veo_unregister_hook;
     veo_alloc_mem_async;
     veo_free_mem_async;
+    veo_register_hmem_hook_functions;
+    veo_unregister_hmem_hook_functions;
   local:
     *;
 };

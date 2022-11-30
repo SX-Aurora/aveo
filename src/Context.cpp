@@ -132,7 +132,7 @@ void Context::_progress_nolock(int ops)
       // continue receiving replies
       // We need this until we can manage buffer memory pressure
       continue;
-    }
+    } 
     //
     // try to submit a new command
     //
@@ -167,6 +167,30 @@ void Context::_progress_nolock(int ops)
           VEO_ERROR("submit function failed(%d)", rv);
         }
       }
+    }
+    if (recvd + sent == 0) 
+    {
+      if (this->count%100 == 0) {
+        int status;
+        bool aveorun_is_alive = this->proc->getProcSurvival();
+        if (aveorun_is_alive) {
+          pid_t cpid = this->proc->getPid();
+          pid_t pid = waitpid(cpid, &status, WNOHANG);
+          if (pid == cpid) {
+            this->proc->setProcSurvival(false);
+            this->state = VEO_STATE_EXIT;
+            this->comq.cancelAll();
+            VEO_ERROR("Internal error.");
+            return;
+          }
+        } else { // aveorun has already terminated.
+          this->state = VEO_STATE_EXIT;
+          this->comq.cancelAll();
+          //VEO_ERROR("Internal error.");
+          return;
+        }
+      }
+      this->count = this->count + 1;
     }
   } while((recvd + sent > 0) && (recvd + sent < ops));
   //VEO_TRACE("end");

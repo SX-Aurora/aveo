@@ -96,7 +96,7 @@ int _getProcIdentifierNolock(ProcHandle *proc)
  * @param venode VE node ID for running child peer
  * @param binname VE executable
  */
-ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
+ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1), proc_survival(false)
 {
   // create vh side peer
   this->up = vh_urpc_peer_create();
@@ -122,6 +122,7 @@ ProcHandle::ProcHandle(int venode, char *binname) : ve_number(-1)
     vh_urpc_peer_destroy(this->up);
     throw VEOException("ProcHandle: VE process does not become ready.");
   }
+  this->proc_survival = true;
 
   this->mctx = new Context(this, this->up, true);
 
@@ -251,6 +252,7 @@ uint64_t ProcHandle::loadLibrary(const char *libname)
   auto rv = this->mctx->callWaitResult(req, &handle);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    handle = 0;
   }
 
   VEO_TRACE("handle = %#lx", handle);
@@ -318,6 +320,7 @@ uint64_t ProcHandle::getSym(const uint64_t libhdl, const char *symname)
   auto rv = this->mctx->callWaitResult(req, &symaddr);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    symaddr = 0;
   }
 
   VEO_TRACE("symbol name = %s, addr = %#lx", symname, symaddr);
@@ -344,6 +347,7 @@ uint64_t ProcHandle::allocBuff(const size_t size)
   auto rv = this->mctx->callWaitResult(req, &addr);
   if (rv != VEO_COMMAND_OK) {
     VEO_ERROR("rv=%d", rv);
+    addr = 0;
   }
   VEO_TRACE("returned addr 0x%lx", addr);
   return addr;

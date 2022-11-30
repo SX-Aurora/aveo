@@ -20,6 +20,14 @@
  *      Date,
  *      Updates/Remarks
  * @par
+ *      Rev.11,
+ *      Nov. 2022,
+ * @n   This revision covers veoffload-aveo-2.13.0 or later.
+ * @n   Added descriptions of PCIRCVSYC register.
+ * @n   Added descriptions of FTRACE performance information file name.
+ * @n   Added restrictions of FTRACE environment variable.
+ * @n   Added descriptions of new low-level APIs reference.
+ * @par
  *      Rev.10,
  *      Mar. 2022,
  * @n   This revision covers veoffload-aveo-2.11.0 or later.
@@ -46,14 +54,14 @@
  *      Rev.6,
  *      Mar. 2021,
  * @n   This revision covers veoffload-aveo-2.7.6 or later.
- * @n   Added desctiptions of heterogeneous memory(HMEM) API.
+ * @n   Added descriptions of heterogeneous memory(HMEM) API.
  * @n   Added example source codes.
- * @n   Added desctiorions of MPI+VEO examples.
+ * @n   Added descriptions of MPI+VEO examples.
  * @par
  *      Rev.5,
  *      Jan. 2021,
  * @n   This revision covers veoffload-aveo-2.7.5 or later.
- * @n   Added desctiptions of environment variables to optimize the performance of data transfer.
+ * @n   Added descriptions of environment variables to optimize the performance of data transfer.
  * @n   Deleted restrictions that these APIs could return a success value if veo_write_mem() or veo_async_write_mem() fails.
  * @par
  *      Rev.4,

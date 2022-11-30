@@ -38,4 +38,6 @@ $ export VEO_SENDCUT=524288
 $ export VEO_RECVCUT=524288
 ~~~
 
-If you use FTRACE to get performance information, please do not unload shared library built with -ftrace. 
+If you use FTRACE to get performance information, please do not unload shared library built with -ftrace.
+
+VEO overwrites the environment variable VE_FTRACE_OUT_NAME when creating a VE process.
