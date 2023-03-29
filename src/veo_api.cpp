@@ -1030,10 +1030,9 @@ uint64_t veo_alloc_mem_async(veo_thr_ctxt *ctx, const size_t size)
  * The buffer de-allocation is queued as a urpc request which
  * returns a request ID. This can be queried to retrieve the
  * allocated address as result of the request.
- * If the 
  *
  * @param [in]  ctx VEO thread context
- * @param [in]  size size in bytes
+ * @param [in]  addr VEMVA address
  * @return request ID
  * @retval VEO_REQUEST_ID_INVALID request failed.
  */
@@ -1591,7 +1590,11 @@ pid_t veo_get_pid_from_hmem(const void *addr){
 /**
  * @brief get the architecture of the specified VE node.
  *
- * @param [in] ve_node_number VE node number
+ * @note This API is a low-level API and is intended to be called
+ *       by upper layer software. This API is not intended to be 
+ *       called by a user program.
+ *
+ * @param [in] venode VE node number
  * @retval > 0 VE architecture number
  * @retval 0 invalid argument or environment variable
  * @retval -1 internal error

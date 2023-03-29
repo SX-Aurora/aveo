@@ -51,6 +51,11 @@ namespace veo {
 
     void *regsp = (void *)regs.data();
     size_t regsz = regs.size() * sizeof(uint64_t);
+    size_t size = stack_size;
+    int64_t max_args_size = urpc_max_send_cmd_size(up)
+                             - SEND_CALL_CMD_SIZE_WITHOUT_DATA;
+    if (size > max_args_size - regsz)
+      size = max_args_size - regsz;
 
     if (!(copyin || copyout)) {
       // no stack transfer
@@ -63,9 +68,6 @@ namespace veo {
       // stack copied IN only
       // transfered data: addr, regs array, stack_top, stack_pointer, stack_image
 
-      size_t size = stack_size;
-      if (size > MAX_ARGS_STACK_SIZE - regsz)
-        size = MAX_ARGS_STACK_SIZE - regsz;
       req = urpc_generic_send(up, URPC_CMD_CALL_STKIN, (char *)"LPLLP",
                               addr, regsp, regsz, stack_top, ve_sp,
                               stack_buf, size);
@@ -76,9 +78,6 @@ namespace veo {
       // stack transfered into VE and back,
       // transfered data: addr, regs array, stack_top, stack_pointer, stack_image
 
-      size_t size = stack_size;
-      if (size > MAX_ARGS_STACK_SIZE - regsz)
-        size = MAX_ARGS_STACK_SIZE - regsz;
       req = urpc_generic_send(up, URPC_CMD_CALL_STKINOUT, (char *)"LPLLP",
                               addr, regsp, regsz, stack_top, ve_sp,
                               stack_buf, size);
@@ -88,9 +87,6 @@ namespace veo {
       // stack transfered only back, from VE to VH
       // transfered data: addr, regs array, stack_top, stack_pointer, stack_image
 
-      size_t size = stack_size;
-      if (size > MAX_ARGS_STACK_SIZE - regsz)
-        size = MAX_ARGS_STACK_SIZE - regsz;
       req = urpc_generic_send(up, URPC_CMD_CALL_STKOUT, (char *)"LPLLQ",
                               addr, regsp, regsz, stack_top, ve_sp,
                               stack_buf, size);

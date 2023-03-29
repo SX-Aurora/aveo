@@ -25,16 +25,13 @@
 #include "Command.hpp"
 
 namespace veo {
-typedef std::unique_ptr<Command> CmdPtr;
 
 /**
  * @brief push a command to queue
  * @param cmd a pointer to a command to be pushed (sent).
  */
 void BlockingQueue::push(CmdPtr cmd) {
-  std::lock_guard<std::mutex> lock(this->mtx);
   this->queue.push_back(std::move(cmd));
-  this->cond.notify_all();
 }
 
 /**
@@ -44,28 +41,7 @@ void BlockingQueue::push(CmdPtr cmd) {
  * Needed when submit to URPC doesn't succeed.
  */
 void BlockingQueue::push_front(CmdPtr cmd) {
-  std::lock_guard<std::mutex> lock(this->mtx);
   this->queue.push_front(std::move(cmd));
-  this->cond.notify_all();
-}
-
-/**
- * @brief pop a command from queue
- * @return a pointer to a command to be poped (received).
- *
- * This function gets the first command in the queue.
- * If the queue is empty, this function blocks until a command is pushed.
- */
-CmdPtr BlockingQueue::pop() {
-  for (;;) {
-    std::unique_lock<std::mutex> lock(this->mtx);
-    if (!this->queue.empty()) {
-      auto rv = std::move(this->queue.front());
-      this->queue.pop_front();
-      return rv;
-    }
-    this->cond.wait(lock);
-  }
 }
 
 /**
@@ -76,7 +52,7 @@ CmdPtr BlockingQueue::pop() {
  *
  * This function is expected to be called from a thread holding lock.
  */
-CmdPtr BlockingQueue::tryFindNoLock(uint64_t msgid) {
+CmdPtr BlockingQueue::tryFind(uint64_t msgid) {
   for (auto &&it = this->queue.begin(); it != this->queue.end(); ++it) {
     if ((*it)->getID() == msgid) {
       auto rv = std::move(*it);
@@ -87,23 +63,7 @@ CmdPtr BlockingQueue::tryFindNoLock(uint64_t msgid) {
   return nullptr;
 }
 
-CmdPtr BlockingQueue::tryFind(uint64_t msgid) {
-  std::lock_guard<std::mutex> lock(this->mtx);
-  return this->tryFindNoLock(msgid);
-}
-
-CmdPtr BlockingQueue::wait(uint64_t msgid) {
-  for (;;) {
-    std::unique_lock<std::mutex> lock(this->mtx);
-    auto rv = this->tryFindNoLock(msgid);
-    if (rv != nullptr)
-      return rv;
-    this->cond.wait(lock);
-  }
-}
-
 CmdPtr BlockingQueue::popNoWait() {
-    std::unique_lock<std::mutex> lock(this->mtx);
     if (!this->queue.empty()) {
       auto command = std::move(this->queue.front());
       this->queue.pop_front();
@@ -118,55 +78,60 @@ CmdPtr BlockingQueue::popNoWait() {
  * @param req a pointer to a command to be pushed (sent)
  * @return zero upon pushing a request; one upon not pushing a request
  */
-int CommQueue::pushRequest(std::unique_ptr<Command> req)
+int CommQueue::pushRequest(CmdPtr req)
 {
-  if( this->request.getStatus() == VEO_QUEUE_READY ){
-    this->request.push(std::move(req));
-    return 0;
-  }
-  return 1;
+  std::lock_guard<std::mutex> lock(this->req_fli_mtx);
+  this->request.push(std::move(req));
+  return 0;
 }
 
-void CommQueue::pushRequestFront(std::unique_ptr<Command> req)
+void CommQueue::pushRequestFront(CmdPtr req)
 {
+  std::lock_guard<std::mutex> lock(this->req_fli_mtx);
   this->request.push_front(std::move(req));
 }
 
-std::unique_ptr<Command> CommQueue::popRequest()
+CmdPtr CommQueue::tryPopRequest()
 {
-  return this->request.pop();
-}
-
-std::unique_ptr<Command> CommQueue::tryPopRequest()
-{
+  std::lock_guard<std::mutex> lock(this->req_fli_mtx);
   return this->request.popNoWait();
 }
 
-void CommQueue::pushInFlight(std::unique_ptr<Command> cmd)
+bool CommQueue::waitRequest()
 {
+  std::unique_lock<std::mutex> lock(this->req_fli_mtx);
+  if (this->request.empty() && this->inflight.empty() && !this->terminateFlag)
+    this->req_fli_cond.wait(lock);
+  return !this->terminateFlag;
+}
+
+void CommQueue::pushInFlight(CmdPtr cmd)
+{
+  std::lock_guard<std::mutex> lock(this->req_fli_mtx);
   auto req = cmd.get()->getURPCReq();
   this->inflight.insert(req, std::move(cmd));
 }
 
-std::unique_ptr<Command> CommQueue::popInFlight(int64_t id)
+CmdPtr CommQueue::popInFlight(int64_t id)
 {
+  std::lock_guard<std::mutex> lock(this->req_fli_mtx);
   return this->inflight.tryFind(id);
 }
 
-void CommQueue::pushCompletion(std::unique_ptr<Command> req)
+void CommQueue::pushCompletion(CmdPtr req)
 {
   this->completion.insert(std::move(req));
 }
 
-std::unique_ptr<Command> CommQueue::peekCompletion(uint64_t msgid)
+CmdPtr CommQueue::peekCompletion(uint64_t msgid)
 {
   return this->completion.tryFind(msgid);
 }
 
-//std::unique_ptr<Command> CommQueue::waitCompletion(uint64_t msgid)
-//{
-//  return this->completion.wait(msgid);
-//}
+CmdPtr CommQueue::waitCompletion(uint64_t msgid)
+{
+  return this->completion.wait(msgid);
+}
 
 void CommQueue::cancelAll()
 {
@@ -185,4 +150,23 @@ void CommQueue::cancelAll()
     this->completion.insert(std::move(command));
   }
 }
+
+void CommQueue::notifyAll()
+{
+  std::unique_lock<std::mutex> lock(this->req_fli_mtx);
+  if (!this->request.empty())
+    this->req_fli_cond.notify_all();
+}
+
+void CommQueue::notifyAllForce()
+{
+  this->req_fli_cond.notify_all();
+}
+
+void CommQueue::terminate() {
+  std::unique_lock<std::mutex> lock(this->req_fli_mtx);
+  this->terminateFlag = true;
+  this->notifyAllForce();
+}
+
 } // namespace veo

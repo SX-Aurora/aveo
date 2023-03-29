@@ -65,12 +65,11 @@ private:
   std::unordered_set<uint64_t> rem_reqid; // TODO: move this away from here!
   std::mutex req_mtx;   //!< protects rem_reqid
   std::recursive_mutex submit_mtx;//!< for synchronous calls prohibit submission of new reqs
-  std::recursive_mutex prog_mtx;	// ensure that progress is not called concurrently
+  std::recursive_mutex prog_mtx;
+  void progress();
+  int _progress_nolock(bool);
+  pthread_t progress_thread;
   uint64_t count;
-
-  void _progress_nolock(int ops);
-  void progress(int ops);
-  void _synchronize_nolock();
   /**
    * @brief Issue a new request ID
    * @return a request ID, 64 bit integer, to identify a command
@@ -104,7 +103,7 @@ private:
     return true;
   }
 
-  uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>, bool sub=false);
+  uint64_t simpleCallAsync(uint64_t, std::vector<uint64_t>, uint64_t, size_t, bool, bool, void *, void *, std::function<void(void*)>);
   uint64_t doCallAsync(uint64_t, CallArgs &);
 
   // handlers for commands
@@ -131,11 +130,16 @@ public:
   int callPeekResult(uint64_t, uint64_t *);
   void synchronize();
 
+  bool progressInit();
+  void progressTerminate();
+  void progressExec();
+  bool waitProgress();
+
   uint64_t sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev);
   uint64_t recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev);
 
-  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size, bool sub=false);
-  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size, bool sub=false);
+  uint64_t asyncReadMem(void *dst, uint64_t src , size_t size);
+  uint64_t asyncWriteMem(uint64_t dst, const void *src, size_t size);
   int readMem(void *dst, uint64_t src , size_t size);
   int writeMem(uint64_t dst, const void *src, size_t size);
 
@@ -195,11 +199,14 @@ public:
                VEO_TRACE("[request #%d] urpcreq = %ld", id, req);
                if (req >= 0) {
                  cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
-               } else {
+               } else if (req == -EAGAIN) {
+		 VEO_TRACE("[request #%d] error return...", id);
+		 return -EAGAIN;
+	       } else {
                  // TODO: anything more meaningful into result?
                  cmd->setResult(0, VEO_COMMAND_ERROR);
                  VEO_TRACE("[request #%d] error return...", id);
-                 return -EAGAIN;
+                 return -1;
                }
                return 0;
              };
@@ -224,7 +231,7 @@ public:
                return 0;
              };
 
-    std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+    CmdPtr cmd(new internal::CommandImpl(id, f, u));
     {
       // Flagged to not store cmd results in completion queue.
       if (urpc_cmd == URPC_CMD_ACS_PCIRCVSYC) {
@@ -237,7 +244,8 @@ public:
         return VEO_REQUEST_ID_INVALID;
       VEO_TRACE("submitted [request #%lu]", id);
     }
-    this->progress(2);
+    this->progress();
+    this->comq.notifyAll();
     return id;
   }
 
