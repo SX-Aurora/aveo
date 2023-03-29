@@ -9,8 +9,8 @@ BUILD ?= ../build
 
 include ../make_aveo.inc
 
-LIBVEIO = /opt/nec/ve/lib/libveio.so
-LIBVEOHMEM = $(abspath $(VEDEST)/lib/libveohmem.so)
+LIBVEIO = libveio.so
+LIBVEOHMEM = libveohmem.so
 ifeq ($(VE_ARCH),ve3)
 	VEORUN_BIN ?= $(abspath $(DEST)/libexec/aveorun_ve3)
 else
