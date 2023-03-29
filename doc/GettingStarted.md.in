@@ -26,12 +26,20 @@ without modification of makefiles.
 To run programs, please install @PACKAGE@ and @PACKAGE@run 
 and the runtime packages of the compiler (2.2.2 or later).
 
-To install the packages to run programs by yum, execute the following
-command as root:
+To install the packages to run programs on the VE10, VE10E or VE20 by yum,
+execute the following command as root:
 
 ~~~
-# yum install @PACKAGE@ @PACKAGE@run
+# yum install @PACKAGE@ @PACKAGE@run-ve1
 ~~~
+
+To install the packages to run programs on the VE30 by yum,
+execute the following command as root:
+
+~~~
+# yum install @PACKAGE@ @PACKAGE@run-ve3
+~~~
+
 You need not uninstall veoffload and veoffload-veorun which are the
 packages of the previous VEO implementation. So, you can execute
 your program linked with the previous VEO implementation.
@@ -39,16 +47,24 @@ your program linked with the previous VEO implementation.
 
 ### Installing development package
 
-To develop programs, @PACKAGE@-devel and @PACKAGE@run-devel and
+To run develop programs, @PACKAGE@-devel and @PACKAGE@run-veN-devel and
 the development packages of the compiler (2.2.2 or later) are also
 required.
 
-To install the packages to develop programs by yum, execute the
-following command as root:
+To install the develop packages to run programs on the VE10, VE10E or VE20 by yum,
+execute the following command as root:
 
 ~~~
-# yum install @PACKAGE@-devel @PACKAGE@run-devel
+# yum install @PACKAGE@-devel @PACKAGE@run-ve1-devel
 ~~~
+
+To install the develop packages to run programs on the VE30 by yum,
+execute the following command as root:
+
+~~~
+# yum install @PACKAGE@-devel @PACKAGE@run-ve3-devel
+~~~
+
 veoffload-devel and veoffload-veorun-devel will be uninstalled
 automatically, because they conflict with @PACKAGE@-devel and
 @PACKAGE@run-devel.
@@ -62,7 +78,10 @@ First, let's try a "Hello, World!" program on VE.
 
 ### The required number of huge pages for VEO
 VEO requires huge pages for data transfer.
-The required number of huge pages 32 per VEO thread context.
+The required number of huge pages is 16 per VEO thread context by default.
+The number of huge pages required depends on the value of the VE_OMP_NUM_THREADS environment variable.
+If the environment variable VE_OMP_NUM_THREADS is not specified, VEO requires 16 pages per VE context.
+If the environment variable VE_OMP_NUM_THREADS is specified, VEO requires the value of VE_OMP_NUM_THREADS * 4 pages per VE context.
 
 ### VE code
 Code to run on VE is shown below. Standard C functions are available,

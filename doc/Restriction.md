@@ -1,16 +1,19 @@
 # Restrictions
 
-VEO requires 32 Huge Pages per VE context. Make sure the system is configured with huge pages by checking `/proc/meminfo`.
+When veo_proc_create() is invoked, multiple threads for a OpenMP program are created on VE side in the default context. If you do not use OpenMP, set the environment variable VE_OMP_NUM_THREADS=1.
+
+If using more VE contexts inside one proc, restrict the contexts to use only one OpenMP thread. Multiple contexts with multiple OpenMP threads do not work.
+
+The number of Huge Pages required varies depending on the value of the VE_OMP_NUM_THREADS environment variable.
+If the environment variable VE_OMP_NUM_THREADS is not specified, VEO requires 16 pages per VE context.
+If the environment variable VE_OMP_NUM_THREADS is specified, VEO requires the value of VE_OMP_NUM_THREADS * 4 pages per VE context.
+Make sure the system is configured with huge pages by checking `/proc/meminfo`.
 
 VEO does not support quadruple precision real number and variable length character strings as arguments of Fortran subroutines and functions.
 
 VEO does not support quadruple precision real number and variable length character strings as return values of Fortran functions.
 
 VEO does not support accelerated I/O. If you set the environment variable VE_ACC_IO=1 and use VEO, accelerated I/O remains unavailable.
-
-When veo_proc_create() is invoked, multiple threads for a OpenMP program are created on VE side in the default context. If you do not use OpenMP, set the environment variable VE_OMP_NUM_THREADS=1.
-
-If using more VE contexts inside one proc, restrict the contexts to use only one OpenMP thread. Multiple contexts with multiple OpenMP threads do not work.
 
 Synchronous APIs wait the completion of previous requests submitted by asynchronous APIs.
 Synchronous APIs are below:
