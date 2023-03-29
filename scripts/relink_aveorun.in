@@ -20,8 +20,10 @@ VEORUN=''
 VELIBDIR=${VELIBDIR:-@velibdir@}
 VELIBEXECDIR=${VELIBEXECDIR:-@libexecdir@}
 RPATH=@velibdir@
-default_LDFLAGS="-pthread -Wl,-rpath,$RPATH -lveio"
-default_CFLAGS=""
+OPT_ARCH=${OPT_ARCH:-@opt_arch@}
+OPT_ABI=${OPT_ABI:-@opt_abi@}
+default_LDFLAGS="-pthread -Wl,-rpath,$RPATH@dyn_linker@ -lveio"
+default_CFLAGS="$OPT_ARCH $OPT_ABI"
 is_openmp=0
 VERBOSE=
 while [ $# -gt 0 ]; do
@@ -90,9 +92,9 @@ else
   fi
 fi
 
-VECC=${VECC:-/opt/nec/ve/bin/ncc}
-VECXX=${VECXX:-/opt/nec/ve/bin/nc++}
-VEFC=${VEFC:-/opt/nec/ve/bin/nfort}
+VECC=${VECC:-@ncc_path@/ncc}
+VECXX=${VECXX:-@ncc_path@/nc++}
+VEFC=${VEFC:-@ncc_path@/nfort}
 # find an appropriage linker
 default_CCLD="$VECC"
 # try Fortran compiler
@@ -108,7 +110,7 @@ else
   fi
 fi
 
-NM=${NM:-nm}
+VENM=${VENM:-@ncc_path@/nnm}
 VECCLD=${VECCLD:-${default_CCLD}}
 CFLAGS="${CFLAGS:-${default_CFLAGS}} ${VERBOSE}"
 LDFLAGS=${LDFLAGS:-${default_LDFLAGS}}
@@ -120,7 +122,7 @@ trap "rm -f $SRC_FILE $OBJ_FILE" EXIT
 RELINKVEO_GEN=${RELINKVEO_GEN:-$VELIBEXECDIR/gen_veorun_static_symtable}
 RELINKVEO_LIB=${RELINKVEO_LIB:-$VELIBDIR/libaveoVE.a}
 
-$RELINKVEO_GEN "${LIBS[@]}" > $SRC_FILE
+$RELINKVEO_GEN "${VENM}" "${LIBS[@]}" > $SRC_FILE
 
 $VECC $CFLAGS -c $SRC_FILE -o $OBJ_FILE
 $VECCLD $CFLAGS -v -o $VEORUN $OBJ_FILE "${LIBS[@]}" "${EXTRA_LIBS[@]}" \

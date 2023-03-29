@@ -8,7 +8,7 @@ License: LGPL
 BuildRoot: %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 Source0: @PACKAGE@-@VERSION@.tar.gz
 Requires: veos
-Requires: @PACKAGE@run
+
 BuildRequires: vedebuginfo
 %if 0%{?rhel} == 8
 Requires: platform-python
@@ -31,22 +31,26 @@ This package includes header files of VE offloading Framework
 
 %define _prefix @PREFIX@
 %define _subprefix @SUBPREFIX@
+%define _subprefix_com /opt/nec/ve
 %define _libdir %{_prefix}/lib64
 %define _libexecdir %{_prefix}/libexec
 %define _includedir %{_prefix}/include
-%define _vebindir %{_subprefix}/bin
+%define _vebindir %{_subprefix_com}/bin
 %define _velibexecdir %{_subprefix}/libexec
 %define _velibdir %{_subprefix}/lib
 %define _unpackaged_files_terminate_build 0
 
 %prep
 %setup -q -n @PACKAGE@-@VERSION@
+%if 0%{?rhel} == 8
+       pathfix.py -pn -i /usr/bin/python3 $RPM_BUILD_DIR/@PACKAGE@-@VERSION@/scripts/gen_veorun_static_symtable
+%endif
 
 %build
-make all-vh DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
+make all-vh DEST=%{_prefix} VEDEST=%{_subprefix} VEDEST_COM=%{_subprefix_com} PREF=%{buildroot}
 
 %install
-make install-vh DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
+make install-vh DEST=%{_prefix} VEDEST=%{_subprefix} VEDEST_COM=%{_subprefix_com} PREF=%{buildroot}
 
 %post
 /sbin/ldconfig
@@ -54,6 +58,8 @@ make install-vh DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %files
 %{_libdir}/libveo.so.1
 %{_libdir}/libveo.so.1.0.0
+%{_vebindir}/mk_veorun_static
+%{_vebindir}/relink_aveorun
 
 %files devel
 %{_includedir}/ve_offload.h
@@ -63,3 +69,4 @@ make install-vh DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %{_includedir}/veo_vedma.h
 %{_includedir}/veo_veshm_defs.h
 %{_libdir}/libveo.so
+%{_libexecdir}/gen_veorun_static_symtable

@@ -1,7 +1,10 @@
-NCPP = /opt/nec/ve/bin/nc++
-NCC = /opt/nec/ve/bin/ncc
-NFORT = /opt/nec/ve/bin/nfort
-NAR = /opt/nec/ve/bin/nar
+VE_ARCH ?= ve1
+VEBIN ?= /opt/nec/ve/bin
+NCPP ?= $(VEBIN)/nc++
+NCC ?= $(VEBIN)/ncc
+NFORT ?= $(VEBIN)/nfort
+NAR ?= $(VEBIN)/nar
+
 GCC = gcc
 GPP = g++
 AR = ar
@@ -16,18 +19,32 @@ endif
 endif
 
 VEDEST?=$(DEST)
+VEDEST_COM?=$(DEST)
 
 INCL = -I$(BUILD)/include -I$(DEST)/include -I. -I$(URPC_INST_DIR)/include
 NINCL = -I$(BUILD)/include -I$(VEDEST)/include -I. -I$(URPC_INST_DIR)/include
 ifndef NOCPP17
-GPPFLAGS = -std=c++17 -pthread $(OPT) $(DEBUG) $(INCL)
+	GPPFLAGS = -std=c++17 -pthread $(OPT) $(DEBUG) $(INCL)
 else
-GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL) -DNOCPP17
+	GPPFLAGS = -std=gnu++11 -pthread $(OPT) $(DEBUG) $(INCL) -DNOCPP17
 endif
 GCCFLAGS = -std=c11 -pthread  $(OPT) $(DEBUG) $(INCL)
-NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
-NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions
-NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL)
+
+DYN_LINKER :=
+ifeq ($(VE_ARCH),ve3)
+	OPT_ARCH ?= -march=ve3
+	OPT_ABI ?= -mabi=2
+else
+#	OPT_ARCH ?= -march=ve1
+#	OPT_ABI ?= -mabi=1
+endif
+
+NCCFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions \
+  $(DYN_LINKER) $(OPT_ARCH) $(OPT_ABI)
+NFORTFLAGS = $(FTRACE) -pthread  $(OPT) $(DEBUG) $(NINCL) $(DYN_LINKLER) $(OPT_ARCH) $(OPT_ABI)
+NCPPFLAGS = $(FTRACE) -std=gnu++11 -pthread  $(OPT) $(DEBUG) $(NINCL) -finline -finline-functions \
+  $(OPT_ARCH) $(OPT_ABI)
+
 LDFLAGS = \
   -Wl,-rpath,$(DEST)/lib64 -L$(BLIB) -L$(PERF)$(DEST)/lib64 \
   -Wl,-rpath,$(URPC_INST_DIR)/lib64 -L$(URPC_INST_DIR)/lib64 \

@@ -3,12 +3,12 @@
 import subprocess
 import sys
 
-class VeoObjects(object):
-    NM = '/opt/nec/ve/bin/nnm'
+NM = sys.argv[1]
 
+class VeoObjects(object):
     def _load(self, objs):
         # addr type name
-        nm = subprocess.Popen([self.NM] + objs, stdout = subprocess.PIPE)
+        nm = subprocess.Popen([NM] + objs, stdout = subprocess.PIPE)
         if sys.version_info[0] > 2:
              s = [s[2] for s in [l.rstrip().decode('utf-8').split() for l in nm.stdout] \
              if len(s) == 3 and \
@@ -60,4 +60,4 @@ def main(libs):
     VeoObjects(libs).src(sys.stdout)
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv[2:])

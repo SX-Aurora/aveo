@@ -32,7 +32,7 @@
 
 #define VEO_REQUEST_ID_INVALID (~0UL)
 
-#define CMD_VEGDB "/opt/nec/ve/bin/gdb"
+#define CMD_VEGDB "/opt/nec/ve/bin/ve-gdb"
 #define CMD_XTERM "/usr/bin/xterm"
 
 #include <stdint.h>
@@ -152,6 +152,7 @@ int veo_hmemcpy(void *, const void *, size_t);
 int veo_args_set_hmem(struct veo_args *, int, void *);
 
 int veo_get_venum_from_hmem(const void *);
+int veo_get_ve_arch(int ve_node_numember);
 
 void veo_register_hmem_hook_functions(void (*)(void *, size_t), void (*)(uint64_t));
 void veo_unregister_hmem_hook_functions();

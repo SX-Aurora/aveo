@@ -58,12 +58,22 @@ install-vh: all-vh $(PREPAREINSTALLVH)
 
 # -- rules for RPM build
 
+
+ifeq ($(VE_ARCH),ve3)
+edit = sed -e "s,@PACKAGE@,$(PACKAGE)," -e "s,@VERSION@,$(VERSION)," \
+		-e "s,@VENDOR@,$(VENDOR)," \
+		-e "s,@PREFIX@,/opt/nec/ve/veos," \
+		-e "s,@SUBPREFIX@,/opt/nec/ve3," \
+		-e "s,@RELEASE@,$(RELEASE),"
+#		-e "s,@PREFIX@,/usr/local/ve/$(PACKAGE)-$(VERSION),"
+else
 edit = sed -e "s,@PACKAGE@,$(PACKAGE)," -e "s,@VERSION@,$(VERSION)," \
 		-e "s,@VENDOR@,$(VENDOR)," \
 		-e "s,@PREFIX@,/opt/nec/ve/veos," \
 		-e "s,@SUBPREFIX@,/opt/nec/ve," \
 		-e "s,@RELEASE@,$(RELEASE),"
 #		-e "s,@PREFIX@,/usr/local/ve/$(PACKAGE)-$(VERSION),"
+endif
 
 aveo.spec: aveo.spec.in
 	$(edit) $< > $@
@@ -83,8 +93,8 @@ $(TARBALL): aveo.spec $(CWD)/prereqs/ve-urpc/.git
 rpm: $(TARBALL) aveo.spec aveorun.spec
 	mkdir -p ${RPMBUILD_DIR}/SOURCES
 	cp $(TARBALL) ${RPMBUILD_DIR}/SOURCES
-	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveo.spec
-	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -ba aveorun.spec
+	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -D "%_ve_arch ${VE_ARCH}" -ba aveo.spec
+	rpmbuild -D "%_topdir $(RPMBUILD_DIR)" -D "%_ve_arch ${VE_ARCH}" -ba aveorun.spec
 
 .PHONY: aveo.spec aveorun.spec $(TARBALL) rpm
 

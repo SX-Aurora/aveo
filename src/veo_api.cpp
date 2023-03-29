@@ -19,6 +19,8 @@
 #include "veo_hmem_macros.h"
 #include "veo_api.hpp"
 
+#include "veo_get_arch_info.h"
+
 extern "C" { extern const char *AVEO_VERSION; }
 
 using veo::api::ProcHandleFromC;
@@ -40,6 +42,8 @@ static void _alloc_hmem_async_hook(void *, ...);
 static void _free_hmem_async_hook(void *, ...);
 static uint64_t _alloc_mem_async_hook(void*);
 static uint64_t _free_mem_async_hook(void*);
+static int set_venode_from_env(int);
+
 
 // implementation of VEO API functions
 /**
@@ -101,68 +105,10 @@ const char *veo_version_string()
  */
 veo_proc_handle *veo_proc_create_static(int venode, char *tmp_veobin)
 {
-  if (venode < -1) {
-    VEO_ERROR("venode(%d) is an invalid value.", venode);
-    return NULL;
-  }
   try {
-    const char *venodelist = getenv("_VENODELIST");
-    if (venodelist != nullptr) {
-      // _VENODELIST is set
-      std::string str = std::string(venodelist);
-      std::vector<std::string> v;
-      std::stringstream ss(str);
-      std::string buffer;
-      char sep = ' ';
-      while(std::getline(ss, buffer, sep)) {
-        v.push_back(buffer);
-      }
-      if (venode == -1) {
-        const char *venodenum = getenv("VE_NODE_NUMBER");
-        if (venodenum != nullptr) {
-          // If VE_NODE_NUMBER is set, check is's value is in _VENODELIST
-          venode = stoi(std::string(venodenum));
-          int found = 0;
-          for (unsigned int i=0; i < v.size(); i++) {
-            if (stoi(v[i]) == venode) {
-              found = 1;
-              break;
-            }
-          }
-          if (found == 0) {
-            VEO_ERROR("VE node #%d is not assigned by the scheduler",
-                      venode);
-            return NULL;
-          }
-        } else {
-          // If VE_NODE_NUMBER is not set, use the first value in _VENODELIST
-          if (v.size() > 0) 
-            venode = stoi(v[0]);
-          else { 
-            VEO_ERROR("_VENODELIST is empty.", NULL);
-            return NULL;
-          }
-        }
-      } else {
-	// translate venode using _VENODELIST
-        if ((int)v.size() <= venode) {
-          VEO_ERROR("venode = %d exceeds the size of _VENDOELIST %d", venode, v.size());
-          return NULL;
-        }
-        venode = stoi(v[venode]);
-      }
-    } else {
-      // _VENODELIST is not set
-      if (venode == -1) {
-        const char *venodenum = getenv("VE_NODE_NUMBER");
-        if (venodenum != nullptr) {
-          venode = stoi(std::string(venodenum));
-        } else {
-          venode = 0;
-        }
-      }
-    }
-
+    venode = set_venode_from_env(venode);
+    if (venode < -1)
+      return NULL;
     // 4 is the total number of spaces and the \0
     size_t veobin_size = strlen(tmp_veobin) + strlen(CMD_VEGDB)
                          + strlen(CMD_XTERM) + strlen("-e") + 4;
@@ -234,8 +180,12 @@ veo_proc_handle *veo_proc_create(int venode)
   char *veobin = getenv("VEORUN_BIN");
   if (veobin != nullptr)
     return veo_proc_create_static(venode, veobin);
-  else
-    return veo_proc_create_static(venode, (char *)VEORUN_BIN);
+  else {
+    if (veo_arch_number_sysfs(-1) == 3)
+      return veo_proc_create_static(venode, (char *)VEORUN_BIN_VE3);
+    else
+      return veo_proc_create_static(venode, (char *)VEORUN_BIN_VE1);
+  }
 }
 
 /**
@@ -1638,4 +1588,109 @@ pid_t veo_get_pid_from_hmem(const void *addr){
   return pid;
 }
 
+/**
+ * @brief get the architecture of the specified VE node.
+ *
+ * @param [in] ve_node_number VE node number
+ * @retval > 0 VE architecture number
+ * @retval 0 invalid argument or environment variable
+ * @retval -1 internal error
+ */
+int veo_get_ve_arch(int venode)
+{
+  try {
+    venode = set_venode_from_env(venode);
+    if (venode >= -1)
+      return veo_arch_number_sysfs(venode);
+    else
+      return 0;
+  } catch (std::invalid_argument &e) {
+    VEO_ERROR("failed to get VE arch: %s", e.what());
+    return -1;
+  } catch (std::out_of_range &e) {
+    VEO_ERROR("failed to get VE arch: %s", e.what());
+    return -1;
+  } catch (VEOException &e) {
+    VEO_ERROR("failed to get VE arch: %s", e.what());
+    return -1;
+  }
+}
+
+/*
+ * This function returns venode.
+ * If venode is -1, this function returns the value specified by
+ * environment variable VE_NODE_NUMBER. If venode is -1 and
+ * environment variable VE_NODE_NUMBER is not set, this function returns 0.
+ *
+ * A user executes the program which invokes this function through the
+ * job scheduler, the value specified by venode will be treated as a
+ * logical VE node number. It will be translated into physical VE node
+ * number assigned by the job scheduler. If venode is -1, the first VE
+ * node of the VE nodes assigned by the job scheduler is used.
+ * 
+ * @return >= -1 upon success; -2 upon failure.
+ */
+static int set_venode_from_env(int venode)
+{
+  if (venode < -1) {
+    VEO_ERROR("venode(%d) is an invalid value.", venode);
+    return -2;
+  }
+  const char *venodelist = getenv("_VENODELIST");
+  if (venodelist != nullptr) {
+    // _VENODELIST is set
+    std::string str = std::string(venodelist);
+    std::vector<std::string> v;
+    std::stringstream ss(str);
+    std::string buffer;
+    char sep = ' ';
+    while(std::getline(ss, buffer, sep)) {
+      v.push_back(buffer);
+    }
+    if (venode == -1) {
+      const char *venodenum = getenv("VE_NODE_NUMBER");
+      if (venodenum != nullptr) {
+        // If VE_NODE_NUMBER is set, check is's value is in _VENODELIST
+        int found = 0;
+        for (unsigned int i=0; i < v.size(); i++) {
+          if (stoi(v[i]) == stoi(std::string(venodenum))) {
+            found = 1;
+            break;
+          }
+        }
+        venode = stoi(std::string(venodenum));
+        if (found == 0) {
+          VEO_ERROR("VE node #%d is not assigned by the scheduler",
+                    venode);
+          return -2;
+        }
+      } else {
+        // If VE_NODE_NUMBER is not set, use the first value in _VENODELIST
+        if (v.size() > 0)
+          venode = stoi(v[0]);
+        else {
+          VEO_ERROR("_VENODELIST is empty.", NULL);
+          return -2;
+        }
+      }
+    } else {
+      // translate venode using _VENODELIST
+      if ((int)v.size() <= venode) {
+        return -2;
+      }
+      venode = stoi(v[venode]);
+    }
+  } else {
+    // _VENODELIST is not set
+    if (venode == -1) {
+      const char *venodenum = getenv("VE_NODE_NUMBER");
+      if (venodenum != nullptr) {
+        venode = stoi(std::string(venodenum));
+      } else {
+        venode = 0;
+      }
+    }
+  }
+  return venode;
+}
 //@}
