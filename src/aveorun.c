@@ -158,6 +158,8 @@ int main()
       return 1;
     }
   }
+  dlopen("libnc++.so.2", RTLD_NOW | RTLD_GLOBAL);
+  dlopen("libc++.so.1-2", RTLD_NOW | RTLD_GLOBAL);
 
   main_up = ve_urpc_init(0);
   if (main_up == NULL)
