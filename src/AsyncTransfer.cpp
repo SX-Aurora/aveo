@@ -61,11 +61,14 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
                                          dst, src, size);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
+             } else if (req == -EAGAIN) {
+               VEO_TRACE("[request #%d] error return...", id);
+               return -EAGAIN;
              } else {
                // TODO: anything more meaningful into result?
                cmd->setResult(0, VEO_COMMAND_ERROR);
                VEO_TRACE("[request #%d] error return...", id);
-               return -EAGAIN;
+               return -1;
              }
              return 0;
            };
@@ -95,7 +98,7 @@ Context::sendBuffAsync(uint64_t dst, void *src, size_t size, uint64_t prev)
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
@@ -133,11 +136,15 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
                                          src, (uint64_t)dst, size);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
+             } else if (req == -EAGAIN) {
+               VEO_TRACE("[request #%d] error return...", id);
+               return -EAGAIN;
              } else {
                // TODO: anything more meaningful into result?
                cmd->setResult(0, VEO_COMMAND_ERROR);
-               return -EAGAIN;
-             }
+	       VEO_TRACE("[request #%d] error return...", id);
+	       return -1;
+	     }
              return 0;
            };
 
@@ -157,10 +164,12 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
                VEO_ERROR("mismatch: dst=%lx sent_dst=%lx", (uint64_t)dst, sent_dst);
                printf("debug with : gdb -p %d\n", getpid());
                sleep(60);
+               cmd->setResult(-URPC_CMD_RECVBUFF, VEO_COMMAND_EXCEPTION);
                return -1;
              }
              if (size != buffsz) {
                VEO_ERROR("mismatch: size=%lu sent_size=%lu", size, buffsz);
+               cmd->setResult(-URPC_CMD_RECVBUFF, VEO_COMMAND_EXCEPTION);
                return -1;
              }
              memcpy((void *)dst, buff, buffsz);
@@ -179,7 +188,7 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
@@ -197,7 +206,7 @@ Context::recvBuffAsync(void *dst, uint64_t src, size_t size, uint64_t prev)
  * @param sub This function is called as a sub-part of a request
  * @return request ID
  */
-uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
+uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size)
 {
   VEO_TRACE("asyncReadMem enter...");
   if(!this->is_alive())
@@ -211,14 +220,13 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
                cmd->setResult(0, VEO_COMMAND_OK);
                return 0;
              };
-    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    CmdPtr req(new internal::CommandImpl(id, f));
     {
       std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    if (sub == false)
-      this->progress(2);
+    this->comq.notifyAll();
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -227,6 +235,9 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
   const char* cut_p = std::getenv("VEO_RECVCUT");
   size_t maxfrag = PART_SENDFRAG;
   size_t cutsz = 2 * 1024 * 1024;
+
+  if (urpc_max_send_cmd_size(this->up) < 2 * maxfrag)
+    maxfrag = 1 * 1024 * 1024;
 
   if (env_p)
     maxfrag = atoi(env_p);
@@ -247,7 +258,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
   char *s = (char *)src;
   char *d = (char *)dst;
   uint64_t prev = VEO_REQUEST_ID_INVALID;
-
+  bool flg = false;
   while (rsize > 0) {
     psz = rsize <= maxfrag ? rsize : maxfrag;
     auto req = recvBuffAsync((void *)d, (uint64_t)s, psz, prev);
@@ -260,9 +271,12 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
     rsize -= psz;
     s += psz;
     d += psz;
-    if (sub == false)
-      this->progress(2);
+    if (flg == false) {
+      this->progress();
+      flg = true;
+    }
   }
+  this->comq.notifyAll();
   return prev;
 }
 
@@ -276,7 +290,7 @@ uint64_t Context::asyncReadMem(void *dst, uint64_t src, size_t size, bool sub)
  * @return request ID
  */
 uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
-				size_t size, bool sub)
+				size_t size)
 {
   VEO_TRACE("src=%p dst=%p size=%lu", src, (void *)dst, size);
   if(!this->is_alive())
@@ -290,14 +304,13 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
                cmd->setResult(0, VEO_COMMAND_OK);
                return 0;
              };
-    std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+    CmdPtr req(new internal::CommandImpl(id, f));
     {
       std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
       if(this->comq.pushRequest(std::move(req)))
         return VEO_REQUEST_ID_INVALID;
     }
-    if (sub == false)
-      this->progress(2);
+    this->comq.notifyAll();
     VEO_TRACE("asyncWriteMem leave...\n");
     return id;
   }
@@ -307,6 +320,10 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
   size_t maxfrag = PART_SENDFRAG;
   size_t cutsz = 2 * 1024 * 1024;
 
+  if (urpc_max_send_cmd_size(this->up) < 2 * maxfrag)
+    maxfrag = 1 * 1024 * 1024;
+
+  bool flg = false;
   if (env_p)
     maxfrag = atoi(env_p);
   if (cut_p)
@@ -339,9 +356,12 @@ uint64_t Context::asyncWriteMem(uint64_t dst, const void *src,
     rsize -= psz;
     s += psz;
     d += psz;
-    if (sub == false)
-      this->progress(2);
+    if (flg == false) {
+      this->progress();
+      flg = true;
+    }
   }
+  this->comq.notifyAll();
   return prev;
 }
 } // namespace veo

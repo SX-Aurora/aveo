@@ -8,6 +8,10 @@ using veo::CallArgs;
 
 namespace veo {
 
+// The maximum size of arguments we can send using URPC_CMD_CALL_STKxx.
+// 40 is the size to send message with "LPLLP" or "LPLLQ"
+#define SEND_CALL_CMD_SIZE_WITHOUT_DATA 40
+
 int64_t send_call_nolock(urpc_peer_t *up, uint64_t ve_sp, uint64_t addr,
                          std::vector<uint64_t> const &regs,
                          uint64_t stack_top, size_t stack_size,

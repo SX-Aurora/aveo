@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function compile_check()
+{
+        AVEO_BINDIR=/opt/nec/ve/bin
+        NCC=${AVEO_BINDIR}/ncc
+        SRC_FILE=$(mktemp /tmp/helloXXXXXXX.c)
+        trap "rm -f $SRC_FILE" EXIT
+        echo "int main(void){ return 0; }" > ${SRC_FILE}
+        ${NCC} ${1} ${2} ${SRC_FILE}
+        RET=$?
+        return ${RET}
+}
+
+CONFFILE=/etc/opt/nec/ve/default.conf
+source ${CONFFILE}
+
+if [ "${ARCH}" = "ve3" ]; then
+        compile_check -march=ve3 -mabi=2
+        if [ ${RET} -ne 0 ]; then
+                export OPT_ARCH=""
+                export OPT_ABI=""
+        fi
+        ${AVEO_BINDIR}/mk_veorun_static_ve3 $@
+else
+        compile_check -march=ve1 -mabi=1
+        if [ ${RET} -ne 0 ]; then
+                export OPT_ARCH=""
+                export OPT_ABI=""
+        fi
+        ${AVEO_BINDIR}/mk_veorun_static_ve1 $@
+fi

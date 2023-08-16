@@ -74,12 +74,12 @@ $(BB)/%_ftrace.so: $(BVE)/%_ftrace.o  | $$(@D)/
 	$(NCC) $(NCCFLAGS) -ftrace -shared -fpic $(NLDFLAGS) -o $@ $< -lveftrace
 
 $(BB)/veorun_%: $(BVE)/libve%.o | $$(@D)/
-	if [ -x $(BLIBEX)/relink_aveorun ]; then \
+	if [ -x $(BLIBEX)/relink_aveorun_$(VE_ARCH) ]; then \
 		env VELIBEXECDIR=$(BLIBEX) \
 		    VELIBDIR=$(BVELIB) \
-		    $(BLIBEX)/relink_aveorun $@ -fopenmp $< ; \
+		    $(BLIBEX)/relink_aveorun_$(VE_ARCH) $@ -fopenmp $< ; \
 	else \
-		$(DEST)/libexec/mk_veorun_static $@ -fopenmp $< ; \
+		$(DEST)/libexec/mk_veorun_static_$(VE_ARCH) $@ -fopenmp $< ; \
 	fi
 
 

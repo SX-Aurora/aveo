@@ -20,6 +20,12 @@
  *      Date,
  *      Updates/Remarks
  * @par
+ *      Rev.12,
+ *      Mar. 2023,
+ * @n   This revision covers veoffload-aveo-3.0.2 or later.
+ * @n   Updated installation instructions.
+ * @n   Updated restrictions of the required number of huge pages for VEO.
+ * @par
  *      Rev.11,
  *      Nov. 2022,
  * @n   This revision covers veoffload-aveo-2.13.0 or later.

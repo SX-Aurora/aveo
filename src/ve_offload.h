@@ -25,14 +25,14 @@
 #ifndef _VE_OFFLOAD_H_
 #define _VE_OFFLOAD_H_
 
-#define VEO_API_VERSION 15
+#define VEO_API_VERSION 16
 #define VEO_SYMNAME_LEN_MAX (255)
 #define VEO_LOG_CATEGORY "veos.veo.veo"
 #define VEO_MAX_NUM_ARGS (256)
 
 #define VEO_REQUEST_ID_INVALID (~0UL)
 
-#define CMD_VEGDB "/opt/nec/ve/bin/gdb"
+#define CMD_VEGDB "/opt/nec/ve/bin/ve-gdb"
 #define CMD_XTERM "/usr/bin/xterm"
 
 #include <stdint.h>
@@ -152,6 +152,7 @@ int veo_hmemcpy(void *, const void *, size_t);
 int veo_args_set_hmem(struct veo_args *, int, void *);
 
 int veo_get_venum_from_hmem(const void *);
+int veo_get_ve_arch(int ve_node_numember);
 
 void veo_register_hmem_hook_functions(void (*)(void *, size_t), void (*)(uint64_t));
 void veo_unregister_hmem_hook_functions();

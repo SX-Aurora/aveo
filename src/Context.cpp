@@ -38,13 +38,46 @@
 #include "CommandImpl.hpp"
 #include "VEOException.hpp"
 #include "log.h"
-
 #include "veo_urpc_vh.hpp"
 
 namespace veo {
 
+/**
+ * @brief progress thread.
+ *
+ * progress() execute asynchronously.
+ */
+void *progress_main(void *arg)
+{
+  Context* ctx = (Context*)arg;
+
+  while(ctx->waitProgress()) {
+    // Call progress() until request queues and inflight queues are empty.
+    ctx->progressExec();
+    if (ctx->getState() == VEO_STATE_EXIT)
+      break;
+
+  }
+
+  pthread_exit(0);
+}
+
+/**
+ * @brief dummy function for synchronization.
+ *
+ * It synchronizes by registering this on context and waiting for this completed.
+ */
+unsigned long synchronize_func(void *arg)
+{
+  return 0;
+}
+
 Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
-  proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0) {}
+  proc(p), up(up), state(VEO_STATE_UNKNOWN), is_main(is_main), seq_no(0),
+  count(0)
+{
+  progress_thread = (pthread_t)-1;
+}
 
 /**
  * @brief close this context
@@ -57,6 +90,8 @@ Context::Context(ProcHandle *p, urpc_peer_t *up, bool is_main):
 int Context::close()
 {
   VEO_TRACE("ctx=%p", this);
+  // Progress thread terminates.
+  this->progressTerminate();
   if (!this->is_alive())
     return 0;
   this->state = VEO_STATE_EXIT;
@@ -83,11 +118,37 @@ int Context::close()
 }
 
 /**
+ * @brief Progress function for asynchronous calls
+ *
+ * @param ops number of operations. zero: as many as possible
+ *
+ * Check if any URPC request has finished.
+ * If yes, pop a cmd from inflight queue, receive its result.
+ * Push a new command, if any.
+ * Repeat.
+ */
+void Context::progress()
+{
+  //VEO_TRACE("start");
+
+  //If there are in-flight reqeuests, the progress thread should handle requests.
+  if (!this->comq.emptyInFlight())
+    return;
+
+  //std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
+  if (this->prog_mtx.try_lock()) {
+    _progress_nolock(false);
+    this->prog_mtx.unlock();
+  }
+  //VEO_TRACE("end");
+}
+
+/**
  * @brief worker function for progress
  *
  *
  */
-void Context::_progress_nolock(int ops)
+int Context::_progress_nolock(bool execVH)
 {
   urpc_comm_t *uc = &this->up->recv;
   transfer_queue_t *tq = uc->tq;
@@ -127,7 +188,7 @@ void Context::_progress_nolock(int ops)
         this->state = VEO_STATE_EXIT;
         this->comq.cancelAll();
         VEO_ERROR("Internal error on executing a command(%d)", rv);
-        return;
+        return -1;
       }
       // continue receiving replies
       // We need this until we can manage buffer memory pressure
@@ -141,7 +202,7 @@ void Context::_progress_nolock(int ops)
     auto cmd = std::move(this->comq.tryPopRequest());
     if (cmd) {
       if (cmd->isVH()) {
-        if (this->comq.emptyInFlight()) {
+        if (this->comq.emptyInFlight() && execVH) {
           //
           // call command "submit function"
           //
@@ -152,6 +213,7 @@ void Context::_progress_nolock(int ops)
         } else {
           //VEO_TRACE("delaying VH cmd submit because VE cmds in flight");
           this->comq.pushRequestFront(std::move(cmd));
+          return 1;
         }
       } else {
         //
@@ -161,7 +223,9 @@ void Context::_progress_nolock(int ops)
         if (rv == 0) {
           ++sent;
           this->comq.pushInFlight(std::move(cmd));
-        } else {
+        } else if (rv == -EAGAIN) {
+	  this->comq.pushRequestFront(std::move(cmd));
+	} else {
           cmd->setResult(rv, VEO_COMMAND_ERROR);
           this->comq.pushCompletion(std::move(cmd));
           VEO_ERROR("submit function failed(%d)", rv);
@@ -181,74 +245,89 @@ void Context::_progress_nolock(int ops)
             this->state = VEO_STATE_EXIT;
             this->comq.cancelAll();
             VEO_ERROR("Internal error.");
-            return;
+            return -1;
           }
         } else { // aveorun has already terminated.
           this->state = VEO_STATE_EXIT;
           this->comq.cancelAll();
           //VEO_ERROR("Internal error.");
-          return;
+          return -1;
         }
       }
       this->count = this->count + 1;
     }
-  } while((recvd + sent > 0) && (recvd + sent < ops));
+  } while((recvd + sent > 0));
   //VEO_TRACE("end");
+  return 0;
 }
 
 /**
- * @brief Progress function for asynchronous calls
+ * @brief progress thread initializes.
  *
- * @param ops number of operations. zero: as many as possible
- *
- * Check if any URPC request has finished.
- * If yes, pop a cmd from inflight queue, receive its result.
- * Push a new command, if any.
- * Repeat.
+ * Progress thread creates and starts.
  */
-void Context::progress(int ops)
+bool Context::progressInit()
 {
-  //VEO_TRACE("start");
-  //std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
-  if (this->prog_mtx.try_lock()) {
-    _progress_nolock(ops);
-    this->prog_mtx.unlock();
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, progress_main, (void*)this) != 0) {
+    return false;
   }
-  //VEO_TRACE("end");
+  this->progress_thread = thread;
+  return true;
+}
+
+/**
+ * @brief progress thread terminates.
+ *
+ * Wait until progress thread termination.
+ */
+void Context::progressTerminate()
+{
+  if (this->progress_thread != (pthread_t)-1) {
+    // Wake the progress thread
+    this->comq.terminate();
+
+    // Wait until thread termination.
+    void* ret;
+    pthread_join(this->progress_thread, &ret);
+    this->progress_thread = (pthread_t)-1;
+  }
+}
+
+/**
+ * @brief wait command queues.
+ *
+ * Wait while request queue and inflight queues are empty.
+ */
+bool Context::waitProgress()
+{
+  return this->comq.waitRequest();
+}
+
+void Context::progressExec()
+{
+  std::lock_guard<std::recursive_mutex> lock(this->prog_mtx);
+  while (this->comq.isActive())
+    this->_progress_nolock(true);
 }
 
 /**
  * @brief Synchronize this context.
  *
  * Block other threads from submitting requests to this context,
- * call progress() until request queue and inflight queues are empty.
+ * Call progress() until request queue and inflight queues are empty.
  */
 void Context::synchronize()
 {
   //VEO_TRACE("start");
-  std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
-  this->_synchronize_nolock();
+  uint64_t req_id = this->callVHAsync(&synchronize_func, (void*)0);
+  if (req_id != 0) {
+    uint64_t ret;
+    this->callWaitResult(req_id, &ret);
+  }
   //VEO_TRACE("end");
 }
   
-/**
- * @brief The actual synchronize work function
- *
- * This function should only be called with the main_mutex locked!
- */
-void Context::_synchronize_nolock()
-{
-  //VEO_TRACE("start");
-  this->prog_mtx.lock();
-  while(!(this->comq.emptyRequest() && this->comq.emptyInFlight())) {
-    this->prog_mtx.unlock();
-    this->progress(10000000);
-    this->prog_mtx.lock();
-  }
-  this->prog_mtx.unlock();
-  //VEO_TRACE("end");
-}
-
 /**
  * @brief Retrieve the stack pointer of a context thread on VE
  *
@@ -318,11 +397,11 @@ int Context::callSync(uint64_t addr, CallArgs &args, uint64_t *result)
  * @param copyout_func
  * @param sub This function is called as a sub-part of a request
  * @return request ID
- * @note the size of args need to be less than or equal to MAX_ARGS_STACK_SIZE
+ * @note the size of args need to be less than or equal to max_args_size
  * @note The caller must invoke args.setup()
  */
 uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uint64_t stack_top, size_t stack_size,
-                                  bool copyin, bool copyout, void *stack, void *stack_, std::function<void(void*)> copyout_func, bool sub)
+                                  bool copyin, bool copyout, void *stack, void *stack_, std::function<void(void*)> copyout_func)
 {
   VEO_TRACE("VE function %lx", addr);
   if ( addr == 0 || !this->is_alive())
@@ -343,10 +422,13 @@ uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uin
              VEO_TRACE("[request #%d] VE-URPC req ID = %ld", id, req);
              if (req >= 0) {
                cmd->setURPCReq(req, VEO_COMMAND_UNFINISHED);
+             } else if (req == -EAGAIN) {
+               VEO_TRACE("[request #%d] error return...", id);
+               return -EAGAIN;
              } else {
                // TODO: anything more meaningful into result?
                cmd->setResult(0, VEO_COMMAND_ERROR);
-               return -EAGAIN;
+               return -1;
              }
              return 0;
            };
@@ -371,14 +453,14 @@ uint64_t Context::simpleCallAsync(uint64_t addr, std::vector<uint64_t> regs, uin
              return 0;
            };
 
-  std::unique_ptr<Command> cmd(new internal::CommandImpl(id, f, u));
+  CmdPtr cmd(new internal::CommandImpl(id, f, u));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     if(this->comq.pushRequest(std::move(cmd)))
       return VEO_REQUEST_ID_INVALID;
   }
-  if (sub == false)
-    this->progress(3);
+  this->progress();
+  this->comq.notifyAll();
   return id;
 }
 
@@ -416,9 +498,14 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
   char *stack = args.stack_buf;
   args.stack_buf = nullptr;
   auto copyout_func = args.copyout();
+  // SEND_CALL_CMD_SIZE_WITHOUT_DATA is 40.
+  // The maximum size of arguments we can send using URPC_CMD_CALL_STKxx.
+  // 40 is the size to send message with "LPLLP" or "LPLLQ"
+  int64_t max_args_size = urpc_max_send_cmd_size(this->up)
+                          - SEND_CALL_CMD_SIZE_WITHOUT_DATA;
 
   if (!(copyin || copyout) ||
-      (args.stack_size <= MAX_ARGS_STACK_SIZE - reg_args_sz)) {
+      (args.stack_size <= max_args_size - reg_args_sz)) {
     VEO_TRACE("callAsync simple case");
     VEO_TRACE("VE function %lx", addr);
     // alive check and addr check was done before.
@@ -429,11 +516,11 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
 
   //VEO_TRACE("callAsync large arguments");
   uint64_t extra_stk = (uint64_t)stack_top
-    + MAX_ARGS_STACK_SIZE - reg_args_sz;
+    + max_args_size - reg_args_sz;
   void *extra_buf = (char *)stack
-    + MAX_ARGS_STACK_SIZE - reg_args_sz;
+    + max_args_size - reg_args_sz;
   uint64_t extra_size = (uint64_t)stack_size
-    - MAX_ARGS_STACK_SIZE + reg_args_sz;
+    - max_args_size + reg_args_sz;
 
   uint64_t writereq = VEO_REQUEST_ID_INVALID;
   uint64_t callreq = VEO_REQUEST_ID_INVALID;
@@ -441,20 +528,20 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
 
   std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
   if (copyin) {
-    writereq = this->asyncWriteMem(extra_stk, extra_buf, extra_size, true);
+    writereq = this->asyncWriteMem(extra_stk, extra_buf, extra_size);
     if (writereq == VEO_REQUEST_ID_INVALID) {
       VEO_ERROR("Writing memory failed!.");
     }
   }
 
   callreq = this->simpleCallAsync(addr, regs, stack_top, stack_size,
-				  copyin, copyout, stack, stack, nullptr, true);
+				  copyin, copyout, stack, stack, nullptr);
   if (callreq == VEO_REQUEST_ID_INVALID) {
     VEO_ERROR("Calling a function failed!.");
   }
 
   if (copyout) {
-    readreq = this->asyncReadMem(extra_buf, extra_stk, extra_size, true);
+    readreq = this->asyncReadMem(extra_buf, extra_stk, extra_size);
     if (readreq == VEO_REQUEST_ID_INVALID) {
       VEO_ERROR("Reading memory failed!.");
     }
@@ -496,14 +583,14 @@ uint64_t Context::doCallAsync(uint64_t addr, CallArgs &args)
              cmd->setResult(result, VEO_COMMAND_OK);
              return 0;
            };
-  std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+  CmdPtr req(new internal::CommandImpl(id, f));
   {
     if(this->comq.pushRequest(std::move(req)))
       return VEO_REQUEST_ID_INVALID;
   }
-  this->progress(3);
   //VEO_TRACE("callAsync leave...\n");
-  
+  this->progress();
+  this->comq.notifyAll();
   return id;
 }
 
@@ -562,12 +649,12 @@ uint64_t Context::callVHAsync(uint64_t (*func)(void *), void *arg)
              VEO_TRACE("[request #%lu] done", id);
              return 0;
            };
-  std::unique_ptr<Command> req(new internal::CommandImpl(id, f));
+  CmdPtr req(new internal::CommandImpl(id, f));
   {
     std::lock_guard<std::recursive_mutex> lock(this->submit_mtx);
     this->comq.pushRequest(std::move(req));
+    this->comq.notifyAll();
   }
-  this->progress(2);
   return id;
 }
 
@@ -600,7 +687,10 @@ int Context::_peekResult(uint64_t reqid, uint64_t *retp)
  */
 int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
 {
-  this->progress(3);
+  if (this->prog_mtx.try_lock()) {
+    _progress_nolock(false);
+    this->prog_mtx.unlock();
+  }
   return this->_peekResult(reqid, retp);
 }
 
@@ -616,32 +706,39 @@ int Context::callPeekResult(uint64_t reqid, uint64_t *retp)
  */
 int Context::callWaitResult(uint64_t reqid, uint64_t *retp)
 {
-  VEO_TRACE("req %lu", reqid);
-#if 1
-  //
-  // polling here because we need to call the progress function!
-  //
   int rv;
-  do {
-    rv = this->callPeekResult(reqid, retp);
-  } while (rv == VEO_COMMAND_UNFINISHED);
-  return rv;
-#else
-  req_mtx.lock();
-  auto itr = rem_reqid.find(reqid);
-  if( itr == rem_reqid.end() ) {
-    req_mtx.unlock();
-    return VEO_COMMAND_ERROR;
+  while (this->prog_mtx.try_lock()) {
+    rv = _progress_nolock(false);
+    this->prog_mtx.unlock();
+    if (rv > 0)
+      break;
+    rv = this->_peekResult(reqid, retp);
+    if (rv != VEO_COMMAND_UNFINISHED)
+      return rv;
   }
-  if (!rem_reqid.erase(reqid)) {
-    req_mtx.unlock();
-    return VEO_COMMAND_ERROR;
+
+  this->comq.notifyAll();
+
+  {
+    std::lock_guard<std::mutex> lock(this->req_mtx);
+    auto itr = rem_reqid.find(reqid);
+    if( itr == rem_reqid.end() ) {
+      return VEO_COMMAND_ERROR;
+    }
   }
-  req_mtx.unlock();
+
   auto c = this->comq.waitCompletion(reqid);
+
+  {
+    std::lock_guard<std::mutex> lock(this->req_mtx);
+    if (!rem_reqid.erase(reqid)) {
+      return VEO_COMMAND_ERROR;
+    }
+  }
+
   *retp = c->getRetval();
-  return c->getStatus();
-#endif
+  rv = c->getStatus();
+  return rv;
 }
 
 /**

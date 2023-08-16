@@ -1,5 +1,5 @@
 Summary: VE Offloading Framework based on VE-UDMA RPC
-Name: @PACKAGE@run
+Name: @PACKAGE@run-%{_ve_arch}
 Version: @VERSION@
 Release: @RELEASE@%{?dist}
 Vendor: @VENDOR@
@@ -8,14 +8,14 @@ License: LGPL
 BuildRoot: %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 Source0: @PACKAGE@-@VERSION@.tar.gz
 BuildRequires: vedebuginfo
-Requires: glibc-ve
-Requires: libsysve
-BuildRequires: glibc-ve-devel
-AutoReqProv: no
-%if 0%{?rhel} == 8
-Requires: platform-python
-BuildRequires: platform-python-devel
+Requires: glibc-%{_ve_arch}
+Requires: libsysve-%{_ve_arch}
+%if "%{_ve_arch}" != "ve3"
+Obsoletes: @PACKAGE@run
+Provides: @PACKAGE@run
 %endif
+BuildRequires: glibc-%{_ve_arch}-devel
+AutoReqProv: no
 %description
 The Alternative VE Offloading framework (AVEO) is a faster and much
 lower latency replacement to VEO which brings multi-VE support,
@@ -26,20 +26,32 @@ OpenACC.
 
 %package devel
 Summary: Development package for VE Offloading Framework based on VE-UDMA RPC
-Requires: glibc-ve-devel
+Requires: glibc-%{_ve_arch}-devel
 Requires: %{name} = %{version}-%{release}
-BuildRequires: glibc-ve-devel
+BuildRequires: glibc-%{_ve_arch}-devel
 Obsoletes: veoffload-devel veoffload-veorun-devel
+%if "%{_ve_arch}" != "ve3"
+Obsoletes: @PACKAGE@run-devel
+Provides: @PACKAGE@run-devel
+%endif
+
 AutoReqProv: no
 %description devel
 This package includes header files of VE offloading Framework
 
 %define _prefix @PREFIX@
-%define _subprefix @SUBPREFIX@
+%if  "%{_ve_arch}" != "ve3"
+%define _subprefix /opt/nec/ve
+%else
+%define _subprefix /opt/nec/ve3
+%endif
+%define _subprefix_com /opt/nec/ve
+
 %define _libdir %{_prefix}/lib64
 %define _libexecdir %{_prefix}/libexec
 %define _includedir %{_prefix}/include
 %define _vebindir %{_subprefix}/bin
+%define _vebindir_com %{_subprefix_com}/bin
 %define _velibexecdir %{_subprefix}/libexec
 %define _velibdir %{_subprefix}/lib
 %define _veincludedir %{_subprefix}/include
@@ -54,19 +66,16 @@ This package includes header files of VE offloading Framework
 
 %prep
 %setup -q -n @PACKAGE@-@VERSION@
-%if 0%{?rhel} == 8
-	pathfix.py -pn -i /usr/bin/python3 $RPM_BUILD_DIR/@PACKAGE@-@VERSION@/scripts/gen_veorun_static_symtable
-%endif
 
 %build
-make all-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
+make all-ve DEST=%{_prefix} VEDEST=%{_subprefix} VEDEST_COM=%{_subprefix_com} PREF=%{buildroot}
 
 %install
-make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
+make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} VEDEST_COM=%{_subprefix_com} PREF=%{buildroot}
 
 %files
-%{_libexecdir}/aveorun
-%{_libexecdir}/aveorun-ftrace
+%{_libexecdir}/aveorun_%{_ve_arch}
+%{_libexecdir}/aveorun-ftrace_%{_ve_arch}
 %{_velibdir}/libaveoVE.so.1
 %{_velibdir}/libaveoVE.so.1.0.0
 %{_velibdir}/libveohmem.so.1
@@ -78,10 +87,9 @@ make install-ve DEST=%{_prefix} VEDEST=%{_subprefix} PREF=%{buildroot}
 %{_velibdir}/liburpcVE_omp.a
 %{_velibdir}/libaveoVE.so
 %{_velibdir}/libveohmem.so
-%{_vebindir}/mk_veorun_static
-%{_vebindir}/relink_aveorun
-%{_libexecdir}/gen_veorun_static_symtable
-%{_libexecdir}/mk_veorun_static
-%{_libexecdir}/relink_aveorun
+%{_vebindir_com}/mk_veorun_static_%{_ve_arch}
+%{_vebindir_com}/relink_aveorun_%{_ve_arch}
+%{_libexecdir}/mk_veorun_static_%{_ve_arch}
+%{_libexecdir}/relink_aveorun_%{_ve_arch}
 %{_veincludedir}/veo_hmem.h
 %{_veincludedir}/veo_ve.h
